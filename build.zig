@@ -16,6 +16,16 @@ pub fn build(b: *std.build.Builder) void {
     yes.setBuildMode(mode);
     yes.install();
 
+    const dirname = b.addExecutable("dirname", "src/dirname.zig");
+    dirname.setTarget(target);
+    dirname.setBuildMode(mode);
+    dirname.install();
+
+    const whoami = b.addExecutable("whoami", "src/whoami.zig");
+    whoami.setTarget(target);
+    whoami.setBuildMode(mode);
+    whoami.install();
+
     //const run_cmd = exe.run();
     //run_cmd.step.dependOn(b.getInstallStep());
     //if (b.args) |args| {

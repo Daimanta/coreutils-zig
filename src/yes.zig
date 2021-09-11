@@ -14,6 +14,8 @@ const help_message =
             \\
             ;
 
+const application_name = "yes";
+
 pub fn main() !void {
         const allocator = std.heap.page_allocator;
 
@@ -46,9 +48,7 @@ pub fn main() !void {
             std.debug.print(help_message, .{});
             std.os.exit(0);
         } else if (args.flag("--version")) {
-            const name_info = "yes (Zig coreutils) ";
-            std.debug.print(name_info, .{});
-            std.debug.print("{d}.{d}.{d}\n", .{version.major, version.minor, version.patch});
+            version.print_version_info(application_name);
             std.debug.print("{s}", .{copyright.license_info});
         } else {
             const arguments = try std.process.argsAlloc(allocator);
