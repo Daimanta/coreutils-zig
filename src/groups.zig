@@ -11,13 +11,12 @@ const Passwd = extern struct {
     pw_shell: [*:0]u8
 };
 
-const application_name = "whoami";
+const application_name = "groups";
 
 const help_message =
-\\Usage: whoami [OPTION]...
-\\Print the user name associated with the current effective user ID.
-\\Same as id -un.
-\\
+\\Usage: groups [OPTION]... [USERNAME]...
+\\Print group memberships for each USERNAME or, if no USERNAME is specified, for
+\\the current process (which may differ if the groups database has changed).
 \\      --help     display this help and exit
 \\      --version  output version information and exit
 \\
@@ -60,9 +59,7 @@ pub fn main() !void {
         version.print_version_info(application_name);
         std.os.exit(0);
     } else if (current_mode == Mode.main) {
-        const uid = linux.geteuid();
-        const pw: *Passwd = getpwuid(uid);
-        std.debug.print("{s}\n", .{pw.pw_name});
+
         std.os.exit(0);
     } else {
         std.debug.print("{s}: inconsistent state\n", .{application_name});

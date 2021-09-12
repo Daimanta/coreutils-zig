@@ -2,7 +2,6 @@ const std = @import("std");
 const process = std.process;
 const clap = @import("clap.zig");
 const version = @import("util/version.zig");
-const copyright = @import("util/copyright.zig");
 
 const help_message =
             \\Usage: yes [STRING]...
@@ -49,7 +48,6 @@ pub fn main() !void {
             std.os.exit(0);
         } else if (args.flag("--version")) {
             version.print_version_info(application_name);
-            std.debug.print("{s}", .{copyright.license_info});
         } else {
             const arguments = try std.process.argsAlloc(allocator);
             if (arguments.len <= 2) {

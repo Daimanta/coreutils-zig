@@ -2,7 +2,6 @@ const std = @import("std");
 const process = std.process;
 const clap = @import("clap.zig");
 const version = @import("util/version.zig");
-const copyright = @import("util/copyright.zig");
 const mem = std.mem;
 
 const help_message =
@@ -55,7 +54,6 @@ pub fn main() !void {
         std.debug.print("{s}", .{help_message});
     } else if (current_mode == Mode.version) {
         version.print_version_info(application_name);
-        std.debug.print("{s}", .{copyright.license_info});
     } else if (current_mode == Mode.main) {
         std.debug.print("{s}", .{"~"});
     } else {

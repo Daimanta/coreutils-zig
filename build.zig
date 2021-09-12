@@ -1,4 +1,5 @@
 const std = @import("std");
+const os = std.builtin.os.tag;
 
 pub fn build(b: *std.build.Builder) void {
     // Standard target options allows the person running `zig build` to choose
@@ -26,12 +27,14 @@ pub fn build(b: *std.build.Builder) void {
     whoami.setBuildMode(mode);
     whoami.install();
 
-    //const run_cmd = exe.run();
-    //run_cmd.step.dependOn(b.getInstallStep());
-    //if (b.args) |args| {
-    //    run_cmd.addArgs(args);
-    //}
+    const groups = b.addExecutable("groups", "src/groups.zig");
+    groups.setTarget(target);
+    groups.setBuildMode(mode);
+    groups.install();
 
-    //const run_step = b.step("run", "Run the app");
-    //run_step.dependOn(&run_cmd.step);
+    if (os == .linux) {
+        whoami.linkSystemLibrary("c");
+        groups.linkSystemLibrary("c");
+    }
+
 }
