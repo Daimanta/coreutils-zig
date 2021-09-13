@@ -33,6 +33,7 @@ pub fn main() !void {
     };
 
     var current_mode: ?Mode = null;
+    var use_null = false;
 
     if (arguments.len == 2) {
         var arg: []const u8 = arguments[1];
@@ -48,6 +49,20 @@ pub fn main() !void {
         } else {
             current_mode = Mode.main;
         }
+    } else if (arguments.len == 1) {
+        current_mode = Mode.main;
+    } else {
+        for (arguments[1..]) |arg| {
+            if (arg[0] == '-') {
+                if (mem.eql(u8, arg, "-z") or mem.eql(u8, arg, "--zero")) {
+                    use_null = true;
+                } else {
+                    std.debug.print("Unrecognized option '{s}'", .{arg});
+                    std.os.exit(1);
+                }
+            }
+        }
+        current_mode = Mode.main;
     }
 
     if (current_mode == Mode.help) {
@@ -55,10 +70,51 @@ pub fn main() !void {
     } else if (current_mode == Mode.version) {
         version.print_version_info(application_name);
     } else if (current_mode == Mode.main) {
-        std.debug.print("{s}", .{"~"});
+        for (arguments[1..]) |elem| {
+            if (elem.len == 0 or elem[0] != '-') {
+                process_path(elem, use_null);
+            }
+        }
     } else {
         std.debug.print("Inconsistent state detected! Exiting.", .{});
         std.os.exit(1);
+    }
+
+}
+
+fn process_path(path: []const u8, use_null: bool) void {
+    if (path.len == 0) {
+        std.debug.print(".", .{});
+    } else {
+        var i: usize = path.len - 1;
+        if (path[i] == '/' and i > 0) {
+            i -= 1;
+        }
+        while (i > 0) {
+            if (path[i] == '/') break;
+            i -= 1;
+        }
+
+        if (i == 0) {
+            if (path[0] == '/') {
+                std.debug.print("/", .{});
+            } else {
+                std.debug.print(".", .{});
+            }
+        } else {
+            var j = i;
+            while (j >= 0) {
+                j -= 1;
+                if (j != '/') break;
+            }
+            std.debug.print("{s}", .{path[0..j+1]});
+        }
+    }
+
+    if (use_null) {
+        std.debug.print("\x00", .{});
+    } else {
+        std.debug.print("\n", .{});
     }
 
 }
