@@ -2,14 +2,7 @@ const std = @import("std");
 const linux = std.os.linux;
 const version = @import("util/version.zig");
 const mem = std.mem;
-
-const Passwd = extern struct {
-    pw_name: [*:0]u8,
-    pw_uid: linux.uid_t,
-    pw_gid: linux.gid_t,
-    pw_dir: [*:0]u8,
-    pw_shell: [*:0]u8
-};
+const users = @import("util/users.zig");
 
 const application_name = "whoami";
 
@@ -22,8 +15,6 @@ const help_message =
 \\      --version  output version information and exit
 \\
 ;
-
-pub extern fn getpwuid (uid: linux.uid_t) callconv(.C) *Passwd;
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
@@ -61,7 +52,7 @@ pub fn main() !void {
         std.os.exit(0);
     } else if (current_mode == Mode.main) {
         const uid = linux.geteuid();
-        const pw: *Passwd = getpwuid(uid);
+        const pw: *users.Passwd = users.getpwuid(uid);
         std.debug.print("{s}\n", .{pw.pw_name});
         std.os.exit(0);
     } else {
