@@ -12,6 +12,16 @@ pub fn build(b: *std.build.Builder) void {
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
     const mode = b.standardReleaseOptions();
 
+    const true_app = b.addExecutable("true", "src/true.zig");
+    true_app.setTarget(target);
+    true_app.setBuildMode(mode);
+    true_app.install();
+
+    const false_app = b.addExecutable("false", "src/false.zig");
+    false_app.setTarget(target);
+    false_app.setBuildMode(mode);
+    false_app.install();
+
     const yes = b.addExecutable("yes", "src/yes.zig");
     yes.setTarget(target);
     yes.setBuildMode(mode);
