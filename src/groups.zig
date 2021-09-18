@@ -1,10 +1,14 @@
 const std = @import("std");
 const linux = std.os.linux;
-const version = @import("util/version.zig");
+
 const mem = std.mem;
 const uid = linux.uid_t;
 const gid = linux.gid_t;
+
+const version = @import("util/version.zig");
 const users = @import("util/users.zig");
+const strings = @import("util/strings.zig");
+
 const Allocator = std.mem.Allocator;
 
 const allocator = std.heap.page_allocator;
@@ -72,7 +76,7 @@ pub fn main() !void {
         } else {
             for(arguments[1..]) |argument| {
                 if (argument.len > 0 and argument[0] != '-') {
-                    var user_null_pointer = try to_null_terminated_pointer(argument, allocator);
+                    var user_null_pointer = try strings.to_null_terminated_pointer(argument, allocator);
                     defer allocator.free(user_null_pointer);
                     if (users.get_user_by_name(user_null_pointer)) |pw| {
                         try display_group(pw, true);
@@ -113,21 +117,4 @@ fn display_group (user: *users.Passwd, print_name: bool) !void {
         std.debug.print("{s} ", .{grp.gr_name});
     }
     std.debug.print("\n", .{});
-}
-
-fn null_pointer_length(ptr: [*:0]const u8) usize {
-    var result: usize = 0;
-    while (ptr[result] != 0) {
-        result += 1;
-    }
-    return result;
-}
-
-fn to_null_terminated_pointer(slice: []const u8, allocator_impl: *Allocator) ![:0]u8 {
-    var result = try allocator_impl.alloc(u8, slice.len + 1);
-    for (slice) |byte, i| {
-        result[i] = slice[i];
-    }
-    result[result.len - 1] = 0;
-    return result[0..result.len - 1:0];
 }

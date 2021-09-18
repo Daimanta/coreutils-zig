@@ -42,6 +42,11 @@ pub fn build(b: *std.build.Builder) void {
     groups.setBuildMode(mode);
     groups.install();
 
+    const pwd = b.addExecutable("pwd", "src/pwd.zig");
+    pwd.setTarget(target);
+    pwd.setBuildMode(mode);
+    pwd.install();
+
     if (os == .linux) {
         whoami.linkSystemLibrary("c");
         groups.linkSystemLibrary("c");
