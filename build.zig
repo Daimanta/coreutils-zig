@@ -47,9 +47,15 @@ pub fn build(b: *std.build.Builder) void {
     pwd.setBuildMode(mode);
     pwd.install();
 
+    const tty = b.addExecutable("tty", "src/tty.zig");
+    tty.setTarget(target);
+    tty.setBuildMode(mode);
+    tty.install();
+
     if (os == .linux) {
         whoami.linkSystemLibrary("c");
         groups.linkSystemLibrary("c");
+        tty.linkSystemLibrary("c");
     }
 
 }
