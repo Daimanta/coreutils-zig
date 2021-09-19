@@ -66,6 +66,8 @@ pub fn ComptimeClap(
                 .params = converted_params,
                 .iter = iter,
             };
+            stream.diagnostic = opt.diagnostic;
+
             while (try stream.next()) |arg| {
                 const param = arg.param;
                 if (param.names.long == null and param.names.short == null) {

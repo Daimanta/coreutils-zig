@@ -36,14 +36,8 @@ pub fn main() !void {
         clap.parseParam("-P") catch unreachable
     };
 
-    var iter = try clap.args.OsIterator.init(allocator);
-    defer iter.deinit();
     var diag = clap.Diagnostic{};
-
-    var args = clap.parse(clap.Help, &params, .{ .diagnostic = &diag }) catch |err| {
-        diag.report(std.io.getStdOut().writer(), err) catch {};
-        return;
-    };
+    var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
     defer args.deinit();
 
     var resolve_symlink = false;
