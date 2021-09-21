@@ -1,6 +1,7 @@
 const std = @import("std");
 const fs = std.fs;
 const os = std.os;
+const mem = std.mem;
 
 const clap = @import("clap.zig");
 const version = @import("util/version.zig");
@@ -23,6 +24,13 @@ const help_message =
 \\      --version  output version information and exit
 \\
 ;
+
+const TimeType = enum {
+    second,
+    minute,
+    hour,
+    day,
+};
 
 pub fn main() !void {
     const params = comptime [_]clap.Param(clap.Help){
@@ -62,38 +70,82 @@ pub fn main() !void {
 
 fn update_times(string: []const u8, seconds: *u64, nanos: *u64) !void {
     var i = string.len - 1;
+    var found_number = false;
     while (i >= 0) {
-        if ((string[i] >= '0' and string[i] <= '9') or string[i] == '.') break;
+        if ((string[i] >= '0' and string[i] <= '9') or string[i] == '.') {
+            found_number = true;
+            break;
+        }
         if (i == 0) break;
         i-=1;
     }
-    if (i == 0) {
-       if (string.len == 1) {
-            if (string[0] >= '0' and string[0] <= '9') {
-                seconds.* += string[0] - '0';
-            } else {
-                return error.TimeStringNotValid;
-            }
-       } else {
-            if (string[0] >= '0' and string[0] <= '9') {
-                // seconds.* += string[0] - '0';
-            } else {
-                return error.TimeStringNotValid;
-            }
-       }
+    if (!found_number) return error.TimeStringNotValid;
+
+    var double: f64 = -1.0;
+    var int: u64 = 0xffffffffffffffff;
+    try parseString(string[0..i+1], &double, &int);
+    const timeType = getTimeType(string[i+1..]) catch |err| {
+        std.debug.print("sleep: invalid time interval '{s}'\n", .{string});
+        std.os.exit(1);
+    };
+    var add_seconds: u64 = undefined;
+    var add_nanos: u64 = undefined;
+    if (double == -1.0) {
+        getTimesFromIntegerAndTimeType(int, timeType, &add_seconds, &add_nanos);
     } else {
-        var double: f64 = -1.0;
-        var int: u64 = 0xffffffffffffffff;
-        try parseString(string[0..i+1], &double, &int);
-        if (double == -1.0) {
-            seconds.* += int;
-        } else {
-            var int_part = @floatToInt(u64, double);
-            var nanos_part = @floatToInt(u64, (double-@intToFloat(f64, int_part)) * 1_000_000_000);
-            seconds.* += int_part;
-            nanos.* += nanos_part;
-        }
+        getTimesFromDoubleAndTimeType(double, timeType, &add_seconds, &add_nanos);
     }
+    seconds.* += add_seconds;
+    nanos.* += add_nanos;
+    if (nanos.* > 1_000_000_000) {
+        seconds.* += 1;
+        nanos.* -= 1_000_000_000;
+    }
+}
+
+fn getTimesFromDoubleAndTimeType(double: f64, time_type: TimeType, seconds: *u64, nanos: *u64) void {
+    var multiplied_value = double;
+    if (time_type == TimeType.second) {
+        multiplied_value = double;
+    } else if (time_type == TimeType.minute) {
+        multiplied_value = double * 60;
+    } else if (time_type == TimeType.hour) {
+        multiplied_value = double * 60 * 60;
+    } else if (time_type == TimeType.day) {
+        multiplied_value = double * 60 * 60 * 24;
+    }
+
+    var int_part = @floatToInt(u64, multiplied_value);
+    var nanos_part = @floatToInt(u64, (multiplied_value-@intToFloat(f64, int_part)) * 1_000_000_000);
+    seconds.* = int_part;
+    nanos.* = nanos_part;
+}
+
+fn getTimesFromIntegerAndTimeType(int: u64, time_type: TimeType, seconds: *u64, nanos: *u64) void {
+    nanos.* = 0;
+    if (time_type == TimeType.second) {
+        seconds.* = int;
+    } else if (time_type == TimeType.minute) {
+        seconds.* = int * 60;
+    } else if (time_type == TimeType.hour) {
+        seconds.* = int * 60 * 60;
+    } else if (time_type == TimeType.day) {
+        seconds.* = int * 60 * 60 * 24;
+    }
+}
+
+fn getTimeType(string: []const u8) !TimeType {
+    if (string.len == 0 or mem.eql(u8, string, "s")) {
+        return TimeType.second;
+    } else if (mem.eql(u8, string, "m")) {
+        return TimeType.minute;
+    } else if (mem.eql(u8, string, "h")) {
+        return TimeType.hour;
+    } else if (mem.eql(u8, string, "d")) {
+        return TimeType.day;
+    }
+
+    return error.TimeTypeNotFound;
 }
 
 fn parseString(str: []const u8, double: *f64, int: *u64) !void {
