@@ -52,6 +52,16 @@ pub fn build(b: *std.build.Builder) void {
     tty.setBuildMode(mode);
     tty.install();
 
+    const sleep = b.addExecutable("sleep", "src/sleep.zig");
+    sleep.setTarget(target);
+    sleep.setBuildMode(mode);
+    sleep.install();
+
+    const hostid = b.addExecutable("hostid", "src/hostid.zig");
+    hostid.setTarget(target);
+    hostid.setBuildMode(mode);
+    hostid.install();
+
     if (os == .linux) {
         whoami.linkSystemLibrary("c");
         groups.linkSystemLibrary("c");

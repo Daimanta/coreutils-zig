@@ -1,5 +1,4 @@
 const std = @import("std");
-const fs = std.fs;
 const os = std.os;
 const mem = std.mem;
 
@@ -55,6 +54,10 @@ pub fn main() !void {
 
     const arguments = try std.process.argsAlloc(allocator);
 
+    if (arguments.len == 1) {
+        std.debug.print("{s}: missing operand\nTry 'sleep --help' for more information.\n", .{application_name});
+    }
+
     var seconds: u64 = 0;
     var nanos: u64 = 0;
 
@@ -65,7 +68,7 @@ pub fn main() !void {
         };
     }
 
-    std.debug.print("{d} {d}\n", .{seconds, nanos});
+    os.nanosleep(seconds, nanos);
 }
 
 fn update_times(string: []const u8, seconds: *u64, nanos: *u64) !void {
