@@ -19,6 +19,8 @@ const help_message =
 \\
 ;
 
+extern fn gethostid() callconv(.C) c_long;
+
 pub fn main() !void {
     const params = comptime [_]clap.Param(clap.Help){
         clap.parseParam("--help") catch unreachable,
@@ -39,5 +41,9 @@ pub fn main() !void {
     }
 
     const arguments = try std.process.argsAlloc(allocator);
+
+    const c_hostid = gethostid();
+    const hostid = @intCast(u32, c_hostid);
+    std.debug.print("{x:0>8}\n", .{hostid});
 
 }

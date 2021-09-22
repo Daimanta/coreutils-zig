@@ -24,7 +24,7 @@ const help_message =
 \\
 ;
 
-pub extern fn getgrouplist(user: [*:0]const u8, group: gid, groups: [*]gid, ngroups: *c_int) callconv(.C) c_int;
+extern fn getgrouplist(user: [*:0]const u8, group: gid, groups: [*]gid, ngroups: *c_int) callconv(.C) c_int;
 
 pub fn main() !void {
 
