@@ -62,10 +62,17 @@ pub fn build(b: *std.build.Builder) void {
     hostid.setBuildMode(mode);
     hostid.install();
 
+    const logname = b.addExecutable("logname", "src/logname.zig");
+    logname.setTarget(target);
+    logname.setBuildMode(mode);
+    logname.install();
+
     if (os == .linux) {
         whoami.linkSystemLibrary("c");
         groups.linkSystemLibrary("c");
         tty.linkSystemLibrary("c");
+        hostid.linkSystemLibrary("c");
+        logname.linkSystemLibrary("c");
     }
 
 }
