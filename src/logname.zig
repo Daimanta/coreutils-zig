@@ -5,6 +5,7 @@ const io = std.io;
 
 const clap = @import("clap.zig");
 const version = @import("util/version.zig");
+const strings = @import("util/strings.zig");
 
 const Allocator = std.mem.Allocator;
 
@@ -53,10 +54,5 @@ pub fn main() !void {
 }
 
 fn getloginname() ?[]u8 {
-    var result = getlogin();
-    if (@ptrToInt(result) == 0) {
-        return null;
-    } else {
-        return std.mem.sliceTo(result, 0);
-    }
+    return strings.convert_optional_sentinel_string(getlogin());
 }
