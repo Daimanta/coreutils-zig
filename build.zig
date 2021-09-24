@@ -42,6 +42,11 @@ pub fn build(b: *std.build.Builder) void {
     nproc.setBuildMode(mode);
     nproc.install();
 
+    const printenv = b.addExecutable("printenv", "src/printenv.zig");
+    printenv.setTarget(target);
+    printenv.setBuildMode(mode);
+    printenv.install();
+
     const pwd = b.addExecutable("pwd", "src/pwd.zig");
     pwd.setTarget(target);
     pwd.setBuildMode(mode);
@@ -77,6 +82,7 @@ pub fn build(b: *std.build.Builder) void {
         hostid.linkSystemLibrary("c");
         logname.linkSystemLibrary("c");
         nproc.linkSystemLibrary("c");
+        printenv.linkSystemLibrary("c");
         tty.linkSystemLibrary("c");
         whoami.linkSystemLibrary("c");
     }
