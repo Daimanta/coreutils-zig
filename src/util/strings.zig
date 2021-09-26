@@ -46,3 +46,8 @@ pub fn joinStrings(input: [][]const u8, output: []u8) void {
         walking_index+=1;
     }
 }
+
+pub fn insertStringAtIndex(dest: []u8, source: []const u8, start: *usize) void {
+    std.mem.copy(u8, dest[start.*..start.*+source.len], source);
+    start.* += source.len;
+}

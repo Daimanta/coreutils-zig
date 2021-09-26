@@ -54,16 +54,17 @@ pub fn main() !void {
     } else if (args.positionals().len == 1) {
         read_file = args.positionals()[0];
     }
-    std.debug.print("{s}, ", .{getUptimeString(allocator, read_file)});
+    std.debug.print("{s}, ", .{try getUptimeString(allocator, read_file)});
     std.debug.print("{s}, ", .{getUsersString()});
     std.debug.print("{s}\n", .{getLoadString()});
 }
 
-fn getUptimeString(alloc: *std.mem.Allocator, read_file: []const u8) []const u8 {
+fn getUptimeString(alloc: *std.mem.Allocator, read_file: []const u8) ![]const u8 {
     var now: time_t = undefined;
     time_info.getCurrentTime(&now);
     const local_time = time_info.getLocalTimeStruct(&now);
-    const time_repr = time_info.toTimeStringAlloc(alloc, local_time);
+    const time_repr = try time_info.toTimeStringAlloc(alloc, local_time);
+    defer alloc.free(time_repr);
 
     var can_determine_uptime = true;
     var buffer: [1024]u8 = undefined;
@@ -77,7 +78,7 @@ fn getUptimeString(alloc: *std.mem.Allocator, read_file: []const u8) []const u8 
     var hours: u32 = undefined;
     var minutes: u32 = undefined;
     var uptime_buffer: [30]u8 = undefined;
-    var uptime_buffer_size: usize = undefined;
+    var uptime_buffer_index: usize = 0;
     if (found_space) {
         const uptime_string = contents[0..space_index];
         const uptime_float = std.fmt.parseFloat(f64, uptime_string) catch std.math.nan(f64);
@@ -85,18 +86,43 @@ fn getUptimeString(alloc: *std.mem.Allocator, read_file: []const u8) []const u8 
             can_determine_uptime = false;
         } else {
             var uptime_int = @floatToInt(u32, uptime_float);
-            std.debug.print("{d}\n", .{uptime_int});
+            days = uptime_int / std.time.s_per_day;
+            uptime_int -= days * std.time.s_per_day;
+            hours = uptime_int / std.time.s_per_hour;
+            uptime_int -= hours * std.time.s_per_hour;
+            minutes = uptime_int / std.time.s_per_min;
         }
     } else {
         can_determine_uptime = false;
     }
 
+    strings.insertStringAtIndex(uptime_buffer[0..], time_repr, &uptime_buffer_index);
+
     if (can_determine_uptime) {
-
+        strings.insertStringAtIndex(uptime_buffer[0..], " up ", &uptime_buffer_index);
+        var num_buffer: [10]u8 = undefined;
+        if (days > 0) {
+            var days_string = std.fmt.bufPrintIntToSlice(num_buffer[0..], days, 10, false, std.fmt.FormatOptions{});
+            strings.insertStringAtIndex(uptime_buffer[0..], days_string, &uptime_buffer_index);
+            var descr: []const u8 = undefined;
+            if (days > 1) {
+                descr = " days ";
+            } else {
+                descr = " day ";
+            }
+            strings.insertStringAtIndex(uptime_buffer[0..], descr, &uptime_buffer_index);
+        }
+        var hours_string = std.fmt.bufPrintIntToSlice(num_buffer[0..], hours, 10, false, std.fmt.FormatOptions{});
+        strings.insertStringAtIndex(uptime_buffer[0..], hours_string, &uptime_buffer_index);
+        var minutes_string = std.fmt.bufPrintIntToSlice(num_buffer[0..], minutes, 10, false, std.fmt.FormatOptions{});
+        strings.insertStringAtIndex(uptime_buffer[0..], ":", &uptime_buffer_index);
+        strings.insertStringAtIndex(uptime_buffer[0..], minutes_string, &uptime_buffer_index);
     } else {
-
+        strings.insertStringAtIndex(uptime_buffer[0..], " up ???? days ??:??", &uptime_buffer_index);
     }
-    return "??:??:?? up ???? days ??:??";
+    var result = try alloc.alloc(u8, uptime_buffer_index+1);
+    std.mem.copy(u8, result, uptime_buffer[0..uptime_buffer_index+1]);
+    return result;
 }
 
 fn getUsersString() []const u8 {
