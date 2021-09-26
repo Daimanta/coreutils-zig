@@ -54,5 +54,5 @@ pub fn main() !void {
 }
 
 fn getloginname() ?[]u8 {
-    return strings.convert_optional_sentinel_string(getlogin());
+    return strings.convertOptionalSentinelString(getlogin());
 }

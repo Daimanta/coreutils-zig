@@ -76,7 +76,7 @@ pub fn main() !void {
         } else {
             for(arguments[1..]) |argument| {
                 if (argument.len > 0 and argument[0] != '-') {
-                    var user_null_pointer = try strings.to_null_terminated_pointer(argument, allocator);
+                    var user_null_pointer = try strings.toNullTerminatedPointer(argument, allocator);
                     defer allocator.free(user_null_pointer);
                     if (users.get_user_by_name(user_null_pointer)) |pw| {
                         try display_group(pw, true);

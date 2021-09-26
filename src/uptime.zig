@@ -61,13 +61,41 @@ pub fn main() !void {
 
 fn get_uptime_string(alloc: *std.mem.Allocator, read_file: []const u8) []const u8 {
     var now: time_t = undefined;
-    time_info.get_current_time(&now);
-    const local_time = time_info.get_local_time_struct(&now);
-    const repr = time_info.to_time_string_alloc(alloc, local_time);
-    std.debug.print("{s}\n", .{repr});
+    time_info.getCurrentTime(&now);
+    const local_time = time_info.getLocalTimeStruct(&now);
+    const time_repr = time_info.toTimeStringAlloc(alloc, local_time);
+
+    var can_determine_uptime = true;
     var buffer: [1024]u8 = undefined;
     var contents: []u8 = undefined;
-    contents = fs.cwd().readFile("/proc/uptime", buffer[0..]) catch unreachable;
+    contents = fs.cwd().readFile(read_file, buffer[0..]) catch "";
+
+    var space_index: usize = undefined;
+    var found_space: bool = false;
+    strings.indexOf(contents, ' ', &space_index, &found_space);
+    var days: u32 = undefined;
+    var hours: u32 = undefined;
+    var minutes: u32 = undefined;
+    var uptime_buffer: [30]u8 = undefined;
+    var uptime_buffer_size: usize = undefined;
+    if (found_space) {
+        const uptime_string = contents[0..space_index];
+        const uptime_float = std.fmt.parseFloat(f64, uptime_string) catch std.math.nan(f64);
+        if (uptime_float == std.math.nan(f64)) {
+            can_determine_uptime = false;
+        } else {
+            var uptime_int = @floatToInt(u32, uptime_float);
+            std.debug.print("{d}\n", .{uptime_int});
+        }
+    } else {
+        can_determine_uptime = false;
+    }
+
+    if (can_determine_uptime) {
+
+    } else {
+
+    }
     return "??:??:?? up ???? days ??:??";
 }
 
