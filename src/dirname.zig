@@ -68,11 +68,11 @@ pub fn main() !void {
     if (current_mode == Mode.help) {
         std.debug.print("{s}", .{help_message});
     } else if (current_mode == Mode.version) {
-        version.print_version_info(application_name);
+        version.printVersionInfo(application_name);
     } else if (current_mode == Mode.main) {
         for (arguments[1..]) |elem| {
             if (elem.len == 0 or elem[0] != '-') {
-                process_path(elem, use_null);
+                processPath(elem, use_null);
             }
         }
     } else {
@@ -82,7 +82,7 @@ pub fn main() !void {
 
 }
 
-fn process_path(path: []const u8, use_null: bool) void {
+fn processPath(path: []const u8, use_null: bool) void {
     if (path.len == 0) {
         std.debug.print(".", .{});
     } else {

@@ -48,7 +48,7 @@ pub fn main() !void {
         std.debug.print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
-        version.print_version_info(application_name);
+        version.printVersionInfo(application_name);
         std.os.exit(0);
     }
 
@@ -62,7 +62,7 @@ pub fn main() !void {
     var nanos: u64 = 0;
 
     for (arguments[1..]) |argument| {
-        update_times(argument, &seconds, &nanos) catch |err| {
+        updateTimes(argument, &seconds, &nanos) catch |err| {
             std.debug.print("sleep: invalid time interval '{s}'\n", .{argument});
             std.os.exit(1);
         };
@@ -71,7 +71,7 @@ pub fn main() !void {
     os.nanosleep(seconds, nanos);
 }
 
-fn update_times(string: []const u8, seconds: *u64, nanos: *u64) !void {
+fn updateTimes(string: []const u8, seconds: *u64, nanos: *u64) !void {
     var i = string.len - 1;
     var found_number = false;
     while (i >= 0) {

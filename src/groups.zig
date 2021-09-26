@@ -60,7 +60,7 @@ pub fn main() !void {
         std.debug.print("{s}", .{help_message});
         std.os.exit(0);
     } else if (current_mode == Mode.version) {
-        version.print_version_info(application_name);
+        version.printVersionInfo(application_name);
         std.os.exit(0);
     } else if (current_mode == Mode.main) {
         var count: u32 = 0;
@@ -72,14 +72,14 @@ pub fn main() !void {
         if (count == 0) {
             const my_uid = linux.geteuid();
             const pw: *users.Passwd = users.getpwuid(my_uid);
-            try display_group(pw, false);
+            try displayGroup(pw, false);
         } else {
             for(arguments[1..]) |argument| {
                 if (argument.len > 0 and argument[0] != '-') {
                     var user_null_pointer = try strings.toNullTerminatedPointer(argument, allocator);
                     defer allocator.free(user_null_pointer);
-                    if (users.get_user_by_name(user_null_pointer)) |pw| {
-                        try display_group(pw, true);
+                    if (users.getUserByName(user_null_pointer)) |pw| {
+                        try displayGroup(pw, true);
                     } else |err| {
                         std.debug.print("{s}: '{s}': no such user\n", .{application_name, argument});
                     }
@@ -95,7 +95,7 @@ pub fn main() !void {
 
 }
 
-fn display_group (user: *users.Passwd, print_name: bool) !void {
+fn displayGroup (user: *users.Passwd, print_name: bool) !void {
     var user_gid: gid = user.pw_gid;
     var groups: [*]gid = undefined;
     var group_count: c_int = 0;

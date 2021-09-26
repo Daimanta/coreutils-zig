@@ -47,7 +47,7 @@ pub fn main() !void {
         std.debug.print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
-        version.print_version_info(application_name);
+        version.printVersionInfo(application_name);
         std.os.exit(0);
     }
 

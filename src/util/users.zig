@@ -25,7 +25,7 @@ pub const Group = extern struct {
 pub extern fn getpwuid (uid: uid) callconv(.C) *Passwd;
 pub extern fn getpwnam (name: [*:0]u8) callconv(.C) *Passwd;
 
-pub fn get_user_by_name(name: [*:0]u8) !*Passwd {
+pub fn getUserByName(name: [*:0]u8) !*Passwd {
     const result = getpwnam(name);
     if (@ptrToInt(result) == 0) {
         return error.UserNotFound;

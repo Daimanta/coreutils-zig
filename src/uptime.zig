@@ -42,7 +42,7 @@ pub fn main() !void {
         std.debug.print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
-        version.print_version_info(application_name);
+        version.printVersionInfo(application_name);
         std.os.exit(0);
     }
 
@@ -54,12 +54,12 @@ pub fn main() !void {
     } else if (args.positionals().len == 1) {
         read_file = args.positionals()[0];
     }
-    std.debug.print("{s}, ", .{get_uptime_string(allocator, read_file)});
-    std.debug.print("{s}, ", .{get_users_string()});
-    std.debug.print("{s}\n", .{get_load_string()});
+    std.debug.print("{s}, ", .{getUptimeString(allocator, read_file)});
+    std.debug.print("{s}, ", .{getUsersString()});
+    std.debug.print("{s}\n", .{getLoadString()});
 }
 
-fn get_uptime_string(alloc: *std.mem.Allocator, read_file: []const u8) []const u8 {
+fn getUptimeString(alloc: *std.mem.Allocator, read_file: []const u8) []const u8 {
     var now: time_t = undefined;
     time_info.getCurrentTime(&now);
     const local_time = time_info.getLocalTimeStruct(&now);
@@ -99,14 +99,10 @@ fn get_uptime_string(alloc: *std.mem.Allocator, read_file: []const u8) []const u
     return "??:??:?? up ???? days ??:??";
 }
 
-fn get_users_string() []const u8 {
+fn getUsersString() []const u8 {
     return "?? users";
 }
 
-fn get_load_string() []const u8 {
+fn getLoadString() []const u8 {
     return "load average: ?.? ?.? ?.?";
-}
-
-fn intToString(int: u32, buf: []u8) ![]const u8 {
-    return try std.fmt.bufPrint(buf, "{}", .{int});
 }

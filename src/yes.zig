@@ -2,6 +2,7 @@ const std = @import("std");
 const process = std.process;
 const clap = @import("clap.zig");
 const version = @import("util/version.zig");
+const strings = @import("util/strings.zig");
 
 const help_message =
             \\Usage: yes [STRING]...
@@ -31,7 +32,7 @@ pub fn main() !void {
             std.debug.print(help_message, .{});
             std.os.exit(0);
         } else if (args.flag("--version")) {
-            version.print_version_info(application_name);
+            version.printVersionInfo(application_name);
         } else {
             const arguments = try std.process.argsAlloc(allocator);
             if (arguments.len <= 2) {
@@ -53,28 +54,10 @@ pub fn main() !void {
             }
 
             var outputted_text = try allocator.alloc(u8, prepared_size);
-            join_strings(arguments, outputted_text);
+            strings.joinStrings(arguments, outputted_text);
 
             while(true) {
                 std.debug.print("{s}\n", .{outputted_text});
             }
         }
-}
-
-fn join_strings(input: [][]const u8, output: []u8) void {
-    var walking_index: usize = 0;
-    var i: usize = 1;
-    while (i < input.len - 1) {
-        for (input[i]) |byte| {
-            output[walking_index] = byte;
-            walking_index+=1;
-        }
-        output[walking_index] = ' ';
-        walking_index += 1;
-        i+=1;
-    }
-    for (input[input.len - 1]) |byte| {
-        output[walking_index] = byte;
-        walking_index+=1;
-    }
 }

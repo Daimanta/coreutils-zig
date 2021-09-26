@@ -28,3 +28,21 @@ pub fn indexOf(string: []const u8, byte: u8, result: *usize, found: *bool) void 
         }
     }
 }
+
+pub fn joinStrings(input: [][]const u8, output: []u8) void {
+    var walking_index: usize = 0;
+    var i: usize = 1;
+    while (i < input.len - 1) {
+        for (input[i]) |byte| {
+            output[walking_index] = byte;
+            walking_index+=1;
+        }
+        output[walking_index] = ' ';
+        walking_index += 1;
+        i+=1;
+    }
+    for (input[input.len - 1]) |byte| {
+        output[walking_index] = byte;
+        walking_index+=1;
+    }
+}
