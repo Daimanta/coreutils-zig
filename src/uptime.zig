@@ -7,6 +7,7 @@ const clap = @import("clap.zig");
 const version = @import("util/version.zig");
 const strings = @import("util/strings.zig");
 const time_info = @import("util/time.zig");
+const utmp = @import("util/utmp.zig");
 
 const Allocator = std.mem.Allocator;
 const time_t = time_info.time_t;
@@ -46,20 +47,21 @@ pub fn main() !void {
         std.os.exit(0);
     }
 
-    var read_file: []const u8 = "/proc/uptime";
+    var current_user_file: []const u8 = "/var/run/utmp";
 
     if (args.positionals().len > 1) {
         std.debug.print("Only one file can be specified. Exiting.\n", .{});
         std.os.exit(1);
     } else if (args.positionals().len == 1) {
-        read_file = args.positionals()[0];
+        current_user_file = args.positionals()[0];
     }
-    std.debug.print("{s}, ", .{try getUptimeString(allocator, read_file)});
-    std.debug.print("{s}, ", .{getUsersString()});
+    std.debug.print("{s}, ", .{try getUptimeString(allocator)});
+    std.debug.print("{s}, ", .{try getUsersString(allocator, current_user_file)});
     std.debug.print("{s}\n", .{getLoadString()});
 }
 
-fn getUptimeString(alloc: *std.mem.Allocator, read_file: []const u8) ![]const u8 {
+fn getUptimeString(alloc: *std.mem.Allocator) ![]const u8 {
+    const read_file: []const u8 = "/proc/uptime";
     var now: time_t = undefined;
     time_info.getCurrentTime(&now);
     const local_time = time_info.getLocalTimeStruct(&now);
@@ -125,7 +127,10 @@ fn getUptimeString(alloc: *std.mem.Allocator, read_file: []const u8) ![]const u8
     return result;
 }
 
-fn getUsersString() []const u8 {
+fn getUsersString(alloc: *std.mem.Allocator, file_name: []const u8) ![]const u8 {
+    const file_contents = try fs.cwd().readFileAlloc(alloc, file_name, 2 << 20);
+    const logs = std.mem.bytesAsSlice(utmp.Utmp, file_contents[0..]);
+    std.debug.print("{s}", .{logs});
     return "?? users";
 }
 
