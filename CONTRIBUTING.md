@@ -1,0 +1,1 @@
+You are welcome to contribute to the project. At the moment this is a one-man show so if you have any interest in contributing please send a message, make an issue or pull request, or fork the project.
