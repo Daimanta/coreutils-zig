@@ -55,8 +55,8 @@ pub fn main() !void {
     } else if (args.positionals().len == 1) {
         current_user_file = args.positionals()[0];
     }
-    std.debug.print("{s}, ", .{try getUptimeString(allocator)});
-    std.debug.print("{s}, ", .{try getUsersString(allocator, current_user_file)});
+    std.debug.print(" {s},  ", .{try getUptimeString(allocator)});
+    std.debug.print("{s},  ", .{try getUsersString(allocator, current_user_file)});
     std.debug.print("{s}\n", .{getLoadString()});
 }
 
@@ -80,6 +80,7 @@ fn getUptimeString(alloc: *std.mem.Allocator) ![]const u8 {
     var hours: u32 = undefined;
     var minutes: u32 = undefined;
     var uptime_buffer: [30]u8 = undefined;
+    var stringBuilder = strings.StringBuilder.init(uptime_buffer[0..]);
     var uptime_buffer_index: usize = 0;
     if (found_space) {
         const uptime_string = contents[0..space_index];
@@ -97,41 +98,45 @@ fn getUptimeString(alloc: *std.mem.Allocator) ![]const u8 {
     } else {
         can_determine_uptime = false;
     }
-
-    strings.insertStringAtIndex(uptime_buffer[0..], time_repr, &uptime_buffer_index);
+    
+    stringBuilder.append(time_repr);
 
     if (can_determine_uptime) {
-        strings.insertStringAtIndex(uptime_buffer[0..], " up ", &uptime_buffer_index);
+        stringBuilder.append(" up ");
         var num_buffer: [10]u8 = undefined;
         if (days > 0) {
-            var days_string = std.fmt.bufPrintIntToSlice(num_buffer[0..], days, 10, false, std.fmt.FormatOptions{});
-            strings.insertStringAtIndex(uptime_buffer[0..], days_string, &uptime_buffer_index);
-            var descr: []const u8 = undefined;
-            if (days > 1) {
-                descr = " days ";
-            } else {
-                descr = " day ";
-            }
-            strings.insertStringAtIndex(uptime_buffer[0..], descr, &uptime_buffer_index);
+            stringBuilder.append(std.fmt.bufPrintIntToSlice(num_buffer[0..], days, 10, false, std.fmt.FormatOptions{}));
+            const descr: []const u8 = switch(days > 1) {
+                true => " days ",
+                false => " day ",
+            };
+            stringBuilder.append(descr);
         }
-        var hours_string = std.fmt.bufPrintIntToSlice(num_buffer[0..], hours, 10, false, std.fmt.FormatOptions{});
-        strings.insertStringAtIndex(uptime_buffer[0..], hours_string, &uptime_buffer_index);
-        var minutes_string = std.fmt.bufPrintIntToSlice(num_buffer[0..], minutes, 10, false, std.fmt.FormatOptions{});
-        strings.insertStringAtIndex(uptime_buffer[0..], ":", &uptime_buffer_index);
-        strings.insertStringAtIndex(uptime_buffer[0..], minutes_string, &uptime_buffer_index);
+        stringBuilder.append(std.fmt.bufPrintIntToSlice(num_buffer[0..], hours, 10, false, std.fmt.FormatOptions{}));
+        stringBuilder.append(":");
+        stringBuilder.append(std.fmt.bufPrintIntToSlice(num_buffer[0..], minutes, 10, false, std.fmt.FormatOptions{}));
     } else {
-        strings.insertStringAtIndex(uptime_buffer[0..], " up ???? days ??:??", &uptime_buffer_index);
+        stringBuilder.append(" up ???? days ??:??");
     }
-    var result = try alloc.alloc(u8, uptime_buffer_index+1);
-    std.mem.copy(u8, result, uptime_buffer[0..uptime_buffer_index+1]);
-    return result;
+    return stringBuilder.toOwnedSlice(alloc);
 }
 
 fn getUsersString(alloc: *std.mem.Allocator, file_name: []const u8) ![]const u8 {
     const file_contents = try fs.cwd().readFileAlloc(alloc, file_name, 2 << 20);
-    const logs = std.mem.bytesAsSlice(utmp.Utmp, file_contents[0..]);
-    std.debug.print("{s}", .{logs});
-    return "?? users";
+    const count = switch (file_contents.len % @sizeOf(utmp.Utmp) == 0) {
+        false => 0,
+        true => utmp.countActiveUsers(utmp.convertBytesToUtmpRecords(file_contents[0..]))
+    };
+    var buffer: [64]u8 = undefined;
+    var numbuffer: [10]u8 = undefined;
+    var stringBuilder = strings.StringBuilder.init(buffer[0..]);
+    stringBuilder.append(std.fmt.bufPrintIntToSlice(numbuffer[0..], count, 10, false, std.fmt.FormatOptions{}));
+    if (count == 1) {
+        stringBuilder.append(" user");
+    } else {
+        stringBuilder.append(" users");
+    }
+    return stringBuilder.toOwnedSlice(alloc);
 }
 
 fn getLoadString() []const u8 {

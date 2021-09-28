@@ -51,3 +51,27 @@ pub fn insertStringAtIndex(dest: []u8, source: []const u8, start: *usize) void {
     std.mem.copy(u8, dest[start.*..start.*+source.len], source);
     start.* += source.len;
 }
+
+pub const StringBuilder = struct {
+    buffer: []u8,
+    insertion_index: usize,
+
+    const Self = @This();
+    pub fn init(buffer: []u8) Self {
+        return Self{.buffer = buffer, .insertion_index = 0};
+    }
+
+    pub fn append(self: *Self, input: []const u8) void {
+        insertStringAtIndex(self.buffer, input, &self.insertion_index);
+    }
+
+    pub fn toSlice(self: *Self) []u8 {
+        return self.buffer[0..self.insertion_index];
+    }
+
+    pub fn toOwnedSlice(self: *Self, allocator: *std.mem.Allocator) ![]u8 {
+        var result = try allocator.alloc(u8, self.insertion_index);
+        std.mem.copy(u8, result, self.buffer[0..self.insertion_index]);
+        return result;
+    }
+};

@@ -49,5 +49,16 @@ pub const Utmp = extern struct {
 };
 
 pub fn convertBytesToUtmpRecords(bytes: []u8) []Utmp{
-    return std.mem.bytesAsSlice(Utmp, bytes);
+    var aligned = @alignCast(@alignOf(Utmp), bytes);
+    return std.mem.bytesAsSlice(Utmp, aligned[0..]);
+}
+
+pub fn countActiveUsers(utmp_records: []Utmp) u32 {
+    var result: u32 = 0;
+    for (utmp_records) |record| {
+        if (record.ut_type == UtType.USER_PROCESS) {
+            result += 1;
+        }
+    }
+    return result;
 }
