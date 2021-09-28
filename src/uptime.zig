@@ -57,7 +57,7 @@ pub fn main() !void {
     }
     std.debug.print(" {s},  ", .{try getUptimeString(allocator)});
     std.debug.print("{s},  ", .{try getUsersString(allocator, current_user_file)});
-    std.debug.print("{s}\n", .{getLoadString()});
+    std.debug.print("{s}\n", .{try getLoadString(allocator)});
 }
 
 fn getUptimeString(alloc: *std.mem.Allocator) ![]const u8 {
@@ -114,7 +114,7 @@ fn getUptimeString(alloc: *std.mem.Allocator) ![]const u8 {
         }
         stringBuilder.append(std.fmt.bufPrintIntToSlice(num_buffer[0..], hours, 10, false, std.fmt.FormatOptions{}));
         stringBuilder.append(":");
-        stringBuilder.append(std.fmt.bufPrintIntToSlice(num_buffer[0..], minutes, 10, false, std.fmt.FormatOptions{}));
+        stringBuilder.append(std.fmt.bufPrintIntToSlice(num_buffer[0..], minutes, 10, false, std.fmt.FormatOptions{.width=2, .fill='0'}));
     } else {
         stringBuilder.append(" up ???? days ??:??");
     }
@@ -139,6 +139,36 @@ fn getUsersString(alloc: *std.mem.Allocator, file_name: []const u8) ![]const u8 
     return stringBuilder.toOwnedSlice(alloc);
 }
 
-fn getLoadString() []const u8 {
-    return "load average: ?.? ?.? ?.?";
+fn getLoadString(alloc: *std.mem.Allocator) ![]const u8 {
+    const file_name: []const u8 = "/proc/loadavg";
+    const begin: []const u8 = "load average: ";
+    const unknown: []const u8 = "?.?, ?.?, ?.?";
+    const file_contents = fs.cwd().readFileAlloc(alloc, file_name, 2 << 20) catch "";
+    if (file_contents.len == 0) {
+        return begin ++ unknown;
+    } else {
+        var index: usize = 0;
+        var matches: [3]usize = undefined;
+        var count: u8 = 0;
+        while (index < file_contents.len and count < 3): (index += 1) {
+            if (file_contents[index] == ' ') {
+                matches[@as(usize, count)] = index;
+                count += 1;
+            }
+            if (count == 3) break;
+        }
+        if (count == 3) {
+            var buffer: [30]u8 = undefined;
+            var stringBuilder = strings.StringBuilder.init(buffer[0..]);
+            stringBuilder.append(begin);
+            stringBuilder.append(file_contents[0..matches[0]]);
+            stringBuilder.append(", ");
+            stringBuilder.append(file_contents[matches[0]+1..matches[1]]);
+            stringBuilder.append(", ");
+            stringBuilder.append(file_contents[matches[1]+1..matches[2]]);
+            return try stringBuilder.toOwnedSlice(alloc);
+        } else {
+            return begin ++ unknown;
+        }
+    }
 }
