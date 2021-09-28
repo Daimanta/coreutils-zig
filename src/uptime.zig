@@ -122,8 +122,8 @@ fn getUptimeString(alloc: *std.mem.Allocator) ![]const u8 {
 }
 
 fn getUsersString(alloc: *std.mem.Allocator, file_name: []const u8) ![]const u8 {
-    const file_contents = try fs.cwd().readFileAlloc(alloc, file_name, 2 << 20);
-    const count = switch (file_contents.len % @sizeOf(utmp.Utmp) == 0) {
+    const file_contents = fs.cwd().readFileAlloc(alloc, file_name, 2 << 20) catch "";
+    const count = switch (file_contents.len > 0 and file_contents.len % @sizeOf(utmp.Utmp) == 0) {
         false => 0,
         true => utmp.countActiveUsers(utmp.convertBytesToUtmpRecords(file_contents[0..]))
     };

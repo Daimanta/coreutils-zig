@@ -67,6 +67,11 @@ pub fn build(b: *std.build.Builder) void {
     tty.setBuildMode(mode);
     tty.install();
 
+    const uptime = b.addExecutable("uptime", "src/uptime.zig");
+    uptime.setTarget(target);
+    uptime.setBuildMode(mode);
+    uptime.install();
+
     const whoami = b.addExecutable("whoami", "src/whoami.zig");
     whoami.setTarget(target);
     whoami.setBuildMode(mode);
@@ -84,6 +89,7 @@ pub fn build(b: *std.build.Builder) void {
         nproc.linkSystemLibrary("c");
         printenv.linkSystemLibrary("c");
         tty.linkSystemLibrary("c");
+        uptime.linkSystemLibrary("c");
         whoami.linkSystemLibrary("c");
     }
 
