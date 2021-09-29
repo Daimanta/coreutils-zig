@@ -106,6 +106,7 @@ pub fn parseParam(line: []const u8) !Param(Help) {
 }
 
 fn parseParamRest(line: []const u8) Param(Help) {
+    @setEvalBranchQuota(10000);
     if (mem.startsWith(u8, line, "<")) blk: {
         const len = mem.indexOfScalar(u8, line, '>') orelse break :blk;
         const takes_many = mem.startsWith(u8, line[len + 1 ..], "...");

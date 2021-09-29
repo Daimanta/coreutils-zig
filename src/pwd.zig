@@ -9,7 +9,7 @@ const Allocator = std.mem.Allocator;
 
 const allocator = std.heap.page_allocator;
 
-const application_name = "groups";
+const application_name = "pwd";
 const help_message =
 \\pwd: pwd [-LP]
 \\    Print the name of the current working directory.
