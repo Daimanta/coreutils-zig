@@ -1,8 +1,11 @@
 const std = @import("std");
 const fs = std.fs;
 const os = std.os;
+const linux = os.linux;
 
 const clap = @import("clap.zig");
+const fileinfo = @import("util/fileinfo.zig");
+const strings = @import("util/strings.zig");
 const version = @import("util/version.zig");
 
 const Allocator = std.mem.Allocator;
@@ -120,8 +123,13 @@ fn checkInconsistencies(silent: bool, verbose: bool, zero: bool, suppress_newlin
 }
 
 fn process_link(link: []const u8, silent: bool, verbose: bool, zero: bool, suppress_newline: bool, find_all_but_last_link: bool, find_all_links: bool, accept_missing_links: bool) !bool {
-    var buffer: [2 << 20]u8 = undefined;
-    const result = try std.fs.cwd().readLink(link, buffer[0..]);
-    std.debug.print("{s}\n", .{result});
+    var buffer: [2 << 12]u8 = undefined;
+    const kernel_stat = linux.kernel_stat;
+    var my_kernel_stat: kernel_stat = undefined;
+    const np_link = try strings.toNullTerminatedPointer(link, allocator);
+    const res = linux.lstat(np_link, &my_kernel_stat);
+    std.debug.print("{s}\n", .{fileinfo.isSymlink(my_kernel_stat)});
+    //const result = try std.fs.cwd().readLink(link, buffer[0..]);
+    //std.debug.print("{s}\n", .{result});
     return false;
 }

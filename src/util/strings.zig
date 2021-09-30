@@ -1,3 +1,5 @@
+// BSD 3-clause licensed. Copyright Léon van der Kaap 2021
+
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
