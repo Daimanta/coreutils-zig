@@ -37,6 +37,13 @@ const help_message =
 \\
 ;
 
+const ReadMode = enum {
+    FOLLOW_ALMOST_ALL,
+    FOLLOW_ALL,
+    ALLOW_MISSING,
+    READ_ONE
+};
+
 pub fn main() !void {
     const params = comptime [_]clap.Param(clap.Help){
         clap.parseParam("--help") catch unreachable,
@@ -81,10 +88,15 @@ pub fn main() !void {
         std.debug.print("{s}: missing operand\n", .{application_name});
         std.os.exit(1);
     }
+    
+    var mode: ReadMode = ReadMode.READ_ONE;
+    if (find_all_but_last_link) mode = ReadMode.FOLLOW_ALMOST_ALL;
+    if (find_all_links) mode = ReadMode.FOLLOW_ALL;
+    if (accept_missing_links) mode = ReadMode.ALLOW_MISSING;
 
     var has_error = false;
     for (positionals) |positional| {
-        has_error = process_link(positional, silent, verbose, zero, suppress_newline, find_all_but_last_link, find_all_links, accept_missing_links) catch true or has_error;
+        has_error = process_link(positional, silent, verbose, zero, suppress_newline, mode) catch true or has_error;
     }
 
     const exit_code = switch(has_error) {
@@ -122,14 +134,27 @@ fn checkInconsistencies(silent: bool, verbose: bool, zero: bool, suppress_newlin
 
 }
 
-fn process_link(link: []const u8, silent: bool, verbose: bool, zero: bool, suppress_newline: bool, find_all_but_last_link: bool, find_all_links: bool, accept_missing_links: bool) !bool {
+
+//    FOLLOW_ALMOST_ALL,
+//    FOLLOW_ALL,
+//    ALLOW_MISSING,
+//    READ_ONE
+
+
+fn process_link(link: []const u8, silent: bool, verbose: bool, zero: bool, suppress_newline: bool, mode: ReadMode) !bool {
     var buffer: [2 << 12]u8 = undefined;
     const kernel_stat = linux.kernel_stat;
     var my_kernel_stat: kernel_stat = undefined;
     const np_link = try strings.toNullTerminatedPointer(link, allocator);
-    const res = linux.lstat(np_link, &my_kernel_stat);
-    std.debug.print("{s}\n", .{fileinfo.isSymlink(my_kernel_stat)});
-    //const result = try std.fs.cwd().readLink(link, buffer[0..]);
-    //std.debug.print("{s}\n", .{result});
+    const lstat = linux.lstat(np_link, &my_kernel_stat);
+    const is_symlink = fileinfo.isSymlink(my_kernel_stat);
+    if (!is_symlink and mode == ReadMode.FOLLOW_ALMOST_ALL or mode == ReadMode.FOLLOW_ALL or mode == ReadMode.READ_ONE) {
+        return false;
+    }
+    if (!is_symlink and mode == ReadMode.ALLOW_MISSING) {
+        var path_buffer: [4096]u8 = undefined;
+        std.debug.print("{s}\n", .{try std.os.realpath(link, &path_buffer)});
+        return true;
+    }
     return false;
 }
