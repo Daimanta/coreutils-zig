@@ -52,6 +52,11 @@ pub fn build(b: *std.build.Builder) void {
     pwd.setBuildMode(mode);
     pwd.install();
 
+    const readlink = b.addExecutable("readlink", "src/readlink.zig");
+    readlink.setTarget(target);
+    readlink.setBuildMode(mode);
+    readlink.install();
+
     const sleep = b.addExecutable("sleep", "src/sleep.zig");
     sleep.setTarget(target);
     sleep.setBuildMode(mode);
