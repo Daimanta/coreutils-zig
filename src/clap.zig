@@ -319,7 +319,7 @@ pub fn parseAndHandleErrors(
     return parse(Id, params, opt) catch |err| {
         const diag = opt.diagnostic orelse std.os.exit(exit_code);
         if (diag.name.short == null and diag.name.long == null) {
-            std.debug.print("Extra operand '-'", .{});
+            std.debug.print("Non-option argument supplied which was not expected. Exiting.\n", .{});
             std.os.exit(exit_code);
         } else if (diag.name.short != null) {
             std.debug.print("{s}: unrecognized option '-{c}'\n", .{application_name, diag.name.short});
