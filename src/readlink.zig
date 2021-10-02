@@ -44,6 +44,12 @@ const ReadMode = enum {
     READ_ONE
 };
 
+const OutputMode = enum {
+    QUIET,
+    NORMAL,
+    VERBOSE
+};
+
 pub fn main() !void {
     const params = comptime [_]clap.Param(clap.Help){
         clap.parseParam("--help") catch unreachable,
@@ -76,27 +82,35 @@ pub fn main() !void {
     const silent = (args.flag("-s") or args.flag("--silent"));
     const verbose = (args.flag("-v") or args.flag("--verbose"));
     const zero = (args.flag("-z") or args.flag("--zero"));
-    const suppress_newline = (args.flag("-n") or args.flag("--no-newline"));
+    var suppress_newline = (args.flag("-n") or args.flag("--no-newline"));
     const find_all_but_last_link = (args.flag("-f") or args.flag("--canonicalize"));
     const find_all_links = (args.flag("-e") or args.flag("--canonicalize-existing"));
     const accept_missing_links = (args.flag("-m") or args.flag("--canonicalize-missing"));
 
-    checkInconsistencies(silent, verbose, zero, suppress_newline, find_all_but_last_link, find_all_links, accept_missing_links);
+    checkInconsistencies(quiet, silent, verbose, zero, suppress_newline, find_all_but_last_link, find_all_links, accept_missing_links);
 
     const positionals = args.positionals();
     if (positionals.len == 0) {
         std.debug.print("{s}: missing operand\n", .{application_name});
         std.os.exit(1);
+    } else if (positionals.len > 2 and suppress_newline) {
+        std.debug.print("{s}: ignoring --no-newline with multiple arguments\n", .{application_name});
+        suppress_newline = false;
     }
     
-    var mode: ReadMode = ReadMode.READ_ONE;
-    if (find_all_but_last_link) mode = ReadMode.FOLLOW_ALMOST_ALL;
-    if (find_all_links) mode = ReadMode.FOLLOW_ALL;
-    if (accept_missing_links) mode = ReadMode.ALLOW_MISSING;
+    var read_mode: ReadMode = ReadMode.READ_ONE;
+    if (find_all_but_last_link) read_mode = ReadMode.FOLLOW_ALMOST_ALL;
+    if (find_all_links) read_mode = ReadMode.FOLLOW_ALL;
+    if (accept_missing_links) read_mode = ReadMode.ALLOW_MISSING;
+
+    const verbosity = verbose;
+    var output_mode: OutputMode = OutputMode.NORMAL;
+    if (verbose) output_mode = OutputMode.VERBOSE;
+    if (quiet) output_mode = OutputMode.QUIET;
 
     var has_error = false;
     for (positionals) |positional| {
-        has_error = process_link(positional, silent, verbose, zero, suppress_newline, mode) catch true or has_error;
+        has_error = process_link(positional, zero, suppress_newline, read_mode, output_mode) catch true or has_error;
     }
 
     const exit_code = switch(has_error) {
@@ -107,7 +121,7 @@ pub fn main() !void {
 }
 
 
-fn checkInconsistencies(silent: bool, verbose: bool, zero: bool, suppress_newline: bool, find_all_but_last_link: bool, find_all_links: bool, accept_missing_links: bool) void {
+fn checkInconsistencies(quiet: bool, silent: bool, verbose: bool, zero: bool, suppress_newline: bool, find_all_but_last_link: bool, find_all_links: bool, accept_missing_links: bool) void {
     if (silent and verbose) {
         std.debug.print("Silent and verbose flags cannot be active at the same time. Exiting.\n", .{});
         std.os.exit(1);
@@ -132,29 +146,60 @@ fn checkInconsistencies(silent: bool, verbose: bool, zero: bool, suppress_newlin
         std.os.exit(1);
     }
 
+    if (quiet and verbose) {
+        std.debug.print("Quiet and verbose flags cannot be active at the same time. Exiting.\n", .{});
+        std.os.exit(1);
+    }
+
 }
 
-
-//    FOLLOW_ALMOST_ALL,
-//    FOLLOW_ALL,
-//    ALLOW_MISSING,
-//    READ_ONE
-
-
-fn process_link(link: []const u8, silent: bool, verbose: bool, zero: bool, suppress_newline: bool, mode: ReadMode) !bool {
-    var buffer: [2 << 12]u8 = undefined;
+fn process_link(link: []const u8, zero: bool, suppress_newline: bool, read_mode: ReadMode, output_mode: OutputMode) !bool {
+    var link_buffer: [2 << 12]u8 = undefined;
+    var path_buffer: [4096]u8 = undefined;
     const kernel_stat = linux.kernel_stat;
-    var my_kernel_stat: kernel_stat = undefined;
+    var my_kernel_stat: kernel_stat = std.mem.zeroes(kernel_stat);
     const np_link = try strings.toNullTerminatedPointer(link, allocator);
     const lstat = linux.lstat(np_link, &my_kernel_stat);
+    const exists = my_kernel_stat.nlink > 0;
+    if (!exists) {
+        if (read_mode == ReadMode.ALLOW_MISSING) {
+            if (output_mode == OutputMode.QUIET) return true;
+            if (fs.path.isAbsolute(link)) {
+                std.debug.print("{s}\n", .{link});
+            } else {
+                std.debug.print("{s}\n", .{fileinfo.getAbsolutePath(allocator, link)});
+            }
+            return true;
+        } else {
+            if (output_mode == OutputMode.VERBOSE) {
+                std.debug.print("{s}: {s}: No such file or directory\n", .{application_name, link});
+            }
+            return false;
+        }
+    }
+
     const is_symlink = fileinfo.isSymlink(my_kernel_stat);
-    if (!is_symlink and mode == ReadMode.FOLLOW_ALMOST_ALL or mode == ReadMode.FOLLOW_ALL or mode == ReadMode.READ_ONE) {
+    if (!is_symlink) {
+        if (read_mode == ReadMode.FOLLOW_ALMOST_ALL or read_mode == ReadMode.FOLLOW_ALL or read_mode == ReadMode.READ_ONE) {
+            if (output_mode == OutputMode.VERBOSE) {
+                std.debug.print("{s}: {s}: Not a link", .{application_name, link});
+            }
+            return false;
+        } else if (read_mode == ReadMode.ALLOW_MISSING) {
+
+            std.debug.print("{s}\n", .{try std.os.realpath(link, &path_buffer)});
+            return true;
+        } else {
+            unreachable;
+        }
+    }
+    if (read_mode == ReadMode.READ_ONE) {
+        const result = try std.fs.cwd().readLink(link, link_buffer[0..]);
+        std.debug.print("{s}\n", .{result});
+        return true;
+    } else if (read_mode == ReadMode.FOLLOW_ALMOST_ALL or read_mode == ReadMode.FOLLOW_ALL or read_mode == ReadMode.ALLOW_MISSING) {
+
         return false;
     }
-    if (!is_symlink and mode == ReadMode.ALLOW_MISSING) {
-        var path_buffer: [4096]u8 = undefined;
-        std.debug.print("{s}\n", .{try std.os.realpath(link, &path_buffer)});
-        return true;
-    }
-    return false;
+    unreachable;
 }
