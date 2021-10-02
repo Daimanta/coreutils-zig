@@ -11,6 +11,7 @@ const version = @import("util/version.zig");
 const Allocator = std.mem.Allocator;
 
 const allocator = std.heap.page_allocator;
+const kernel_stat = linux.kernel_stat;
 
 const application_name = "readlink";
 const help_message =
@@ -36,6 +37,8 @@ const help_message =
 \\
 \\
 ;
+
+const max_path_length = 1 << 12;
 
 const ReadMode = enum {
     FOLLOW_ALMOST_ALL,
@@ -108,14 +111,19 @@ pub fn main() !void {
     if (verbose) output_mode = OutputMode.VERBOSE;
     if (quiet) output_mode = OutputMode.QUIET;
 
-    var has_error = false;
+    var success = true;
+    var terminator: []const u8 = "\n";
+    if (suppress_newline) terminator = "";
+    if (zero) terminator = "\x00";
+
     for (positionals) |positional| {
-        has_error = process_link(positional, zero, suppress_newline, read_mode, output_mode) catch true or has_error;
+        const iteration_success = process_link(positional, terminator, read_mode, output_mode) catch false;
+        success = iteration_success and success;
     }
 
-    const exit_code = switch(has_error) {
-        true => @as(u8, 1),
-        false => 0
+    const exit_code = switch(success) {
+        false => @as(u8, 1),
+        true => 0
     };
     std.os.exit(exit_code);
 }
@@ -153,26 +161,26 @@ fn checkInconsistencies(quiet: bool, silent: bool, verbose: bool, zero: bool, su
 
 }
 
-fn process_link(link: []const u8, zero: bool, suppress_newline: bool, read_mode: ReadMode, output_mode: OutputMode) !bool {
-    var link_buffer: [2 << 12]u8 = undefined;
-    var path_buffer: [4096]u8 = undefined;
-    const kernel_stat = linux.kernel_stat;
+fn process_link(link: []const u8, terminator: []const u8, read_mode: ReadMode, output_mode: OutputMode) !bool {
+    var link_buffer: [max_path_length]u8 = undefined;
+    var path_buffer: [max_path_length]u8 = undefined;
     var my_kernel_stat: kernel_stat = std.mem.zeroes(kernel_stat);
     const np_link = try strings.toNullTerminatedPointer(link, allocator);
-    const lstat = linux.lstat(np_link, &my_kernel_stat);
-    const exists = my_kernel_stat.nlink > 0;
+    defer allocator.free(np_link);
+    _ = linux.lstat(np_link, &my_kernel_stat);
+    const exists = fileinfo.fileExists(my_kernel_stat);
     if (!exists) {
         if (read_mode == ReadMode.ALLOW_MISSING) {
             if (output_mode == OutputMode.QUIET) return true;
             if (fs.path.isAbsolute(link)) {
-                std.debug.print("{s}\n", .{link});
+                std.debug.print("{s}{s}", .{link, terminator});
             } else {
-                std.debug.print("{s}\n", .{fileinfo.getAbsolutePath(allocator, link)});
+                std.debug.print("{s}{s}", .{fileinfo.getAbsolutePath(allocator, link), terminator});
             }
             return true;
         } else {
             if (output_mode == OutputMode.VERBOSE) {
-                std.debug.print("{s}: {s}: No such file or directory\n", .{application_name, link});
+                std.debug.print("{s}: {s}: No such file or directory{s}", .{application_name, link, terminator});
             }
             return false;
         }
@@ -182,12 +190,13 @@ fn process_link(link: []const u8, zero: bool, suppress_newline: bool, read_mode:
     if (!is_symlink) {
         if (read_mode == ReadMode.FOLLOW_ALMOST_ALL or read_mode == ReadMode.FOLLOW_ALL or read_mode == ReadMode.READ_ONE) {
             if (output_mode == OutputMode.VERBOSE) {
-                std.debug.print("{s}: {s}: Not a link", .{application_name, link});
+                std.debug.print("{s}: {s}: Not a link{s}", .{application_name, link, terminator});
             }
             return false;
         } else if (read_mode == ReadMode.ALLOW_MISSING) {
-
-            std.debug.print("{s}\n", .{try std.os.realpath(link, &path_buffer)});
+            if (output_mode != OutputMode.QUIET) {
+                std.debug.print("{s}{s}", .{try std.os.realpath(link, &path_buffer), terminator});
+            }
             return true;
         } else {
             unreachable;
@@ -195,11 +204,63 @@ fn process_link(link: []const u8, zero: bool, suppress_newline: bool, read_mode:
     }
     if (read_mode == ReadMode.READ_ONE) {
         const result = try std.fs.cwd().readLink(link, link_buffer[0..]);
-        std.debug.print("{s}\n", .{result});
+        std.debug.print("{s}{s}", .{result, terminator});
         return true;
     } else if (read_mode == ReadMode.FOLLOW_ALMOST_ALL or read_mode == ReadMode.FOLLOW_ALL or read_mode == ReadMode.ALLOW_MISSING) {
-
-        return false;
+        return try follow_symlinks(link, terminator, read_mode, output_mode);
     }
     unreachable;
+}
+
+fn follow_symlinks(link: []const u8, terminator: []const u8, read_mode: ReadMode, output_mode: OutputMode) !bool {
+    var link_iterator = link;
+    var count: u8 = 0;
+    var my_kernel_stat: kernel_stat = undefined;
+    var next: []u8 = undefined;
+    var link_buffer: [max_path_length]u8 = undefined;
+    while (true) {
+        next = try std.fs.cwd().readLink(link_iterator, link_buffer[0..]);
+        my_kernel_stat = std.mem.zeroes(kernel_stat);
+        const it_np_link = try strings.toNullTerminatedPointer(next, allocator);
+        defer allocator.free(it_np_link);
+        _ = linux.lstat(it_np_link, &my_kernel_stat);
+        const it_exists = fileinfo.fileExists(my_kernel_stat);
+        if (!it_exists) {
+            if (read_mode == ReadMode.FOLLOW_ALL) {
+                if (output_mode == OutputMode.VERBOSE) {
+                    std.debug.print("{s}: {s}: link destination could not be resolved\n", .{application_name, next});
+                }
+                return false;
+            } else {
+                if (output_mode != OutputMode.QUIET) {
+                    const path = try fileinfo.getAbsolutePath(allocator, next);
+                    defer allocator.free(path);
+                    std.debug.print("{s}{s}", .{path, terminator});
+                }
+                return true;
+            }
+        } else {
+            if (!fileinfo.isSymlink(my_kernel_stat)) {
+                if (output_mode != OutputMode.QUIET) {
+                    std.debug.print("{s}{s}", .{next, terminator});
+                }
+                return true;
+            }
+        }
+        count += 1;
+        if (count > 64) {
+            if (read_mode == ReadMode.ALLOW_MISSING) {
+                if (output_mode != OutputMode.QUIET) {
+                    std.debug.print("{s}{s}", .{link, terminator});
+                }
+                return true;
+            } else {
+                if (output_mode == OutputMode.VERBOSE) {
+                    std.debug.print("{s}: {s}: Too many levels of symbolic links\n", .{application_name, link});
+                }
+                return false;
+            }
+        }
+        link_iterator = next;
+    }
 }

@@ -1,3 +1,5 @@
+// BSD 3-clause licensed. Copyright Léon van der Kaap 2021
+
 const std = @import("std");
 const linux = std.os.linux;
 const kernel_stat = linux.kernel_stat;
@@ -9,6 +11,10 @@ const S_IFLINK = 0o0120000;
 
 pub fn isSymlink(stat: kernel_stat) bool {
     return (stat.mode & S_IFMT) == S_IFLINK;
+}
+
+pub fn fileExists(stat: kernel_stat) bool {
+    return stat.nlink > 0;
 }
 
 pub fn getAbsolutePath(allocator: *Allocator, path: []const u8) ![]u8 {
