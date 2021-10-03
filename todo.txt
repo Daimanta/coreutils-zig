@@ -1,6 +1,4 @@
-    117 hostname.c
     150 users.c
-    154 printenv.c
     187 mkfifo.c
     190 basename.c
     221 nice.c

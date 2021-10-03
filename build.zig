@@ -32,6 +32,11 @@ pub fn build(b: *std.build.Builder) void {
     hostid.setBuildMode(mode);
     hostid.install();
 
+    const hostname = b.addExecutable("hostname", "src/hostname.zig");
+    hostname.setTarget(target);
+    hostname.setBuildMode(mode);
+    hostname.install();
+
     const link = b.addExecutable("link", "src/link.zig");
     link.setTarget(target);
     link.setBuildMode(mode);
