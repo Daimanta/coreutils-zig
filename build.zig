@@ -72,6 +72,11 @@ pub fn build(b: *std.build.Builder) void {
     tty.setBuildMode(mode);
     tty.install();
 
+    const unlink = b.addExecutable("unlink", "src/unlink.zig");
+    unlink.setTarget(target);
+    unlink.setBuildMode(mode);
+    unlink.install();
+
     const uptime = b.addExecutable("uptime", "src/uptime.zig");
     uptime.setTarget(target);
     uptime.setBuildMode(mode);

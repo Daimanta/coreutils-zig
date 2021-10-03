@@ -7,6 +7,7 @@ const clap = @import("clap.zig");
 const version = @import("util/version.zig");
 
 const Allocator = std.mem.Allocator;
+const UnlinkError = os.UnlinkError;
 
 const allocator = std.heap.page_allocator;
 
@@ -54,5 +55,17 @@ pub fn main() !void {
     }
 
     const file_target = positionals[0];
-    try os.unlink(file_target);
+    os.unlink(file_target) catch |err| {
+        const error_message = switch (err) {
+            UnlinkError.AccessDenied => "Access Denied",
+            UnlinkError.FileBusy => "File is busy",
+            UnlinkError.FileSystem => "Filesystem error",
+            UnlinkError.IsDir => "Cannot unlink dir",
+            UnlinkError.NameTooLong => "Name is too long",
+            UnlinkError.FileNotFound => "File not found",
+            else => err
+        };
+        std.debug.print("{s}\n", .{error_message});
+        std.os.exit(1);
+    };
 }
