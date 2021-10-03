@@ -57,7 +57,7 @@ pub fn main() !void {
     const file_target = positionals[0];
     os.unlink(file_target) catch |err| {
         const error_message = switch (err) {
-            UnlinkError.AccessDenied => "Access Denied",
+            UnlinkError.AccessDenied => "Access denied",
             UnlinkError.FileBusy => "File is busy",
             UnlinkError.FileSystem => "Filesystem error",
             UnlinkError.IsDir => "Cannot unlink dir",

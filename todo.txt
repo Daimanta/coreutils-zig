@@ -1,5 +1,3 @@
-     88 unlink.c
-     93 link.c
     117 hostname.c
     150 users.c
     154 printenv.c
