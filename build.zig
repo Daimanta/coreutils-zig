@@ -92,6 +92,11 @@ pub fn build(b: *std.build.Builder) void {
     uptime.setBuildMode(mode);
     uptime.install();
 
+    const users = b.addExecutable("users", "src/users.zig");
+    users.setTarget(target);
+    users.setBuildMode(mode);
+    users.install();
+
     const whoami = b.addExecutable("whoami", "src/whoami.zig");
     whoami.setTarget(target);
     whoami.setBuildMode(mode);

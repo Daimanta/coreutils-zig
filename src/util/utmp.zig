@@ -4,7 +4,7 @@ const std = @import("std");
 const linux = std.os.linux;
 const pid_t = linux.pid_t;
 
-const UtType = enum(u16) {
+pub const UtType = enum(u16) {
     EMPTY,
     RUN_LVL,
     BOOT_TIME,

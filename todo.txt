@@ -1,4 +1,3 @@
-    150 users.c
     187 mkfifo.c
     190 basename.c
     221 nice.c
@@ -22,7 +21,6 @@
     373 rm.c
     376 uname.c
     388 truncate.c
-    394 pwd.c
     394 stdbuf.c
     411 cksum.c
     431 chroot.c
