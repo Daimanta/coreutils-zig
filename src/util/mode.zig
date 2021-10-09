@@ -1,7 +1,7 @@
 const std = @import("std");
 const linux = std.os.linux;
 
-const mode_t = linux.mode_t;
+pub const mode_t = linux.mode_t;
 
 pub const SUID: u12 = 0o4000; // set user id
 pub const SGID: u12 = 0o2000; // set group id
@@ -28,7 +28,6 @@ pub const ModeChange = struct {
     group: bool,
     other: bool,
     operation: Operation,
-    owner
     read: bool,
     write: bool,
     execute: bool,
@@ -49,3 +48,7 @@ fn applyModeChange(change: *const ModeChange, mode: *mode_t) void {
     }
 }
 
+pub fn getModeFromString (string:[]const u8) !mode_t {
+    //TODO: Implement the conversion process
+    return RUSR | WUSR | XUSR | RGRP | XGRP | ROTH | XOTH;
+}

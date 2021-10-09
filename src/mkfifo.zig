@@ -4,15 +4,15 @@ const os = std.os;
 const io = std.io;
 
 const clap = @import("clap.zig");
+const fileinfo = @import("util/fileinfo.zig");
+const mode = @import("util/mode.zig");
 const version = @import("util/version.zig");
-const strings = @import("util/strings.zig");
-const time_info = @import("util/time.zig");
-const utmp = @import("util/utmp.zig");
 
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 const UtType = utmp.UtType;
 const time_t = time_info.time_t;
+const mode_t = mode.mode_t;
 
 const allocator = std.heap.page_allocator;
 
@@ -48,7 +48,6 @@ pub fn main() !void {
     var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
     defer args.deinit();
 
-
     if (args.flag("--help")) {
         std.debug.print(help_message, .{});
         std.os.exit(0);
@@ -57,9 +56,17 @@ pub fn main() !void {
         std.os.exit(0);
     }
 
-    const mode = args.option("-m");
-    std.debug.print("{s}\n", .{mode});
+    const arguments = args.positionals();
 
+    const mode_string = args.option("-m");
+    var used_mode: mode_t = mode.RUSR | mode.WUSR | mode.RGRP | mode.WGRP | mode.ROTH | mode.WOTH;
+    if (mode_string != null) {
+        used_mode = try mode.getModeFromString(mode_string.?);
+    }
+
+    for (arguments) |arg| {
+        try fileinfo.makeFifo(arg, used_mode);
+    }
 }
 
 

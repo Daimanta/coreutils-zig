@@ -51,8 +51,10 @@ extern fn setpriority(which: c_int, who: id_t, prio: c_int) c_int;
 pub fn setPriority(which: PriorityType, who: id_t, prio: c_int) SetPriorityError!void {
     const result = setpriority(@enumToInt(which), who, prio);
     if (result != 0) {
-        return switch (result * -1) {
-            1 => SetPriorityError.NoRightsForNiceValue,
+        return switch (std.c.getErrno(result)) {
+            linux.ESRCH, linux.EINVAL => SetPriorityError.ProcessNotFound,
+            linux.EPERM => SetPriorityError.ProcessUserMismatch,
+            linux.EACCES => SetPriorityError.NoRightsForNiceValue,
             else => SetPriorityError.UnknownError
         };
     }
