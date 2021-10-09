@@ -13,6 +13,7 @@ const ArrayList = std.ArrayList;
 const UtType = utmp.UtType;
 const time_t = time_info.time_t;
 const mode_t = mode.mode_t;
+const MakeFifoError = fileinfo.MakeFifoError;
 
 const allocator = std.heap.page_allocator;
 
@@ -65,7 +66,21 @@ pub fn main() !void {
     }
 
     for (arguments) |arg| {
-        try fileinfo.makeFifo(arg, used_mode);
+        fileinfo.makeFifo(arg, used_mode) catch |err| {
+            switch (err) {
+                MakeFifoError.WritePermissionDenied => std.debug.print("{s}: Write Permission Denied\n", .{application_name}),
+                MakeFifoError.FileAlreadyExists => std.debug.print("{s}: File Already exists\n", .{application_name}),
+                MakeFifoError.NameTooLong => std.debug.print("{s}: Name too long\n", .{application_name}),
+                MakeFifoError.IncorrectPath => std.debug.print("{s}: Incorrect path\n", .{application_name}),
+                MakeFifoError.ReadOnlyFileSystem => std.debug.print("{s}: Filesystem is read only\n", .{application_name}),
+                MakeFifoError.NotSupported => std.debug.print("{s}: Operation not supported\n", .{application_name}),
+                MakeFifoError.QuotaReached => std.debug.print("{s}: Quota reached\n", .{application_name}),
+                MakeFifoError.NoSpaceLeft => std.debug.print("{s}: No space left on device\n", .{application_name}),
+                MakeFifoError.NotImplemented => std.debug.print("{s}: Named pipes are not possible on file system\n", .{application_name}),
+                MakeFifoError.Unknown => std.debug.print("{s}: Unknown error encountered: '{s}'\n", .{application_name, err}),
+            }
+        };
+        std.os.exit(1);
     }
 }
 

@@ -21,13 +21,14 @@ pub const MakeFifoError = error {
     NotSupported,
     QuotaReached,
     NoSpaceLeft,
+    NotImplemented,
     Unknown
 };
 
 const S_IFMT = 0o0160000;
 const S_IFLINK = 0o0120000;
 
-extern fn mkfifo(path: [*:0]u8, mode: mode_t) c_int;
+extern fn mkfifo(path: [*:0]const u8, mode: mode_t) c_int;
 
 pub fn isSymlink(stat: kernel_stat) bool {
     return (stat.mode & S_IFMT) == S_IFLINK;
@@ -61,8 +62,11 @@ pub fn makeFifo(path: []const u8, mode: mode_t) MakeFifoError!void{
             linux.ENOSPC => MakeFifoError.NoSpaceLeft,
             linux.EROFS => MakeFifoError.ReadOnlyFileSystem,
             linux.EOPNOTSUPP => MakeFifoError.NotSupported,
-            else => MakeFifoError.Unknown
+            linux.ENOSYS => MakeFifoError.NotImplemented,
+            else => blk: {
+                std.debug.print("Unknown error encountered: {d}\n", .{errno});
+                break :blk MakeFifoError.Unknown;
+            }
         };
     }
-    std.debug.print("{d}\n", .{result});
 }
