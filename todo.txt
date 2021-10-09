@@ -1,6 +1,4 @@
     187 mkfifo.c
-    190 basename.c
-    221 nice.c
     225 nohup.c
     237 expand.c
     239 sync.c

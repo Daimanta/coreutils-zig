@@ -12,6 +12,11 @@ pub fn build(b: *std.build.Builder) void {
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
     const mode = b.standardReleaseOptions();
 
+    const basename = b.addExecutable("basename", "src/basename.zig");
+    basename.setTarget(target);
+    basename.setBuildMode(mode);
+    basename.install();
+
     const dirname = b.addExecutable("dirname", "src/dirname.zig");
     dirname.setTarget(target);
     dirname.setBuildMode(mode);
@@ -46,6 +51,11 @@ pub fn build(b: *std.build.Builder) void {
     logname.setTarget(target);
     logname.setBuildMode(mode);
     logname.install();
+
+    const nice = b.addExecutable("nice", "src/nice.zig");
+    nice.setTarget(target);
+    nice.setBuildMode(mode);
+    nice.install();
 
     const nproc = b.addExecutable("nproc", "src/nproc.zig");
     nproc.setTarget(target);
@@ -111,6 +121,7 @@ pub fn build(b: *std.build.Builder) void {
         groups.linkSystemLibrary("c");
         hostid.linkSystemLibrary("c");
         logname.linkSystemLibrary("c");
+        nice.linkSystemLibrary("c");
         nproc.linkSystemLibrary("c");
         printenv.linkSystemLibrary("c");
         tty.linkSystemLibrary("c");
