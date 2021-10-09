@@ -1,6 +1,8 @@
 // BSD 3-clause licensed. Copyright Léon van der Kaap 2021
 
 const std = @import("std");
+const mem = std.mem;
+
 const Allocator = std.mem.Allocator;
 
 pub fn toNullTerminatedPointer(slice: []const u8, allocator_impl: *Allocator) ![:0]u8 {
@@ -20,15 +22,29 @@ pub fn convertOptionalSentinelString(ptr: [*:0]u8) ?[]u8 {
     }
 }
 
-pub fn indexOf(string: []const u8, byte: u8, result: *usize, found: *bool) void {
-    found.* = false;
-    for(string) |it, i| {
-        if (it == byte) {
-            result.* = i;
-            found.* = true;
-            break;
-        }
+pub fn indexOf(string: []const u8, match: u8) ?usize {
+    for (string) |byte, i| {
+        if (byte == match) return i;
     }
+    return null;
+}
+
+pub fn lastIndexOf(string: []const u8, match: u8) ?usize {
+    var i = string.len;
+    while (i > 0) {
+        i -= 1;
+        if (string[i] == match) return i;
+    }
+    return null;
+}
+
+pub fn lastNonIndexOf(string: []const u8, match: u8) ?usize {
+    var i = string.len;
+    while (i > 0) {
+        i -= 1;
+        if (string[i] != match) return i;
+    }
+    return null;
 }
 
 pub fn joinStrings(input: [][]const u8, output: []u8) void {

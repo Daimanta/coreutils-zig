@@ -74,12 +74,10 @@ fn printUsers(alloc: *std.mem.Allocator, file_name: []const u8) !void {
         var insert_index: usize = 0;
         for (utmp_logs) |log| {
             if (log.ut_type == UtType.USER_PROCESS) {
-                var null_index: usize = undefined;
-                var found = true;
-                strings.indexOf(log.ut_user[0..], 0, &null_index, &found);
-                if (!found) null_index = 32;
-                const copy = try allocator.alloc(u8, null_index);
-                std.mem.copy(u8, copy, log.ut_user[0..null_index]);
+                var null_index = strings.indexOf(log.ut_user[0..], 0);
+                if (null_index == null) null_index = 32;
+                const copy = try allocator.alloc(u8, null_index.?);
+                std.mem.copy(u8, copy, log.ut_user[0..null_index.?]);
                 var check_index: usize = 0;
                 var insert = true;
                 while (check_index < insert_index) {

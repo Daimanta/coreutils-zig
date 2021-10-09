@@ -2,6 +2,7 @@ const std = @import("std");
 const fs = std.fs;
 const os = std.os;
 const linux = os.linux;
+const mem = std.mem;
 
 const clap = @import("clap.zig");
 const fileinfo = @import("util/fileinfo.zig");
@@ -73,8 +74,12 @@ pub fn main() !void {
         std.os.exit(1);
     }
 
-    for (positionals) |pos| {
-        processFile(pos, suffix, newline);
+    if (positionals.len == 2 and !multiple) {
+        processFile(positionals[0], positionals[1], newline);
+    } else {
+        for (positionals) |pos| {
+            processFile(pos, suffix, newline);
+        }
     }
 }
 
@@ -83,35 +88,35 @@ fn processFile(file: []const u8, suffix: ?[]const u8, newline: []const u8) void 
     var last_char: usize = undefined;
     var last_slash: ?usize = null;
     if (file[file.len - 1] == '/') {
-        var last_non_slash: ?usize = null;
-        var i: isize = @intCast(isize, file.len - 1);
-        while (i >= 0) : (i -= 1) {
-            if (file[@intCast(usize, i)] != '/') {
-                last_non_slash = @intCast(usize, i);
-                break;
-            }
-        }
+        var last_non_slash: ?usize = strings.lastNonIndexOf(file, '/');
         if (last_non_slash == null) {
             std.debug.print("/{s}", .{newline});
             return;
         } else {
             last_char = last_non_slash.?;
-            var next_slash: ?usize = null;
-            i = @intCast(isize, last_char);
-            while (i >= 0) : (i -= 1) {
-                if (file[@intCast(usize, i)] == '/') {
-                    next_slash = @intCast(usize, i);
-                    break;
-                }
-            }
+            var next_slash = strings.lastIndexOf(file[0..last_char+1], '/');
             if (next_slash == null) first_char = 0 else first_char = next_slash.? + 1;
             stripSuffix(file[first_char..last_char+1], suffix, newline);
         }
     } else {
-        
+        var next_slash = strings.lastIndexOf(file[0..file.len], '/');
+        if (next_slash == null) {
+            stripSuffix(file, suffix, newline);
+        } else {
+            stripSuffix(file[next_slash.?+1..], suffix, newline);
+        }
+        return;
     }
 }
 
 fn stripSuffix(string: []const u8, suffix: ?[]const u8, newline: []const u8) void {
-    std.debug.print("{s}{s}", .{string, newline});
+    if (suffix == null) {
+        std.debug.print("{s}{s}", .{string, newline});
+    } else {
+        if (mem.endsWith(u8, string, suffix.?)) {
+            std.debug.print("{s}{s}", .{string[0..string.len-suffix.?.len], newline});
+        } else {
+            std.debug.print("{s}{s}", .{string, newline});
+        }
+    }
 }
