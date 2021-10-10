@@ -10,7 +10,7 @@ const kernel_stat = linux.kernel_stat;
 const Allocator = std.mem.Allocator;
 pub const mode_t = linux.mode_t;
 
-const allocator = std.heap.page_allocator;
+const default_allocator = std.heap.page_allocator;
 
 pub const MakeFifoError = error {
     WritePermissionDenied,
@@ -48,9 +48,9 @@ pub fn getAbsolutePath(allocator: *Allocator, path: []const u8) ![]u8 {
 }
 
 pub fn makeFifo(path: []const u8, mode: mode_t) MakeFifoError!void{
-    const null_string = strings.toNullTerminatedPointer(path, allocator) catch return MakeFifoError.Unknown;
+    const null_string = strings.toNullTerminatedPointer(path, default_allocator) catch return MakeFifoError.Unknown;
     const result = mkfifo(null_string, mode);
-    allocator.free(null_string);
+    default_allocator.free(null_string);
     if (result != 0) {
         const errno = std.c.getErrno(result);
         return switch (errno) {
