@@ -63,20 +63,31 @@ pub fn main() !void {
             can_write = false;
         };
         
+        var target: []const u8 = default_filename[0..];
+        
         if (!can_write) {
             const uid = linux.geteuid();
             const pw: *users.Passwd = users.getpwuid(uid);
             const home_dir = strings.convertOptionalSentinelString(pw.pw_dir).?;
-            std.debug.print("{s} {d}\n", .{home_dir, home_dir.len});
-        } else {
-            std.debug.print("{s}: ignoring input and appending output to '{s}'\n", .{application_name, default_filename});
-            output_file = try std.fs.cwd().createFile(default_filename, .{.truncate = false});
+            var path_buffer: [4096]u8 = undefined;
+            var string_builder = strings.StringBuilder.init(path_buffer[0..]);
+            string_builder.append(home_dir);
+            if (home_dir[home_dir.len - 1] != '/') string_builder.append("/"[0..]);
+            string_builder.append(default_filename[0..]);
+            target = string_builder.toSlice();
         }
+        
+        std.debug.print("{s}: ignoring input and appending output to '{s}'\n", .{application_name, target});
+        output_file = try std.fs.cwd().createFile(target, .{.truncate = false});
     }
     
     
     var child = try ChildProcess.init(arguments[0..], default_allocator);
-    child.stdout = output_file;
-    child.stdout_behavior = ChildProcess.StdIo.Pipe;
+    
+    if (std.os.isatty(stout)) {
+        child.stdout = output_file;
+        child.stdout_behavior = ChildProcess.StdIo.Ignore;
+    }
+    
     try child.spawn();
 }
