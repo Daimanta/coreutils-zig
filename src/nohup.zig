@@ -85,8 +85,7 @@ pub fn main() !void {
     var child = try ChildProcess.init(arguments[0..], default_allocator);
     
     if (std.os.isatty(stout)) {
-        child.stdout = output_file;
-        child.stdout_behavior = ChildProcess.StdIo.Ignore;
+        _ = linux.dup2(output_file.handle, os.STDOUT_FILENO);
     }
     
     try child.spawn();
