@@ -9,7 +9,7 @@ const version = @import("util/version.zig");
 
 const Allocator = std.mem.Allocator;
 
-const allocator = std.heap.page_allocator;
+const default_allocator = std.heap.page_allocator;
 
 const application_name = "echo";
 
@@ -46,26 +46,13 @@ const help_message =
 ;
 
 pub fn main() !void {
-    const params = comptime [_]clap.Param(clap.Help){
-        clap.parseParam("--help") catch unreachable,
-        clap.parseParam("--version") catch unreachable,
-        clap.parseParam("-n") catch unreachable,
-        clap.parseParam("-e") catch unreachable,
-        clap.parseParam("-E") catch unreachable,
-        clap.parseParam("<STRING>") catch unreachable,
-    };
+    const arguments = try std.process.argsAlloc(default_allocator);
 
-    const arguments = try std.process.argsAlloc(allocator);
-
-    var diag = clap.Diagnostic{};
-    var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
-    defer args.deinit();
-
-    if (arguments.len == 0) {
+    if (arguments.len == 1) {
         return;
     }
 
-    const options = arguments[0];
+    const options = arguments[1];
     var print_newline = true;
     var flag_e = false;
     var flag_E = false;
@@ -108,19 +95,57 @@ pub fn main() !void {
         std.debug.print("Cannot combine -e and -E. Exiting\n",.{});
         std.os.exit(1);
     }
-    const positionals = args.positionals();
 
     if (flag_e) {
-
-    } else {
-        var i: usize = 0;
-        while (i < positionals.len - 1): (i += 1) {
-            std.debug.print("{s} ", .{positionals[i]});
+        var i: usize = 1;
+        if (ignore_first_argument) i += 1;
+        while (i < arguments.len - 1): (i += 1) {
+            printEscapedString(arguments[i], true);
         }
 
-        if (positionals.len > 0) {
-            std.debug.print("{s}", .{positionals[positionals.len - 1]});
+        if (arguments.len > 1) {
+            printEscapedString(arguments[arguments.len - 1], false);
+        }
+    } else {
+        var i: usize = 1;
+        if (ignore_first_argument) i += 1;
+        while (i < arguments.len - 1): (i += 1) {
+            std.debug.print("{s} ", .{arguments[i]});
+        }
+
+        if (arguments.len > 1) {
+            std.debug.print("{s}", .{arguments[arguments.len - 1]});
         }
     }
     if (print_newline) std.debug.print("\n", .{});
+}
+
+fn printEscapedString(string: []const u8, space: bool) void {
+    var found_backslash = false;
+    for (string) |byte, i| {
+        if (i != string.len - 1 and byte == '\\') {
+            found_backslash = true;
+            break;
+        }
+    }
+
+    if (found_backslash) {
+        var i: usize = 0;
+        while (i < string.len) {
+            var j = i;
+            while (j < string.len) {
+                if (string[j] == '\\') {
+                    std.debug.print("{s}", .{string[i..j]});
+                    i += 1;
+                    break;
+                }
+                j += 1;
+            }
+            i += 1;
+        }
+    } else {
+        std.debug.print("{s}", .{string});
+        if (space) std.debug.print(" ", .{});
+    }
+
 }
