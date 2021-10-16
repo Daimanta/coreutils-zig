@@ -22,6 +22,11 @@ pub fn build(b: *std.build.Builder) void {
     dirname.setBuildMode(mode);
     dirname.install();
 
+    const echo = b.addExecutable("echo", "src/echo.zig");
+    echo.setTarget(target);
+    echo.setBuildMode(mode);
+    echo.install();
+
     const false_app = b.addExecutable("false", "src/false.zig");
     false_app.setTarget(target);
     false_app.setBuildMode(mode);
