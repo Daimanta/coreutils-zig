@@ -100,11 +100,13 @@ pub fn main() !void {
         var i: usize = 1;
         if (ignore_first_argument) i += 1;
         while (i < arguments.len - 1): (i += 1) {
-            printEscapedString(arguments[i], true);
+            const result = printEscapedString(arguments[i], true);
+            if (result) return;
         }
 
         if (arguments.len > 1) {
-            printEscapedString(arguments[arguments.len - 1], false);
+            const result = printEscapedString(arguments[arguments.len - 1], false);
+            if (result) return;
         }
     } else {
         var i: usize = 1;
@@ -120,7 +122,7 @@ pub fn main() !void {
     if (print_newline) std.debug.print("\n", .{});
 }
 
-fn printEscapedString(string: []const u8, space: bool) void {
+fn printEscapedString(string: []const u8, space: bool) bool {
     var found_backslash = false;
     for (string) |byte, i| {
         if (i != string.len - 1 and byte == '\\') {
@@ -131,21 +133,106 @@ fn printEscapedString(string: []const u8, space: bool) void {
 
     if (found_backslash) {
         var i: usize = 0;
-        while (i < string.len) {
-            var j = i;
-            while (j < string.len) {
-                if (string[j] == '\\') {
-                    std.debug.print("{s}", .{string[i..j]});
-                    i += 1;
-                    break;
+        var old_begin: usize = 0;
+        while (i < string.len): (i += 1) {
+            if (string[i] == 92 and i < string.len - 1) {
+                std.debug.print("{s}", .{string[old_begin..i]});
+                if (string[i + 1] == 92) {
+                    std.debug.print("\\", .{});
+                    old_begin = i + 2;
+                    i += 2;
+                } else if (string [i + 1] == 'a') {
+                    std.debug.print("\x07", .{});
+                    old_begin = i + 2;
+                    i += 2;
+                } else if (string [i + 1] == 'b') {
+                    std.debug.print("\x08", .{});
+                    old_begin = i + 2;
+                    i += 2;
+                } else if (string [i + 1] == 'c') {
+                    return true;
+                } else if (string [i + 1] == 'e') {
+                    std.debug.print("\x1B", .{});
+                    old_begin = i + 2;
+                    i += 2;
+                } else if (string [i + 1] == 'f') {
+                    std.debug.print("\x0C", .{});
+                    old_begin = i + 2;
+                    i += 2;
+                } else if (string [i + 1] == 'n') {
+                    std.debug.print("\n", .{});
+                    old_begin = i + 2;
+                    i += 2;
+                } else if (string [i + 1] == 'r') {
+                    std.debug.print("\r", .{});
+                    old_begin = i + 2;
+                    i += 2;
+                } else if (string [i + 1] == 't') {
+                    std.debug.print("\t", .{});
+                    old_begin = i + 2;
+                    i += 2;
+                } else if (string [i + 1] == 'v') {
+                    std.debug.print("\x0B", .{});
+                    old_begin = i + 2;
+                    i += 2;
+                } else if (string [i + 1] == '0') {
+                    if (i + 4 < string.len and byteIsOct(string[i + 2]) and byteIsOct(string[i + 3]) and byteIsOct(string[i + 4])) {
+                        const byte = std.fmt.parseInt(u8, string[i+1..i+5], 8) catch unreachable;
+                        const byte_string: [1]u8 = .{byte};
+                        std.debug.print("{s}", .{byte_string});
+                        old_begin = i + 5;
+                        i += 5;
+                    } else if (i + 3 < string.len and byteIsOct(string[i + 2]) and byteIsOct(string[i + 3])) {
+                        const byte = std.fmt.parseInt(u8, string[i+1..i+4], 8) catch unreachable;
+                        const byte_string: [1]u8 = .{byte};
+                        std.debug.print("{s}", .{byte_string});
+                        old_begin = i + 4;
+                        i += 4;
+                    } else if (i + 2 < string.len and byteIsOct(string[i + 2])) {
+                        const byte = std.fmt.parseInt(u8, string[i+1..i+3], 8) catch unreachable;
+                        const byte_string: [1]u8 = .{byte};
+                        std.debug.print("{s}", .{byte_string});
+                        old_begin = i + 3;
+                        i += 3;
+                    } else {
+                        old_begin = i;
+                    }
+                } else if (string [i + 1] == 'x') {
+                    if (i + 3 < string.len and byteIsHex(string[i + 2]) and byteIsHex(string[i + 3])) {
+                        const byte = std.fmt.parseInt(u8, string[i+2..i+4], 16) catch unreachable;
+                        const byte_string: [1]u8 = .{byte};
+                        std.debug.print("{s}", .{byte_string});
+                        old_begin = i + 4;
+                        i += 4;
+                    } else if (i + 2 < string.len and byteIsHex(string[i + 2])) {
+                        const byte = std.fmt.parseInt(u8, string[i+2..i+3], 16) catch unreachable;
+                        const byte_string: [1]u8 = .{byte};
+                        std.debug.print("{s}", .{byte_string});
+                        old_begin = i + 3;
+                        i += 3;
+                    } else {
+                        old_begin = i;
+                    }
                 }
-                j += 1;
+                else {
+                    old_begin = i;
+                }
             }
-            i += 1;
+        }
+        if (old_begin < string.len) {
+            std.debug.print("{s}", .{string[old_begin..string.len]});
         }
     } else {
         std.debug.print("{s}", .{string});
         if (space) std.debug.print(" ", .{});
     }
+    return false;
+}
 
+fn byteIsOct(byte: u8) bool {
+    return byte >= '0' and byte <= '7';
+}
+
+fn byteIsHex(byte: u8) bool {
+    return (byte >= '0' and byte <= '9') or (byte >= 'a' and byte <= 'f') or (byte >= 'A' and byte <= 'F');
 }

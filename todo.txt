@@ -3,7 +3,6 @@
     239 sync.c
     263 runcon.c
     272 sum.c
-    273 echo.c
     277 realpath.c
     278 tee.c
     280 mknod.c
