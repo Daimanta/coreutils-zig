@@ -2,7 +2,6 @@
     237 expand.c
     239 sync.c
     263 runcon.c
-    272 sum.c
     277 realpath.c
     278 tee.c
     280 mknod.c

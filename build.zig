@@ -86,6 +86,11 @@ pub fn build(b: *std.build.Builder) void {
     sleep.setTarget(target);
     sleep.setBuildMode(mode);
     sleep.install();
+    
+    const sum = b.addExecutable("sum", "src/sum.zig");
+    sum.setTarget(target);
+    sum.setBuildMode(mode);
+    sum.install();
 
     const true_app = b.addExecutable("true", "src/true.zig");
     true_app.setTarget(target);
