@@ -23,22 +23,47 @@ pub const Operation = enum {
     SET
 };
 
+pub const ChangeDerivation = enum {
+    ABSOLUTE,
+    RELATIVE
+};
+
+pub const UserTypes = enum {
+    USER,
+    GROUP,
+    OTHER
+};
+
+pub const AbsoluteChange = struct {
+    read: bool,
+    write: bool,
+    execute: bool,
+    search: bool,
+    set_gid: bool,
+    sticky: bool,
+};
+
 pub const ModeChange = struct {
     owner: bool,
     group: bool,
     other: bool,
     operation: Operation,
-    read: bool,
-    write: bool,
-    execute: bool,
-    search: bool,
-    set_id: bool,
-    sticky: bool
+    derivation: ChangeDerivation,
+    absolute: ?AbsoluteChange,
+    from: ?UserTypes
 };
 
-fn applyModeChange(change: *const ModeChange, mode: *mode_t) void {
+pub fn applyModeChange(change: *const ModeChange, mode: *mode_t) void {
     if (change.operation == Operation.SET) {
-
+            if (change.owner) {
+                if(change.read) mode |= RUSR else mode &= ~RUSR;
+            }
+            if (change.group) {
+            
+            }
+            if (change.other) {
+            
+            }
     } else if (change.operation == Operation.ADD) {
 
     } else if (change.operation == Operation.REMOVE) {
