@@ -21,95 +21,42 @@ pub const ROTH: u12 = 0o0004;
 pub const WOTH: u12 = 0o0002;
 pub const XOTH: u12 = 0o0001;
 
+pub const Operation = enum { ADD, REMOVE, SET };
 
-pub const Operation = enum {
-    ADD,
-    REMOVE,
-    SET
-};
+pub const ChangeDerivation = enum { ABSOLUTE, RELATIVE };
 
-pub const ChangeDerivation = enum {
-    ABSOLUTE,
-    RELATIVE
-};
+pub const UserType = enum { USER, GROUP, OTHER };
 
-pub const UserType = enum {
-    USER,
-    GROUP,
-    OTHER
-};
+pub const AbsoluteChange = struct { read: bool, write: bool, execute: bool, set_uid: bool, set_gid: bool, sticky: bool, set_global_bits: bool };
 
-pub const AbsoluteChange = struct {
-    read: bool,
-    write: bool,
-    execute: bool,
-    set_uid: bool,
-    set_gid: bool,
-    sticky: bool,
-    set_global_bits: bool
-};
+pub const ChangeSource = union(ChangeDerivation) { ABSOLUTE: AbsoluteChange, RELATIVE: UserType };
 
-pub const ChangeSource = union(ChangeDerivation) {
-    ABSOLUTE: AbsoluteChange,
-    RELATIVE: UserType
-};
-
-pub const ModeChange = struct {
-    owner: bool,
-    group: bool,
-    other: bool,
-    operation: Operation,
-    source: ChangeSource
-};
+pub const ModeChange = struct { owner: bool, group: bool, other: bool, operation: Operation, source: ChangeSource };
 
 pub fn applyModeChange(change: *const ModeChange, mode: *mode_t) void {
     var used_source: AbsoluteChange = getAbsoluteChange(change, mode);
-    
+
     if (change.owner) updateUserType(mode, UserType.USER, change.operation, used_source);
     if (change.group) updateUserType(mode, UserType.GROUP, change.operation, used_source);
     if (change.group) updateUserType(mode, UserType.OTHER, change.operation, used_source);
 }
 
 fn getAbsoluteChange(change: *const ModeChange, mode: *mode_t) AbsoluteChange {
-    switch(change.source) {
+    switch (change.source) {
         ChangeSource.ABSOLUTE => {
             return change.source.ABSOLUTE;
         },
         ChangeSource.RELATIVE => {
             switch (change.source.RELATIVE) {
-                    UserType.USER => {
-                        return AbsoluteChange{
-                            .read = mode.* & RUSR != 0,
-                            .write = mode.* & WUSR != 0,
-                            .execute = mode.* & XUSR != 0,
-                            .set_uid = false,
-                            .set_gid = false,
-                            .sticky = false,
-                            .set_global_bits = false
-                        };
-                    },
-                    UserType.GROUP => {
-                        return AbsoluteChange{
-                            .read = false,
-                            .write = false,
-                            .execute = false,
-                            .set_uid = false,
-                            .set_gid = false,
-                            .sticky = false,
-                            .set_global_bits = false
-                        };
-                    },
-                    UserType.OTHER => {
-                        return AbsoluteChange{
-                            .read = false,
-                            .write = false,
-                            .execute = false,
-                            .set_uid = false,
-                            .set_gid = false,
-                            .sticky = false,
-                            .set_global_bits = false
-                        };
-                    }
+                UserType.USER => {
+                    return AbsoluteChange{ .read = mode.* & RUSR != 0, .write = mode.* & WUSR != 0, .execute = mode.* & XUSR != 0, .set_uid = false, .set_gid = false, .sticky = false, .set_global_bits = false };
+                },
+                UserType.GROUP => {
+                    return AbsoluteChange{ .read = false, .write = false, .execute = false, .set_uid = false, .set_gid = false, .sticky = false, .set_global_bits = false };
+                },
+                UserType.OTHER => {
+                    return AbsoluteChange{ .read = false, .write = false, .execute = false, .set_uid = false, .set_gid = false, .sticky = false, .set_global_bits = false };
+                },
             }
         },
     }
@@ -137,8 +84,8 @@ fn updateUserType(mode: *mode_t, user: UserType, operation: Operation, absolute_
                 if (absolute_change.set_uid) mode.* &= ~SUID;
                 if (absolute_change.set_gid) mode.* &= ~SGID;
                 if (absolute_change.sticky) mode.* &= ~SVTX;
-            }
-        }        
+            },
+        }
     }
 }
 
@@ -158,7 +105,7 @@ fn updateUser(mode: *mode_t, operation: Operation, absolute_change: AbsoluteChan
             if (absolute_change.read) mode.* &= ~RUSR;
             if (absolute_change.write) mode.* &= ~WUSR;
             if (absolute_change.execute) mode.* &= ~XUSR;
-        }
+        },
     }
 }
 
@@ -167,18 +114,18 @@ fn updateGroup(mode: *mode_t, operation: Operation, absolute_change: AbsoluteCha
         Operation.SET => {
             if (absolute_change.read) mode.* |= RGRP else mode.* &= ~RGRP;
             if (absolute_change.write) mode.* |= WGRP else mode.* &= ~WGRP;
-            if (absolute_change.execute) mode.* |= XGRP else mode.* &= ~XGRP;        
+            if (absolute_change.execute) mode.* |= XGRP else mode.* &= ~XGRP;
         },
         Operation.ADD => {
             if (absolute_change.read) mode.* |= RGRP;
             if (absolute_change.write) mode.* |= WGRP;
-            if (absolute_change.execute) mode.* |= XGRP;            
+            if (absolute_change.execute) mode.* |= XGRP;
         },
         Operation.REMOVE => {
             if (absolute_change.read) mode.* &= ~RGRP;
             if (absolute_change.write) mode.* &= ~WGRP;
-            if (absolute_change.execute) mode.* &= ~XGRP;            
-        }
+            if (absolute_change.execute) mode.* &= ~XGRP;
+        },
     }
 }
 
@@ -187,39 +134,39 @@ fn updateOther(mode: *mode_t, operation: Operation, absolute_change: AbsoluteCha
         Operation.SET => {
             if (absolute_change.read) mode.* |= ROTH else mode.* &= ~ROTH;
             if (absolute_change.write) mode.* |= WOTH else mode.* &= ~WOTH;
-            if (absolute_change.execute) mode.* |= XOTH else mode.* &= ~XOTH;        
+            if (absolute_change.execute) mode.* |= XOTH else mode.* &= ~XOTH;
         },
         Operation.ADD => {
             if (absolute_change.read) mode.* |= ROTH;
             if (absolute_change.write) mode.* |= WOTH;
-            if (absolute_change.execute) mode.* |= XOTH;            
+            if (absolute_change.execute) mode.* |= XOTH;
         },
         Operation.REMOVE => {
             if (absolute_change.read) mode.* &= ~ROTH;
             if (absolute_change.write) mode.* &= ~WOTH;
-            if (absolute_change.execute) mode.* &= ~XOTH;            
-        }
+            if (absolute_change.execute) mode.* &= ~XOTH;
+        },
     }
 }
 
-pub fn getModeFromString (string:[]const u8) !mode_t {
+pub fn getModeFromString(string: []const u8) !mode_t {
     var result: mode_t = 0;
     var modifiers = ArrayList(ModeChange).init(default_allocator);
     defer modifiers.deinit();
-    
+
     var tokenIterator = std.mem.tokenize(string, ",");
     var items: u32 = 0;
     while (tokenIterator.next()) |token| {
         items += 1;
     }
-    
+
     const single = items == 1;
-    
+
     tokenIterator.reset();
-    
+
     while (tokenIterator.next()) |token| {
         if (token.len == 0) return error.InvalidModeString;
-    
+
         var numerical = true;
         for (token) |byte| {
             if (byte < '0' or byte > '9') {
@@ -230,136 +177,78 @@ pub fn getModeFromString (string:[]const u8) !mode_t {
         if (numerical and (!single or token.len > 5)) {
             return error.InvalidModeString;
         }
+
+        if (numerical) {
+            const number = try std.fmt.parseInt(u32, token, 8);
+            if (number > 0o7777) {
+                return error.InvalidModeString;
+            } else {
+                const user_change: ModeChange = ModeChange{ .owner = true, .group = false, .other = false, .operation = Operation.SET, .source = ChangeSource{ .ABSOLUTE = AbsoluteChange{ .read = number & RUSR != 0, .write = number & WUSR != 0, .execute = number & XUSR != 0, .set_uid = false, .set_gid = false, .sticky = false, .set_global_bits = false } } };
+                const group_change: ModeChange = ModeChange{ .owner = false, .group = true, .other = false, .operation = Operation.SET, .source = ChangeSource{ .ABSOLUTE = AbsoluteChange{ .read = number & RGRP != 0, .write = number & WGRP != 0, .execute = number & XGRP != 0, .set_uid = false, .set_gid = false, .sticky = false, .set_global_bits = false } } };
+                const other_change: ModeChange = ModeChange{ .owner = false, .group = false, .other = true, .operation = Operation.SET, .source = ChangeSource{ .ABSOLUTE = AbsoluteChange{ .read = number & ROTH != 0, .write = number & WOTH != 0, .execute = number & XOTH != 0, .set_uid = false, .set_gid = false, .sticky = false, .set_global_bits = false } } };
+
+                const global_change: ModeChange = ModeChange{ .owner = false, .group = false, .other = false, .operation = Operation.SET, .source = ChangeSource{ .ABSOLUTE = AbsoluteChange{ .read = false, .write = false, .execute = false, .set_uid = number & SUID != 0, .set_gid = number & SGID != 0, .sticky = number & SVTX != 0, .set_global_bits = true } } };
+
+                try modifiers.append(user_change);
+                try modifiers.append(group_change);
+                try modifiers.append(other_change);
+                try modifiers.append(global_change);
+            }
+        } else {
+                const first_mod = std.mem.indexOfAny(u8, token, "-+=");
+                if (first_mod == null) return error.InvalidModeString;
+                const write_target = token[0..first_mod.?];
+                std.debug.print("{s}\n\n", .{write_target});
+        }
     }
-    
     for (modifiers.items) |item| {
         applyModeChange(&item, &result);
     }
-    
+
     return result;
 }
 
 test "set zero" {
     var mode: mode_t = 0;
-    const mode_change: ModeChange = ModeChange {
-        .owner = true,
-        .group = true,
-        .other = true,
-        .operation = Operation.SET,
-        .source = ChangeSource {
-            .ABSOLUTE = AbsoluteChange {
-                .read = false,
-                .write = false,
-                .execute = false,
-                .set_uid = false,
-                .set_gid = false,
-                .sticky = false,
-                .set_global_bits = false
-            }
-        }
-    };
+    const mode_change: ModeChange = ModeChange{ .owner = true, .group = true, .other = true, .operation = Operation.SET, .source = ChangeSource{ .ABSOLUTE = AbsoluteChange{ .read = false, .write = false, .execute = false, .set_uid = false, .set_gid = false, .sticky = false, .set_global_bits = false } } };
     applyModeChange(&mode_change, &mode);
-    
+
     const expected: mode_t = 0;
     try testing.expectEqual(expected, mode);
 }
 
 test "set read" {
     var mode: mode_t = 0;
-    const mode_change: ModeChange = ModeChange {
-        .owner = true,
-        .group = true,
-        .other = true,
-        .operation = Operation.SET,
-        .source = ChangeSource {
-            .ABSOLUTE = AbsoluteChange {
-                .read = true,
-                .write = false,
-                .execute = false,
-                .set_uid = false,
-                .set_gid = false,
-                .sticky = false,
-                .set_global_bits = false
-            }
-        }
-    };
+    const mode_change: ModeChange = ModeChange{ .owner = true, .group = true, .other = true, .operation = Operation.SET, .source = ChangeSource{ .ABSOLUTE = AbsoluteChange{ .read = true, .write = false, .execute = false, .set_uid = false, .set_gid = false, .sticky = false, .set_global_bits = false } } };
     applyModeChange(&mode_change, &mode);
-    
+
     const expected: mode_t = RUSR | RGRP | ROTH;
     try testing.expectEqual(expected, mode);
 }
 
 test "set read and write" {
     var mode: mode_t = 0;
-    const mode_change: ModeChange = ModeChange {
-        .owner = true,
-        .group = true,
-        .other = true,
-        .operation = Operation.SET,
-        .source = ChangeSource {
-            .ABSOLUTE = AbsoluteChange {
-                .read = true,
-                .write = true,
-                .execute = false,
-                .set_uid = false,
-                .set_gid = false,
-                .sticky = false,
-                .set_global_bits = false
-            }
-        }
-    };
+    const mode_change: ModeChange = ModeChange{ .owner = true, .group = true, .other = true, .operation = Operation.SET, .source = ChangeSource{ .ABSOLUTE = AbsoluteChange{ .read = true, .write = true, .execute = false, .set_uid = false, .set_gid = false, .sticky = false, .set_global_bits = false } } };
     applyModeChange(&mode_change, &mode);
-    
+
     const expected: mode_t = RUSR | RGRP | ROTH | WUSR | WGRP | WOTH;
     try testing.expectEqual(expected, mode);
 }
 
 test "set uid" {
     var mode: mode_t = 0;
-    const mode_change: ModeChange = ModeChange {
-        .owner = true,
-        .group = true,
-        .other = true,
-        .operation = Operation.SET,
-        .source = ChangeSource {
-            .ABSOLUTE = AbsoluteChange {
-                .read = false,
-                .write = false,
-                .execute = false,
-                .set_uid = true,
-                .set_gid = false,
-                .sticky = false,
-                .set_global_bits = true
-            }
-        }
-    };
+    const mode_change: ModeChange = ModeChange{ .owner = true, .group = true, .other = true, .operation = Operation.SET, .source = ChangeSource{ .ABSOLUTE = AbsoluteChange{ .read = false, .write = false, .execute = false, .set_uid = true, .set_gid = false, .sticky = false, .set_global_bits = true } } };
     applyModeChange(&mode_change, &mode);
-    
+
     const expected: mode_t = SUID;
     try testing.expectEqual(expected, mode);
 }
 
 test "add read to write" {
     var mode: mode_t = WUSR | WGRP | WOTH;
-    const mode_change: ModeChange = ModeChange {
-        .owner = true,
-        .group = true,
-        .other = true,
-        .operation = Operation.ADD,
-        .source = ChangeSource {
-            .ABSOLUTE = AbsoluteChange {
-                .read = true,
-                .write = false,
-                .execute = false,
-                .set_uid = false,
-                .set_gid = false,
-                .sticky = false,
-                .set_global_bits = false
-            }
-        }
-    };
+    const mode_change: ModeChange = ModeChange{ .owner = true, .group = true, .other = true, .operation = Operation.ADD, .source = ChangeSource{ .ABSOLUTE = AbsoluteChange{ .read = true, .write = false, .execute = false, .set_uid = false, .set_gid = false, .sticky = false, .set_global_bits = false } } };
     applyModeChange(&mode_change, &mode);
-    
+
     const expected: mode_t = RUSR | RGRP | ROTH | WUSR | WGRP | WOTH;
     try testing.expectEqual(expected, mode);
 }
@@ -377,7 +266,7 @@ test "mode set string parsing" {
 }
 
 test "invalid number mode" {
-    const result = getModeFromString("100000") catch |err| {
+    const result = getModeFromString("10000") catch |err| {
         return;
     };
     try testing.expect(false);
@@ -389,3 +278,12 @@ test "invalid combination of string and number" {
     };
     try testing.expect(false);
 }
+
+test "no modifier specified" {
+    const result = getModeFromString("r") catch |err| {
+        return;
+    };
+    try testing.expect(false);
+}
+
+
