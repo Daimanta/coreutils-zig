@@ -1,4 +1,3 @@
-    187 mkfifo.c
     237 expand.c
     239 sync.c
     263 runcon.c
@@ -71,3 +70,7 @@
    3175 copy.c
    4780 sort.c
    5577 ls.c
+   
+   
+SELinux on:
+- mkfifo

@@ -7,10 +7,9 @@ const clap = @import("clap.zig");
 const fileinfo = @import("util/fileinfo.zig");
 const mode = @import("util/mode.zig");
 const version = @import("util/version.zig");
+const system = @import("util/system.zig");
 
 const Allocator = std.mem.Allocator;
-const ArrayList = std.ArrayList;
-const UtType = utmp.UtType;
 const time_t = time_info.time_t;
 const mode_t = mode.mode_t;
 const MakeFifoError = fileinfo.MakeFifoError;
@@ -60,10 +59,17 @@ pub fn main() !void {
     const arguments = args.positionals();
 
     const mode_string = args.option("-m");
-    var used_mode: mode_t = mode.RUSR | mode.WUSR | mode.RGRP | mode.WGRP | mode.ROTH | mode.WOTH;
+    var used_mode: mode_t = mode.getModeFromString("a=rw") catch unreachable;
     if (mode_string != null) {
         used_mode = try mode.getModeFromString(mode_string.?);
     }
+    const default_selinux_context = args.flag("-Z");
+    const special_selinux_context = args.option("--context");
+    
+    if (default_selinux_context and special_selinux_context != null) {
+        std.debug.print("SELinux context cannot be both default and specific. Exiting.\n", .{});
+        std.os.exit(1);
+    }   
 
     for (arguments) |arg| {
         fileinfo.makeFifo(arg, used_mode) catch |err| {
