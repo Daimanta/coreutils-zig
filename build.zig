@@ -56,6 +56,11 @@ pub fn build(b: *std.build.Builder) void {
     logname.setTarget(target);
     logname.setBuildMode(mode);
     logname.install();
+    
+    const mkfifo = b.addExecutable("mkfifo", "src/mkfifo.zig");
+    mkfifo.setTarget(target);
+    mkfifo.setBuildMode(mode);
+    mkfifo.install();
 
     const nice = b.addExecutable("nice", "src/nice.zig");
     nice.setTarget(target);
@@ -131,6 +136,7 @@ pub fn build(b: *std.build.Builder) void {
         groups.linkSystemLibrary("c");
         hostid.linkSystemLibrary("c");
         logname.linkSystemLibrary("c");
+        mkfifo.linkSystemLibrary("c");
         nice.linkSystemLibrary("c");
         nproc.linkSystemLibrary("c");
         printenv.linkSystemLibrary("c");
