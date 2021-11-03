@@ -33,6 +33,7 @@ const help_message =
 \\
 ;
 
+var success = true;
 
 pub fn main() !void {
     const params = comptime [_]clap.Param(clap.Help){
@@ -95,6 +96,10 @@ pub fn main() !void {
                 MakeFifoError.Unknown => std.debug.print("{s}: Unknown error encountered: '{s}'\n", .{application_name, err}),
             }
         };
+        success = false;
+    }
+    
+    if (!success) {
         std.os.exit(1);
     }
 }
