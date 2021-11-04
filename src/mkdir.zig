@@ -10,7 +10,7 @@ const strings = @import("util/strings.zig");
 const Allocator = std.mem.Allocator;
 const mode_t = mode.mode_t;
 const MakeDirError = os.MakeDirError;
-const OpenError = fs.OpenError;
+const OpenError = fs.Dir.OpenError;
 
 const allocator = std.heap.page_allocator;
 
@@ -121,19 +121,38 @@ fn create_dir(path: []const u8, create_parents: bool, verbose: bool, used_mode: 
                 return false;
             };
         } else {
-            
+            var existing_base_path = used_dir;
+            var slash_index = strings.indexOfStartOnPos(existing_base_path, 1, '/');
+            while (slash_index != null) {
+                const open_dir = std.fs.cwd().openDir(existing_base_path[0..slash_index.?+1], .{});
+                _ = open_dir catch |err| {
+                    if (err == error.FileNotFound) {
+                        break;
+                    }
+                };
+                slash_index = strings.indexOfStartOnPos(existing_base_path, slash_index.?+1, '/');
+            }
+            if (slash_index != null) {
+                while (slash_index != null) {
+                    std.os.mkdir(existing_base_path[0..slash_index.?], @intCast(u32, used_mode)) catch |err| {
+                        handleMkdirErrors(err);
+                        return false;
+                    };
+                    slash_index = strings.indexOfStartOnPos(existing_base_path, slash_index.?+1, '/');
+                }
+            } else {
+                std.os.mkdir(used_dir, @intCast(u32, used_mode)) catch |err| {
+                    handleMkdirErrors(err);
+                    return false;
+                };
+            }
         }
     } else {
         const last_slash = strings.lastIndexOf(used_dir, '/');
         if (last_slash != null) {
             const check_path = used_dir[0..last_slash.?+1];
             const open_dir_test = std.fs.cwd().openDir(check_path, .{}) catch |err| {
-                switch (err) {
-                    error.NotDir => std.debug.print("{s}: Basepath '{s}' is not a dir\n", .{application_name, check_path}),
-                    error.AccessDenied => std.debug.print("{s}: Access to '{s}' denied\n", .{application_name, check_path}),
-                    error.FileNotFound => std.debug.print("{s}: Basepath '{s}' does not exist\n", .{application_name, check_path}),
-                    else => std.debug.print("{s}: Unknown error '{s}' encountered when trying to create directory\n", .{application_name, err}),
-                }
+                handleOpenDirErrors(err, check_path);
                 return false;
             };
             std.os.mkdir(used_dir, @intCast(u32, used_mode)) catch |err| {
@@ -167,6 +186,15 @@ fn handleMkdirErrors(err: MakeDirError) void {
         MakeDirError.BadPathName => std.debug.print("{s}: Bad Path Name\n", .{application_name}),
         MakeDirError.NoDevice => std.debug.print("{s}: No Device\n", .{application_name}),
         else => std.debug.print("{s}: Unknown error\n", .{application_name})
+    }
+}
+
+fn handleOpenDirErrors(err: OpenError, check_path: []const u8) void {
+    switch (err) {
+        error.NotDir => std.debug.print("{s}: Basepath '{s}' is not a dir\n", .{application_name, check_path}),
+        error.AccessDenied => std.debug.print("{s}: Access to '{s}' denied\n", .{application_name, check_path}),
+        error.FileNotFound => std.debug.print("{s}: Basepath '{s}' does not exist\n", .{application_name, check_path}),
+        else => std.debug.print("{s}: Unknown error '{s}' encountered when trying to create directory\n", .{application_name, err}),
     }
 }
 
