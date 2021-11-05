@@ -6,7 +6,6 @@
     280 mknod.c
     296 rmdir.c
     309 fold.c
-    310 mkdir.c
     314 kill.c
     319 chgrp.c
     325 unexpand.c
@@ -73,4 +72,5 @@
    
    
 SELinux on:
+- mkdir
 - mkfifo

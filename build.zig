@@ -57,6 +57,11 @@ pub fn build(b: *std.build.Builder) void {
     logname.setBuildMode(mode);
     logname.install();
     
+    const mkdir = b.addExecutable("mkdir", "src/mkdir.zig");
+    mkdir.setTarget(target);
+    mkdir.setBuildMode(mode);
+    mkdir.install();
+    
     const mkfifo = b.addExecutable("mkfifo", "src/mkfifo.zig");
     mkfifo.setTarget(target);
     mkfifo.setBuildMode(mode);

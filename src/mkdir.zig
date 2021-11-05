@@ -13,6 +13,7 @@ const MakeDirError = os.MakeDirError;
 const OpenError = fs.Dir.OpenError;
 
 const allocator = std.heap.page_allocator;
+const mkdir = os.mkdir;
 
 const application_name = "mkdir";
 
@@ -113,13 +114,16 @@ fn create_dir(path: []const u8, create_parents: bool, verbose: bool, used_mode: 
         used_dir = path;
     }
     
+    const cast_mode = @intCast(u32, used_mode);
+    
     if (create_parents) {
         var slash_position = strings.indexOf(used_dir, '/');
         if (slash_position == null) {
-            std.os.mkdir(used_dir, @intCast(u32, used_mode)) catch |err| {
+            mkdir(used_dir, cast_mode) catch |err| {
                 handleMkdirErrors(err);
                 return false;
             };
+            if (verbose) std.debug.print("{s}: created directory '{s}'\n", .{application_name, used_dir});
         } else {
             var existing_base_path = used_dir;
             var slash_index = strings.indexOfStartOnPos(existing_base_path, 1, '/');
@@ -134,18 +138,25 @@ fn create_dir(path: []const u8, create_parents: bool, verbose: bool, used_mode: 
             }
             if (slash_index != null) {
                 while (slash_index != null) {
-                    std.debug.print("{s}", .{existing_base_path[0..slash_index.?]});
-                    std.os.mkdir(existing_base_path[0..slash_index.?], @intCast(u32, used_mode)) catch |err| {
+                    mkdir(existing_base_path[0..slash_index.?], cast_mode) catch |err| {
                         handleMkdirErrors(err);
                         return false;
                     };
+                    if (verbose) std.debug.print("{s}: created directory '{s}'\n", .{application_name, existing_base_path[0..slash_index.?]});
                     slash_index = strings.indexOfStartOnPos(existing_base_path, slash_index.?+1, '/');
                 }
-            } else {
-                std.os.mkdir(used_dir, @intCast(u32, used_mode)) catch |err| {
+                
+                mkdir(used_dir, cast_mode) catch |err| {
                     handleMkdirErrors(err);
                     return false;
                 };
+                if (verbose) std.debug.print("{s}: created directory '{s}'\n", .{application_name, used_dir});
+            } else {
+                mkdir(used_dir, cast_mode) catch |err| {
+                    handleMkdirErrors(err);
+                    return false;
+                };
+                if (verbose) std.debug.print("{s}: created directory '{s}'\n", .{application_name, used_dir});
             }
         }
     } else {
@@ -156,15 +167,17 @@ fn create_dir(path: []const u8, create_parents: bool, verbose: bool, used_mode: 
                 handleOpenDirErrors(err, check_path);
                 return false;
             };
-            std.os.mkdir(used_dir, @intCast(u32, used_mode)) catch |err| {
+            mkdir(used_dir, cast_mode) catch |err| {
                 handleMkdirErrors(err);
                 return false;
             };
+            if (verbose) std.debug.print("{s}: created directory '{s}'\n", .{application_name, used_dir});
         } else {
-            std.os.mkdir(used_dir, @intCast(u32, used_mode)) catch |err| {
+            mkdir(used_dir, cast_mode) catch |err| {
                 handleMkdirErrors(err);
                 return false;
             };
+            if (verbose) std.debug.print("{s}: created directory '{s}'\n", .{application_name, used_dir});
         }
     }
     return true;
