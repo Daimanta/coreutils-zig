@@ -32,7 +32,7 @@ pub fn indexOf(string: []const u8, match: u8) ?usize {
 pub fn indexOfStartOnPos(string: []const u8, start: usize, match: u8) ?usize {
     if (start >= string.len) return null;
     var i = start;
-    while (i <= string.len): (i += 1) {
+    while (i < string.len): (i += 1) {
         if (string[i] == match) return i;
     }
     return null;

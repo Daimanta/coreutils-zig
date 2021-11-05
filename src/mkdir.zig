@@ -134,6 +134,7 @@ fn create_dir(path: []const u8, create_parents: bool, verbose: bool, used_mode: 
             }
             if (slash_index != null) {
                 while (slash_index != null) {
+                    std.debug.print("{s}", .{existing_base_path[0..slash_index.?]});
                     std.os.mkdir(existing_base_path[0..slash_index.?], @intCast(u32, used_mode)) catch |err| {
                         handleMkdirErrors(err);
                         return false;
