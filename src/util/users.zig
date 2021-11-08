@@ -9,6 +9,8 @@ const strings = @import("strings.zig");
 const uid = linux.uid_t;
 const gid = linux.gid_t;
 
+const Allocator = std.mem.Allocator;
+
 const default_allocator = std.heap.page_allocator;
 
 pub const Passwd = extern struct {
@@ -52,3 +54,19 @@ pub fn getUserByName(name: [*:0]u8) !*Passwd {
 }
 
 pub extern fn getgrgid (gid: gid) callconv(.C) *Group;
+extern fn getgrouplist(user: [*:0]const u8, group: gid, groups: [*]gid, ngroups: *c_int) callconv(.C) c_int;
+
+pub fn getGroupsFromPasswd(user: *Passwd, allocator: *Allocator) ![]gid {
+    var user_gid: gid = user.pw_gid;
+    var groups: [*]gid = undefined;
+    var group_count: c_int = 0;
+
+    // Size iteration
+    _ = getgrouplist(user.pw_name, user_gid, groups, &group_count);
+    var group_count_usize = @intCast(usize, group_count);
+    var group_alloc = try allocator.alloc(gid, group_count_usize);
+    groups = group_alloc.ptr;
+    // Actually allocate the groups
+    _ = getgrouplist(user.pw_name, user_gid, groups, &group_count);
+    return group_alloc[0..];
+}

@@ -37,6 +37,13 @@ const help_message =
 \\
 ;
 
+const Mode = enum {
+    DEFAULT,
+    USER_ONLY,
+    USERGROUP_ONLY,
+    GROUPS
+};
+
 
 pub fn main() !void {
     const params = comptime [_]clap.Param(clap.Help){
@@ -78,31 +85,99 @@ pub fn main() !void {
         os.exit(1);
     }
     
+    if (group_id and all_groups) {
+        print("{s}: cannot print \"only\" of more than one choice\n", .{application_name});
+        os.exit(1);
+    }
+    
+    if (name and real_id) {
+        print("{s}: cannot print \"only\" of more than one choice\n", .{application_name});
+        os.exit(1);
+    }
+    
+    var mode = Mode.DEFAULT;
+    if (group_id) mode = Mode.USERGROUP_ONLY;
+    if (all_groups) mode = Mode.GROUPS;
+    if (user_id) mode = Mode.USER_ONLY;
+    
     
     const user_list = args.positionals();
     
     if (user_list.len == 0) {
         const my_uid = linux.geteuid();
         const pw: *users.Passwd = users.getpwuid(my_uid);
-        printUserInformation(pw);
+        printUserInformation(pw, mode, name);
     } else{
         for (user_list) |user| {
-            printUsernameInformation(user);
+            printUsernameInformation(user, mode, name);
         }
     }
 
 }
 
-fn printUsernameInformation(user: []const u8) void {
+fn printUsernameInformation(user: []const u8, mode: Mode, name: bool) void {
     const user_details: *users.Passwd = users.getUserByNameA(user) catch |err| {
-            print("{s}\n", .{err});
+            print("{s}: user '{s}' not found\n", .{application_name, user});
             return;
     };
-    printUserInformation(user_details);
+    printUserInformation(user_details, mode, name);
 }
 
-fn printUserInformation(user: *users.Passwd) void {
-    print("{s}\n", .{user});
+fn printUserInformation(user_details: *users.Passwd, mode: Mode, name: bool) void {
+    if (mode == Mode.DEFAULT) {
+        var buffer: [1 << 16]u8 = undefined;
+        
+        var string_builder = strings.StringBuilder.init(buffer[0..]);
+        string_builder.append("uid=");
+        string_builder.appendBufPrint("{d}", .{user_details.pw_uid});
+        string_builder.append("(");
+        string_builder.append(strings.convertOptionalSentinelString(user_details.pw_name).?);
+        string_builder.append(") gid=");
+        string_builder.appendBufPrint("{d}", .{user_details.pw_gid});
+        string_builder.append("(");
+        // TODO: Actually use correct group
+        string_builder.append(strings.convertOptionalSentinelString(user_details.pw_name).?);
+        string_builder.append(") groups=");
+        const groups = users.getGroupsFromPasswd(user_details, default_allocator) catch unreachable;
+        for (groups) |group, i| {
+            const group_struct = users.getgrgid(group);
+            string_builder.appendBufPrint("{d}({s})", .{group_struct.gr_gid, group_struct.gr_name});
+            if (i < groups.len - 1) {
+                string_builder.append(",");
+            }
+        }
+        print("{s}\n", .{string_builder.toSlice()});
+    } else if (mode == Mode.USER_ONLY) {
+        if (name) {
+            print("{s}\n", .{user_details.pw_name});
+        } else {
+            print("{d}\n", .{user_details.pw_uid});
+        }
+    } else if (mode == Mode.USERGROUP_ONLY) {
+        if (name) {
+            print("{s}\n", .{user_details.pw_name});
+        } else {
+            // TODO: Actually use correct group
+            print("{d}\n", .{user_details.pw_gid});
+        }
+    } else if (mode == Mode.GROUPS) {
+        const groups = users.getGroupsFromPasswd(user_details, default_allocator) catch unreachable;
+        for (groups) |group, i| {
+            const group_struct = users.getgrgid(group);
+            if (name) {
+                print("{s}", .{group_struct.gr_name});
+            } else {
+                print("{d}", .{group_struct.gr_gid});
+            }
+            if (i < groups.len - 1) {
+                print(" ", .{});
+            }
+        }
+        print("\n", .{});
+    } else {
+        unreachable;
+    }
+    
 }
 
 

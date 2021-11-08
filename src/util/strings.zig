@@ -91,6 +91,11 @@ pub const StringBuilder = struct {
     pub fn append(self: *Self, input: []const u8) void {
         insertStringAtIndex(self.buffer, input, &self.insertion_index);
     }
+    
+    pub fn appendBufPrint(self: *Self, comptime fmt: []const u8, args: anytype) void {
+        const inserted = std.fmt.bufPrint(self.buffer[self.insertion_index..], fmt, args) catch return;
+        self.insertion_index += inserted.len;
+    }
 
     pub fn toSlice(self: *Self) []u8 {
         return self.buffer[0..self.insertion_index];
