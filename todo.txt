@@ -18,7 +18,6 @@
     411 cksum.c
     431 chroot.c
     442 touch.c
-    464 id.c
     499 comm.c
     508 dircolors.c
     518 mv.c
@@ -72,5 +71,6 @@
    
    
 SELinux on:
+- id
 - mkdir
 - mkfifo

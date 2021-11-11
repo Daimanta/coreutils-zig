@@ -100,30 +100,34 @@ pub fn main() !void {
     if (all_groups) mode = Mode.GROUPS;
     if (user_id) mode = Mode.USER_ONLY;
     
+    if (mode == Mode.DEFAULT and zero_terminator) {
+        print("{s}: option --zero not permitted in default format\n", .{application_name});
+        os.exit(1);
+    }
     
     const user_list = args.positionals();
     
     if (user_list.len == 0) {
         const my_uid = linux.geteuid();
         const pw: *users.Passwd = users.getpwuid(my_uid);
-        printUserInformation(pw, mode, name);
+        printUserInformation(pw, mode, name, zero_terminator);
     } else{
         for (user_list) |user| {
-            printUsernameInformation(user, mode, name);
+            printUsernameInformation(user, mode, name, zero_terminator);
         }
     }
 
 }
 
-fn printUsernameInformation(user: []const u8, mode: Mode, name: bool) void {
+fn printUsernameInformation(user: []const u8, mode: Mode, name: bool, zero_terminator: bool) void {
     const user_details: *users.Passwd = users.getUserByNameA(user) catch |err| {
             print("{s}: user '{s}' not found\n", .{application_name, user});
             return;
     };
-    printUserInformation(user_details, mode, name);
+    printUserInformation(user_details, mode, name, zero_terminator);
 }
 
-fn printUserInformation(user_details: *users.Passwd, mode: Mode, name: bool) void {
+fn printUserInformation(user_details: *users.Passwd, mode: Mode, name: bool, zero_terminator: bool) void {
     if (mode == Mode.DEFAULT) {
         var buffer: [1 << 16]u8 = undefined;
         
@@ -146,20 +150,23 @@ fn printUserInformation(user_details: *users.Passwd, mode: Mode, name: bool) voi
                 string_builder.append(",");
             }
         }
-        print("{s}\n", .{string_builder.toSlice()});
+        print("{s}", .{string_builder.toSlice()});
+        print_terminator(zero_terminator, "\n");
     } else if (mode == Mode.USER_ONLY) {
         if (name) {
-            print("{s}\n", .{user_details.pw_name});
+            print("{s}", .{user_details.pw_name});
         } else {
-            print("{d}\n", .{user_details.pw_uid});
+            print("{d}", .{user_details.pw_uid});
         }
+        print_terminator(zero_terminator, "\n");
     } else if (mode == Mode.USERGROUP_ONLY) {
         if (name) {
-            print("{s}\n", .{user_details.pw_name});
+            print("{s}", .{user_details.pw_name});
         } else {
             // TODO: Actually use correct group
-            print("{d}\n", .{user_details.pw_gid});
+            print("{d}", .{user_details.pw_gid});
         }
+        print_terminator(zero_terminator, "\n");
     } else if (mode == Mode.GROUPS) {
         const groups = users.getGroupsFromPasswd(user_details, default_allocator) catch unreachable;
         for (groups) |group, i| {
@@ -170,10 +177,10 @@ fn printUserInformation(user_details: *users.Passwd, mode: Mode, name: bool) voi
                 print("{d}", .{group_struct.gr_gid});
             }
             if (i < groups.len - 1) {
-                print(" ", .{});
+                print_terminator(zero_terminator, " ");
             }
         }
-        print("\n", .{});
+        print_terminator(zero_terminator, "\n");
     } else {
         unreachable;
     }
@@ -181,3 +188,10 @@ fn printUserInformation(user_details: *users.Passwd, mode: Mode, name: bool) voi
 }
 
 
+fn print_terminator(zero_terminator: bool, comptime default: []const u8) void {
+    if (zero_terminator) {
+            print("\u{00}", .{});
+        } else {
+            print(default, .{});
+        }
+}

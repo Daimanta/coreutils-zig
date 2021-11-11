@@ -46,6 +46,11 @@ pub fn build(b: *std.build.Builder) void {
     hostname.setTarget(target);
     hostname.setBuildMode(mode);
     hostname.install();
+    
+    const id = b.addExecutable("id", "src/id.zig");
+    id.setTarget(target);
+    id.setBuildMode(mode);
+    id.install();
 
     const link = b.addExecutable("link", "src/link.zig");
     link.setTarget(target);
@@ -140,6 +145,7 @@ pub fn build(b: *std.build.Builder) void {
     if (os == .linux) {
         groups.linkSystemLibrary("c");
         hostid.linkSystemLibrary("c");
+        id.linkSystemLibrary("c");
         logname.linkSystemLibrary("c");
         mkfifo.linkSystemLibrary("c");
         nice.linkSystemLibrary("c");
