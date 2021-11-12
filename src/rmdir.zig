@@ -81,36 +81,40 @@ fn remove_dir(path: []const u8, remove_parents: bool, verbose: bool, ignore_non_
         const slash_position = strings.indexOf(path, '/');
         if (slash_position == null) {
             rmdir(path) catch |err| {
-            handleRmDirErrors(err);
-            return false;
+            handleRmDirErrors(err, path);
+            return errorReturnStatus(err, ignore_non_empty_fail);
             };
-        
         } else {
-        
+            
         }
     } else {
         rmdir(path) catch |err| {
-            handleRmDirErrors(err);
-            return false;
+            handleRmDirErrors(err, path);
+            return errorReturnStatus(err, ignore_non_empty_fail);
         };
     }
     return true;
 }
 
-fn handleRmDirErrors(err: DeleteDirError) void {
+fn handleRmDirErrors(err: DeleteDirError, path: []const u8) void {
     switch (err) {
-        error.AccessDenied => print("{s}: Access denied\n", .{application_name}),
-        error.BadPathName => print("{s}: Bad path name\n", .{application_name}),
-        error.DirNotEmpty => print("{s}: Directory not empty\n", .{application_name}),
-        error.FileBusy => print("{s}: Directory still busy\n", .{application_name}),
-        error.FileNotFound => print("{s}: Directory not found\n", .{application_name}),
+        error.AccessDenied => print("{s}: Access denied to '{s}'\n", .{application_name, path}),
+        error.BadPathName => print("{s}: Bad path name '{s}'\n", .{application_name, path}),
+        error.DirNotEmpty => print("{s}: Directory '{s}' not empty\n", .{application_name, path}),
+        error.FileBusy => print("{s}: Directory '{s}' still busy\n", .{application_name, path}),
+        error.FileNotFound => print("{s}: Directory '{s}' not found\n", .{application_name, path}),
         error.InvalidUtf8 => print("{s}: Invalid UTF-8 detected\n", .{application_name}),
         error.NameTooLong => print("{s}: Name too long\n", .{application_name}),
-        error.NotDir => print("{s}: File is not a directory\n", .{application_name}),
+        error.NotDir => print("{s}: '{s}' is not a directory\n", .{application_name, path}),
         error.ReadOnlyFileSystem => print("{s}: Read only filesystem\n", .{application_name}),
         error.SymLinkLoop => print("{s}: Symlink loop detected\n", .{application_name}),
         error.SystemResources => print("{s}: System resources error\n", .{application_name}),
         error.Unexpected => print("{s}: Unexpected error\n", .{application_name}),
         else => print("{s}: Unknown error\n", .{application_name})
     }
+}
+
+fn errorReturnStatus(err: DeleteDirError, ignore_non_empty_fail: bool) bool {
+      if (err == DeleteDirError.DirNotEmpty) return ignore_non_empty_fail;
+      return false;
 }
