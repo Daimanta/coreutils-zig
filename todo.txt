@@ -4,7 +4,6 @@
     277 realpath.c
     278 tee.c
     280 mknod.c
-    296 rmdir.c
     309 fold.c
     314 kill.c
     319 chgrp.c

@@ -96,6 +96,11 @@ pub fn build(b: *std.build.Builder) void {
     readlink.setTarget(target);
     readlink.setBuildMode(mode);
     readlink.install();
+    
+    const rmdir = b.addExecutable("rmdir", "src/rmdir.zig");
+    rmdir.setTarget(target);
+    rmdir.setBuildMode(mode);
+    rmdir.install();
 
     const sleep = b.addExecutable("sleep", "src/sleep.zig");
     sleep.setTarget(target);

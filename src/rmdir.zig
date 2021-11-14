@@ -77,21 +77,46 @@ fn remove_dir(path: []const u8, remove_parents: bool, verbose: bool, ignore_non_
         print("{s}: '/' cannot be deleted\n" ,.{application_name});
         return false;
     }
+    if (std.mem.eql(u8, path, "./") or std.mem.eql(u8, path, ".") or std.mem.eql(u8, path, "..")) {
+        print("{s}: '{s}' cannot be deleted\n" ,.{application_name, path});
+        return false;
+    }
+    
     if (remove_parents) {
         const slash_position = strings.indexOf(path, '/');
         if (slash_position == null) {
             rmdir(path) catch |err| {
-            handleRmDirErrors(err, path);
-            return errorReturnStatus(err, ignore_non_empty_fail);
+                handleRmDirErrors(err, path);
+                return errorReturnStatus(err, ignore_non_empty_fail);
             };
         } else {
-            
+            // Strip all last slashes, path is guaranteed to not be '/' so this does not fail
+            var used_path = path[0..strings.lastNonIndexOf(path, '/').? + 1];
+            rmdir(path) catch |err| {
+                    handleRmDirErrors(err, used_path);
+                    return errorReturnStatus(err, ignore_non_empty_fail);
+            };
+            if (verbose) print("{s}: removing directory '{s}'\n", .{application_name, used_path});
+            var current_slash: ?usize = strings.lastIndexOf(used_path, '/');
+            while (current_slash != null and current_slash.? > 0) {
+                const remove_path = used_path[0..current_slash.?];
+                if (std.mem.eql(u8, remove_path, ".") or std.mem.eql(u8, remove_path, "..")) {
+                    return true;
+                }
+                rmdir(remove_path) catch |err| {
+                    handleRmDirErrors(err, remove_path);
+                    return errorReturnStatus(err, ignore_non_empty_fail);
+                };
+                if (verbose) print("{s}: removing directory '{s}'\n", .{application_name, remove_path});
+                current_slash = strings.lastIndexOf(used_path[0..current_slash.?], '/');
+            }
         }
     } else {
         rmdir(path) catch |err| {
             handleRmDirErrors(err, path);
             return errorReturnStatus(err, ignore_non_empty_fail);
         };
+        if (verbose) print("{s}: removing directory '{s}'\n", .{application_name, path});
     }
     return true;
 }
