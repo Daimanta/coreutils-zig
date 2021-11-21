@@ -22,6 +22,15 @@ pub fn convertOptionalSentinelString(ptr: [*:0]u8) ?[]u8 {
     }
 }
 
+pub fn substringFromNullTerminatedSlice(str: []const u8) []const u8 {
+    const index = indexOf(str, 0);
+    if (index != null) {
+        return str[0..index.?];
+    } else {
+        return str;
+    }
+}
+
 pub fn indexOf(string: []const u8, match: u8) ?usize {
     for (string) |byte, i| {
         if (byte == match) return i;

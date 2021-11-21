@@ -4,6 +4,8 @@ const std = @import("std");
 const linux = std.os.linux;
 const pid_t = linux.pid_t;
 
+pub const default_utmp_locations = [_][]const u8{"/var/run/utmp", "/var/log/wtmp"};
+//"
 pub const UtType = enum(u16) {
     EMPTY,
     RUN_LVL,
@@ -47,6 +49,19 @@ pub const Utmp = extern struct {
     ut_addr_v6: [4]i32,
     __unused: [20]u8
 };
+
+pub fn determine_utmp_file() []const u8 {
+    var i: usize = 0;
+    // Last element is the default, use the last one if all others fail
+    while (i < default_utmp_locations.len - 1): (i += 1) {
+        const file = default_utmp_locations[i];
+        std.fs.cwd().access(file, .{}) catch |err| {
+            continue;
+        };
+        return default_utmp_locations[i];
+    }
+    return default_utmp_locations[default_utmp_locations.len - 1];
+}
 
 pub fn convertBytesToUtmpRecords(bytes: []u8) []Utmp{
     var aligned = @alignCast(@alignOf(Utmp), bytes);

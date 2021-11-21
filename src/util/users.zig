@@ -5,6 +5,7 @@ const linux = std.os.linux;
 const mem = std.mem;
 
 const strings = @import("strings.zig");
+const utmp = @import("util/utmp.zig");
 
 const uid = linux.uid_t;
 const gid = linux.gid_t;
