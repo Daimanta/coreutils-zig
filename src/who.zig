@@ -186,33 +186,82 @@ fn printInformation(alloc: *std.mem.Allocator, file_name: []const u8, boot: bool
             print("\n# users={d}\n", .{insert_index});
         } else {
             if (heading) {
-                print("{s: <8} {s: <12} {s: <16}", .{"NAME", "LINE", "TIME"});
+                if (message_status) {
+                    print("{s: <10} {s: <12} {s: <17}", .{"NAME", "LINE", "TIME"});
+                } else {
+                    print("{s: <8} {s: <12} {s: <17}", .{"NAME", "LINE", "TIME"});
+                }
                 if (login or runlevel or stdin_users) {
                     print("{s: <13}", .{"IDLE"});
                 }
-                if (login or processes or stdin_users) {
-                    print("{s: <4}", .{"PID"});
+                if (login or processes or stdin_users or boot) {
+                    print(" {s: <4}", .{"PID"});
                 }
-                print("{s: <8}", .{"COMMENT"});
+                print(" {s: <8}", .{"COMMENT"});
                 print("\n", .{});
             }
             for (utmp_logs) |log| {
-                if (log.ut_type == UtType.USER_PROCESS) {
+                if (log.ut_type == UtType.USER_PROCESS and (list_users or !(boot or dead))) {
+                    //print("{s}\n", .{log});
                     const username = strings.substringFromNullTerminatedSlice(log.ut_user[0..]);
                     const term = strings.substringFromNullTerminatedSlice(log.ut_line[0..]);
                     const time_struct = time_info.getLocalTimeStructFromi32(log.ut_tv.tv_sec);
-                    const time_string = time_info.toLocalDateTimeStringAlloc(default_allocator, time_struct);       
-                    //print("{s: <8} {s: <12} {s: <16} {s: <13} {s: <4} {s: <8} {s}\n", .{username, term, time_string, "", pid, log.ut_id, ""});
-                    print("{s: <8} {s: <12} {s: <16}", .{username, term, time_string});
+                    const time_string = time_info.toLocalDateTimeStringAlloc(default_allocator, time_struct);
+                    if (message_status) {
+                        print("{s: <8} +", .{username});
+                    } else {
+                        print("{s: <8}", .{username});
+                    }
+                    print(" {s: <12} {s: <16}", .{term, time_string});
                     try printConditionalDetails(alloc, log, login, runlevel, stdin_users, processes);
                 } else if (log.ut_type == UtType.BOOT_TIME and boot) {
-                
+                    const name = "";
+                    const term = "system boot";
+                    const time_struct = time_info.getLocalTimeStructFromi32(log.ut_tv.tv_sec);
+                    const time_string = time_info.toLocalDateTimeStringAlloc(default_allocator, time_struct);
+                    if (message_status) {
+                        print("{s: <10}", .{name});
+                    } else {
+                        print("{s: <8}", .{name});
+                    }
+                    print(" {s: <12} {s: <16}", .{term, time_string});
+                    print("\n", .{});
                 } else if (log.ut_type == UtType.RUN_LVL and runlevel) {
-                
+                    const name = "";
+                    const term = "run-level 5";
+                    const time_struct = time_info.getLocalTimeStructFromi32(log.ut_tv.tv_sec);
+                    const time_string = time_info.toLocalDateTimeStringAlloc(default_allocator, time_struct);
+                    if (message_status) {
+                        print("{s: <10}", .{name});
+                    } else {
+                        print("{s: <8}", .{name});
+                    }
+                    print(" {s: <12} {s: <16}", .{term, time_string});
+                    try printConditionalDetails(default_allocator, log, login, runlevel, stdin_users, processes);
                 } else if (log.ut_type == UtType.LOGIN_PROCESS and login) {
-                
+                    const name = "LOGIN";
+                    const term = strings.substringFromNullTerminatedSlice(log.ut_line[0..]);
+                    const time_struct = time_info.getLocalTimeStructFromi32(log.ut_tv.tv_sec);
+                    const time_string = time_info.toLocalDateTimeStringAlloc(default_allocator, time_struct);
+                    if (message_status) {
+                        print("{s: <10}", .{name});
+                    } else {
+                        print("{s: <8}", .{name});
+                    }
+                    print(" {s: <12} {s: <16}", .{term, time_string});
+                    print("\n", .{});
                 } else if (log.ut_type == UtType.DEAD_PROCESS and dead) {
-                
+                    const name = "";
+                    const term = strings.substringFromNullTerminatedSlice(log.ut_line[0..]);
+                    const time_struct = time_info.getLocalTimeStructFromi32(log.ut_tv.tv_sec);
+                    const time_string = time_info.toLocalDateTimeStringAlloc(default_allocator, time_struct);
+                    if (message_status) {
+                        print("{s: <10}", .{name});
+                    } else {
+                        print("{s: <8}", .{name});
+                    }
+                    print(" {s: <12} {s: <16}", .{term, time_string});
+                    try printConditionalDetails(default_allocator, log, login, runlevel, stdin_users, processes);
                 }
             }
             
@@ -227,12 +276,15 @@ fn printConditionalDetails(alloc: *std.mem.Allocator, utmp_log: utmp.Utmp, login
     }
     if (login or processes or stdin_users) {
         var pid: []const u8 = "";
-        if (utmp_log.ut_pid != 0) {
+        if (utmp_log.ut_pid != 0 and utmp_log.ut_type != UtType.RUN_LVL) {
             var buffer: [10]u8 = undefined;
             pid = std.fmt.bufPrintIntToSlice(buffer[0..], utmp_log.ut_pid, 10, false, std.fmt.FormatOptions{});
         }
         print("{s: <4}", .{pid});
     }
     print("{s: <8}", .{""});
+    if (utmp_log.ut_type == UtType.DEAD_PROCESS) {
+        print("term={d} exit={d}", .{utmp_log.ut_exit.e_termination, utmp_log.ut_exit.e_exit});
+    }
     print("\n", .{});
 }
