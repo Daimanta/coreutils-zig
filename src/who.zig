@@ -198,6 +198,9 @@ fn printInformation(alloc: *std.mem.Allocator, file_name: []const u8, boot: bool
                     print(" {s: <4}", .{"PID"});
                 }
                 print(" {s: <8}", .{"COMMENT"});
+                if (dead) {
+                    print(" {s: <8}", .{"EXIT"});
+                }
                 print("\n", .{});
             }
             for (utmp_logs) |log| {
@@ -213,7 +216,7 @@ fn printInformation(alloc: *std.mem.Allocator, file_name: []const u8, boot: bool
                         print("{s: <8}", .{username});
                     }
                     print(" {s: <12} {s: <16}", .{term, time_string});
-                    try printConditionalDetails(alloc, log, login, runlevel, stdin_users, processes);
+                    try printConditionalDetails(alloc, log, login, runlevel, stdin_users, processes, boot);
                 } else if (log.ut_type == UtType.BOOT_TIME and boot) {
                     const name = "";
                     const term = "system boot";
@@ -237,8 +240,9 @@ fn printInformation(alloc: *std.mem.Allocator, file_name: []const u8, boot: bool
                         print("{s: <8}", .{name});
                     }
                     print(" {s: <12} {s: <16}", .{term, time_string});
-                    try printConditionalDetails(default_allocator, log, login, runlevel, stdin_users, processes);
+                    try printConditionalDetails(alloc, log, login, runlevel, stdin_users, processes, boot);
                 } else if (log.ut_type == UtType.LOGIN_PROCESS and login) {
+                    //print("{s}\n", .{log});
                     const name = "LOGIN";
                     const term = strings.substringFromNullTerminatedSlice(log.ut_line[0..]);
                     const time_struct = time_info.getLocalTimeStructFromi32(log.ut_tv.tv_sec);
@@ -249,7 +253,7 @@ fn printInformation(alloc: *std.mem.Allocator, file_name: []const u8, boot: bool
                         print("{s: <8}", .{name});
                     }
                     print(" {s: <12} {s: <16}", .{term, time_string});
-                    print("\n", .{});
+                    try printConditionalDetails(alloc, log, login, runlevel, stdin_users, processes, boot);
                 } else if (log.ut_type == UtType.DEAD_PROCESS and dead) {
                     const name = "";
                     const term = strings.substringFromNullTerminatedSlice(log.ut_line[0..]);
@@ -261,7 +265,7 @@ fn printInformation(alloc: *std.mem.Allocator, file_name: []const u8, boot: bool
                         print("{s: <8}", .{name});
                     }
                     print(" {s: <12} {s: <16}", .{term, time_string});
-                    try printConditionalDetails(default_allocator, log, login, runlevel, stdin_users, processes);
+                    try printConditionalDetails(alloc, log, login, runlevel, stdin_users, processes, boot);
                 }
             }
             
@@ -270,19 +274,29 @@ fn printInformation(alloc: *std.mem.Allocator, file_name: []const u8, boot: bool
     }
 }
 
-fn printConditionalDetails(alloc: *std.mem.Allocator, utmp_log: utmp.Utmp, login: bool, runlevel: bool, stdin_users: bool, processes: bool) !void {
+fn printConditionalDetails(alloc: *std.mem.Allocator, utmp_log: utmp.Utmp, login: bool, runlevel: bool, stdin_users: bool, processes: bool, boot: bool) !void {
     if (login or runlevel or stdin_users) {
         print("{s: <13}", .{""});
     }
-    if (login or processes or stdin_users) {
+    if (login or processes or stdin_users or boot) {
         var pid: []const u8 = "";
         if (utmp_log.ut_pid != 0 and utmp_log.ut_type != UtType.RUN_LVL) {
             var buffer: [10]u8 = undefined;
             pid = std.fmt.bufPrintIntToSlice(buffer[0..], utmp_log.ut_pid, 10, false, std.fmt.FormatOptions{});
         }
-        print("{s: <4}", .{pid});
+        print("{s: >5}", .{pid});
     }
-    print("{s: <8}", .{""});
+
+    if (utmp_log.ut_type == UtType.RUN_LVL or utmp_log.ut_type == UtType.BOOT_TIME) {
+        print(" {s: <9}", .{""});
+    } else {
+        if (utmp_log.ut_type == UtType.USER_PROCESS) {
+            print(" ({s})", .{strings.substringFromNullTerminatedSlice(utmp_log.ut_host[0..])});
+        } else {
+            print(" id={s: <6}", .{strings.substringFromNullTerminatedSlice(utmp_log.ut_line[0..])});
+        }
+    }
+    
     if (utmp_log.ut_type == UtType.DEAD_PROCESS) {
         print("term={d} exit={d}", .{utmp_log.ut_exit.e_termination, utmp_log.ut_exit.e_exit});
     }
