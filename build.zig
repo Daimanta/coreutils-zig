@@ -65,6 +65,7 @@ pub fn build(b: *std.build.Builder) void {
     const mkdir = b.addExecutable("mkdir", "src/mkdir.zig");
     mkdir.setTarget(target);
     mkdir.setBuildMode(mode);
+    mkdir.addPackagePath("libselinux", "/lib/x86_64-linux-gnu/libselinux.so.1");
     mkdir.install();
     
     const mkfifo = b.addExecutable("mkfifo", "src/mkfifo.zig");

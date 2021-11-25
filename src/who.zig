@@ -276,7 +276,11 @@ fn printInformation(alloc: *std.mem.Allocator, file_name: []const u8, boot: bool
 
 fn printConditionalDetails(alloc: *std.mem.Allocator, utmp_log: utmp.Utmp, login: bool, runlevel: bool, stdin_users: bool, processes: bool, boot: bool) !void {
     if (login or runlevel or stdin_users) {
-        print("{s: <13}", .{""});
+        if (utmp_log.ut_type == UtType.USER_PROCESS) {
+            print("   {s: <10}", .{"."});
+        } else {
+            print("   {s: <10}", .{""});
+        }
     }
     if (login or processes or stdin_users or boot) {
         var pid: []const u8 = "";
@@ -291,7 +295,13 @@ fn printConditionalDetails(alloc: *std.mem.Allocator, utmp_log: utmp.Utmp, login
         print(" {s: <9}", .{""});
     } else {
         if (utmp_log.ut_type == UtType.USER_PROCESS) {
-            print(" ({s})", .{strings.substringFromNullTerminatedSlice(utmp_log.ut_host[0..])});
+            const host_ref = strings.substringFromNullTerminatedSlice(utmp_log.ut_host[0..]);
+            if (host_ref.len > 0) {
+                print(" ({s})", .{strings.substringFromNullTerminatedSlice(utmp_log.ut_host[0..])});
+            } else {
+                print(" ", .{});
+            }
+            
         } else {
             print(" id={s: <6}", .{strings.substringFromNullTerminatedSlice(utmp_log.ut_line[0..])});
         }
