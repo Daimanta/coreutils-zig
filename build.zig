@@ -153,6 +153,7 @@ pub fn build(b: *std.build.Builder) void {
         hostid.linkSystemLibrary("c");
         id.linkSystemLibrary("c");
         logname.linkSystemLibrary("c");
+        mkdir.linkSystemLibrary("c");
         mkfifo.linkSystemLibrary("c");
         nice.linkSystemLibrary("c");
         nproc.linkSystemLibrary("c");
