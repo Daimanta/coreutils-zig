@@ -1,4 +1,5 @@
 const std = @import("std");
+const fs = std.fs;
 const os = std.os;
 
 const mem = std.mem;
@@ -8,6 +9,8 @@ const strings = @import("util/strings.zig");
 const version = @import("util/version.zig");
 
 const Allocator = std.mem.Allocator;
+const OpenError = os.OpenError;
+
 const fsync = os.fsync;
 const fdatasync = os.fdatasync;
 const print = std.debug.print;
@@ -88,7 +91,25 @@ fn synchronize(sync_type: SyncType, targets: [] const []const u8) void{
     }
     
     for (targets) |target| {
-        print("{s}\n", .{target});
+        const result = synchronize_target(sync_type, target);
     }
     
+}
+
+fn synchronize_target(sync_type: SyncType, target: []const u8) bool {
+    const handle = os.open(target, os.O_RDONLY, 0) catch |err| {
+        switch (err) {
+            OpenError.FileNotFound => print("{s}: File '{s}' not found.\n", .{application_name, target}),
+            OpenError.IsDir => print("{s}: Target '{s}' is a directory.\n", .{application_name, target}),
+            OpenError.AccessDenied => print("{s}: Access to file '{s}' denied.\n", .{application_name, target}),
+            else => print("Unknown error.\n", .{}),
+        }
+        return false;
+    };
+    switch(sync_type) {
+        SyncType.DATA => fdatasync(handle) catch return false,
+        SyncType.FILE => fsync(handle) catch return false,
+        SyncType.FILE_SYSTEM => syncfs(handle) catch return false   
+    }
+    return true;
 }

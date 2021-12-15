@@ -112,6 +112,11 @@ pub fn build(b: *std.build.Builder) void {
     sum.setTarget(target);
     sum.setBuildMode(mode);
     sum.install();
+    
+    const sync = b.addExecutable("sync", "src/sync.zig");
+    sync.setTarget(target);
+    sync.setBuildMode(mode);
+    sync.install();
 
     const true_app = b.addExecutable("true", "src/true.zig");
     true_app.setTarget(target);
