@@ -13,6 +13,7 @@ const Allocator = std.mem.Allocator;
 const time_t = time_info.time_t;
 
 const allocator = std.heap.page_allocator;
+const print = std.debug.print;
 
 const application_name = "realpath";
 
@@ -82,7 +83,13 @@ pub fn main() !void {
 }
 
 fn checkInconsistencies(must_exist: bool, may_exist: bool, logical: bool, physical: bool, strip: bool) void {
+    if (must_exist and may_exist) {
+        print("-e and -m cannot be active at the same time. Exiting.\n", .{});
+    }
     
+    if (physical and strip) {
+        print("-P and -ms cannot be active at the same time. Exiting.\n", .{});
+    }
 }
 
 
