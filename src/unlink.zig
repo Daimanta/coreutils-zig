@@ -34,8 +34,6 @@ pub fn main() !void {
     var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
     defer args.deinit();
 
-    var silent = false;
-
     if (args.flag("--help")) {
         std.debug.print(help_message, .{});
         std.os.exit(0);

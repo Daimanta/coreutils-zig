@@ -9,7 +9,6 @@ const system = @import("util/system.zig");
 
 const ChildProcess = std.ChildProcess;
 const Allocator = std.mem.Allocator;
-const time_t = time_info.time_t;
 const PriorityType = system.PriorityType;
 const SpawnError = ChildProcess.SpawnError;
 const SetPriorityError = system.SetPriorityError;
@@ -71,7 +70,7 @@ pub fn main() !void {
 
     var adjustment: i32 = 0;
     if (adjustment_string != null) {
-        adjustment = std.fmt.parseInt(i32, adjustment_string.?, 10) catch |err| {
+        adjustment = std.fmt.parseInt(i32, adjustment_string.?, 10) catch {
             std.debug.print("{s}: invalid number: '{s}'\n", .{application_name, adjustment_string});
             std.os.exit(1);
         };

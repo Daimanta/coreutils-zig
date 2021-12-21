@@ -11,7 +11,7 @@ const version = @import("util/version.zig");
 const Allocator = std.mem.Allocator;
 
 const allocator = std.heap.page_allocator;
-const kernel_stat = linux.kernel_stat;
+const kernel_stat = linux.Stat;
 
 const application_name = "readlink";
 const help_message =
@@ -71,8 +71,6 @@ pub fn main() !void {
     var diag = clap.Diagnostic{};
     var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
 
-    var resolve_symlink = false;
-
     if (args.flag("--help")) {
         std.debug.print(help_message, .{});
         std.os.exit(0);
@@ -106,7 +104,6 @@ pub fn main() !void {
     if (find_all_links) read_mode = ReadMode.FOLLOW_ALL;
     if (accept_missing_links) read_mode = ReadMode.ALLOW_MISSING;
 
-    const verbosity = verbose;
     var output_mode: OutputMode = OutputMode.NORMAL;
     if (verbose) output_mode = OutputMode.VERBOSE;
     if (quiet) output_mode = OutputMode.QUIET;

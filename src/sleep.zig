@@ -42,8 +42,6 @@ pub fn main() !void {
     var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
     defer args.deinit();
 
-    var resolve_symlink = false;
-
     if (args.flag("--help")) {
         std.debug.print(help_message, .{});
         std.os.exit(0);
@@ -62,7 +60,7 @@ pub fn main() !void {
     var nanos: u64 = 0;
 
     for (arguments[1..]) |argument| {
-        updateTimes(argument, &seconds, &nanos) catch |err| {
+        updateTimes(argument, &seconds, &nanos) catch {
             std.debug.print("sleep: invalid time interval '{s}'\n", .{argument});
             std.os.exit(1);
         };
@@ -87,7 +85,7 @@ fn updateTimes(string: []const u8, seconds: *u64, nanos: *u64) !void {
     var double: f64 = -1.0;
     var int: u64 = 0xffffffffffffffff;
     try parseString(string[0..i+1], &double, &int);
-    const timeType = getTimeType(string[i+1..]) catch |err| {
+    const timeType = getTimeType(string[i+1..]) catch {
         std.debug.print("sleep: invalid time interval '{s}'\n", .{string});
         std.os.exit(1);
     };

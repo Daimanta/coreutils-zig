@@ -36,9 +36,9 @@ pub fn setHostname(name: []const u8) SetHostnameError!void {
     if (result != 0) {
         const errno = linux.getErrno(result);
         return switch (errno) {
-            linux.EPERM => SetHostnameError.AccessDenied,
-            linux.EFAULT => SetHostnameError.InvalidAddress,
-            linux.EINVAL => SetHostnameError.NegativeLength,
+            .PERM => SetHostnameError.AccessDenied,
+            .FAULT => SetHostnameError.InvalidAddress,
+            .INVAL => SetHostnameError.NegativeLength,
             else => unreachable
         };
     }
@@ -52,9 +52,9 @@ pub fn setPriority(which: PriorityType, who: id_t, prio: c_int) SetPriorityError
     const result = setpriority(@enumToInt(which), who, prio);
     if (result != 0) {
         return switch (std.c.getErrno(result)) {
-            linux.ESRCH, linux.EINVAL => SetPriorityError.ProcessNotFound,
-            linux.EPERM => SetPriorityError.ProcessUserMismatch,
-            linux.EACCES => SetPriorityError.NoRightsForNiceValue,
+            .SRCH, .INVAL => SetPriorityError.ProcessNotFound,
+            .PERM => SetPriorityError.ProcessUserMismatch,
+            .ACCES => SetPriorityError.NoRightsForNiceValue,
             else => SetPriorityError.UnknownError
         };
     }

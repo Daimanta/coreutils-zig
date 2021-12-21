@@ -78,10 +78,12 @@ pub fn main() !void {
                 if (argument.len > 0 and argument[0] != '-') {
                     var user_null_pointer = try strings.toNullTerminatedPointer(argument, allocator);
                     defer allocator.free(user_null_pointer);
-                    if (users.getUserByName(user_null_pointer)) |pw| {
-                        try displayGroup(pw, true);
-                    } else |err| {
+                    var user: ?*users.Passwd = users.getUserByName(user_null_pointer) catch blk: {
                         std.debug.print("{s}: '{s}': no such user\n", .{application_name, argument});
+                        break :blk null;
+                    };
+                    if (user != null) {
+                        try displayGroup(user.?, true);
                     }
                 }
             }

@@ -91,13 +91,13 @@ fn synchronize(sync_type: SyncType, targets: [] const []const u8) void{
     }
     
     for (targets) |target| {
-        const result = synchronize_target(sync_type, target);
+        _ = synchronize_target(sync_type, target);
     }
     
 }
 
 fn synchronize_target(sync_type: SyncType, target: []const u8) bool {
-    const handle = os.open(target, os.O_RDONLY, 0) catch |err| {
+    const handle = os.open(target, os.O.RDONLY, 0) catch |err| {
         switch (err) {
             OpenError.FileNotFound => print("{s}: File '{s}' not found.\n", .{application_name, target}),
             OpenError.IsDir => print("{s}: Target '{s}' is a directory.\n", .{application_name, target}),

@@ -43,8 +43,8 @@ pub const Values = enum {
 ///         * "-abc value"
 ///         * "-abc=value"
 ///         * "-abcvalue"
-///   * Long ("--long-param"): Should be used for less common parameters, or when no single character
-///                            can describe the paramter.
+///   * Long ("--long-param"): Should be used for less common parameters, or when no single
+///                            character can describe the paramter.
 ///     * They can take a value two different ways.
 ///       * "--long-param value"
 ///       * "--long-param=value"
@@ -63,8 +63,18 @@ pub fn Param(comptime Id: type) type {
 /// Takes a string and parses it to a Param(Help).
 /// This is the reverse of 'help' but for at single parameter only.
 pub fn parseParam(line: []const u8) !Param(Help) {
+    // This function become a lot less ergonomic to use once you hit the eval branch quota. To
+    // avoid this we pick a sane default. Sadly, the only sane default is the biggest possible
+    // value. If we pick something a lot smaller and a user hits the quota after that, they have
+    // no way of overriding it, since we set it here.
+    // We can recosider this again if:
+    // * We get parseParams: https://github.com/Hejsil/zig-clap/issues/39
+    // * We get a larger default branch quota in the zig compiler (stage 2).
+    // * Someone points out how this is a really bad idea.
+    @setEvalBranchQuota(std.math.maxInt(u32));
+
     var found_comma = false;
-    var it = mem.tokenize(line, " \t");
+    var it = mem.tokenize(u8, line, " \t");
     var param_str = it.next() orelse return error.NoParamFound;
 
     const short_name = if (!mem.startsWith(u8, param_str, "--") and
@@ -100,13 +110,12 @@ pub fn parseParam(line: []const u8) !Param(Help) {
     } else null;
 
     var res = parseParamRest(it.rest());
-    res.names.long = param_str[2..];
+    res.names.long = long_name;
     res.names.short = short_name;
     return res;
 }
 
 fn parseParamRest(line: []const u8) Param(Help) {
-    @setEvalBranchQuota(10000);
     if (mem.startsWith(u8, line, "<")) blk: {
         const len = mem.indexOfScalar(u8, line, '>') orelse break :blk;
         const takes_many = mem.startsWith(u8, line[len + 1 ..], "...");
@@ -220,9 +229,18 @@ pub const Diagnostic = struct {
             Arg{ .prefix = "", .name = diag.arg };
 
         switch (err) {
-            error.DoesntTakeValue => try stream.print("The argument '{s}{s}' does not take a value\n", .{ a.prefix, a.name }),
-            error.MissingValue => try stream.print("The argument '{s}{s}' requires a value but none was supplied\n", .{ a.prefix, a.name }),
-            error.InvalidArgument => try stream.print("Invalid argument '{s}{s}'\n", .{ a.prefix, a.name }),
+            error.DoesntTakeValue => try stream.print(
+                "The argument '{s}{s}' does not take a value\n",
+                .{ a.prefix, a.name },
+            ),
+            error.MissingValue => try stream.print(
+                "The argument '{s}{s}' requires a value but none was supplied\n",
+                .{ a.prefix, a.name },
+            ),
+            error.InvalidArgument => try stream.print(
+                "Invalid argument '{s}{s}'\n",
+                .{ a.prefix, a.name },
+            ),
             else => try stream.print("Error while parsing arguments: {s}\n", .{@errorName(err)}),
         }
     }
@@ -237,15 +255,51 @@ fn testDiag(diag: Diagnostic, err: anyerror, expected: []const u8) !void {
 
 test "Diagnostic.report" {
     try testDiag(.{ .arg = "c" }, error.InvalidArgument, "Invalid argument 'c'\n");
-    try testDiag(.{ .name = .{ .long = "cc" } }, error.InvalidArgument, "Invalid argument '--cc'\n");
-    try testDiag(.{ .name = .{ .short = 'c' } }, error.DoesntTakeValue, "The argument '-c' does not take a value\n");
-    try testDiag(.{ .name = .{ .long = "cc" } }, error.DoesntTakeValue, "The argument '--cc' does not take a value\n");
-    try testDiag(.{ .name = .{ .short = 'c' } }, error.MissingValue, "The argument '-c' requires a value but none was supplied\n");
-    try testDiag(.{ .name = .{ .long = "cc" } }, error.MissingValue, "The argument '--cc' requires a value but none was supplied\n");
-    try testDiag(.{ .name = .{ .short = 'c' } }, error.InvalidArgument, "Invalid argument '-c'\n");
-    try testDiag(.{ .name = .{ .long = "cc" } }, error.InvalidArgument, "Invalid argument '--cc'\n");
-    try testDiag(.{ .name = .{ .short = 'c' } }, error.SomethingElse, "Error while parsing arguments: SomethingElse\n");
-    try testDiag(.{ .name = .{ .long = "cc" } }, error.SomethingElse, "Error while parsing arguments: SomethingElse\n");
+    try testDiag(
+        .{ .name = .{ .long = "cc" } },
+        error.InvalidArgument,
+        "Invalid argument '--cc'\n",
+    );
+    try testDiag(
+        .{ .name = .{ .short = 'c' } },
+        error.DoesntTakeValue,
+        "The argument '-c' does not take a value\n",
+    );
+    try testDiag(
+        .{ .name = .{ .long = "cc" } },
+        error.DoesntTakeValue,
+        "The argument '--cc' does not take a value\n",
+    );
+    try testDiag(
+        .{ .name = .{ .short = 'c' } },
+        error.MissingValue,
+        "The argument '-c' requires a value but none was supplied\n",
+    );
+    try testDiag(
+        .{ .name = .{ .long = "cc" } },
+        error.MissingValue,
+        "The argument '--cc' requires a value but none was supplied\n",
+    );
+    try testDiag(
+        .{ .name = .{ .short = 'c' } },
+        error.InvalidArgument,
+        "Invalid argument '-c'\n",
+    );
+    try testDiag(
+        .{ .name = .{ .long = "cc" } },
+        error.InvalidArgument,
+        "Invalid argument '--cc'\n",
+    );
+    try testDiag(
+        .{ .name = .{ .short = 'c' } },
+        error.SomethingElse,
+        "Error while parsing arguments: SomethingElse\n",
+    );
+    try testDiag(
+        .{ .name = .{ .long = "cc" } },
+        error.SomethingElse,
+        "Error while parsing arguments: SomethingElse\n",
+    );
 }
 
 pub fn Args(comptime Id: type, comptime params: []const Param(Id)) type {
@@ -283,7 +337,7 @@ pub const ParseOptions = struct {
     ///       `parse`, `parseEx` does not wrap the allocator so the heap allocator can be
     ///       quite expensive. (TODO: Can we pick a better default? For `parse`, this allocator
     ///       is fine, as it wraps it in an arena)
-    allocator: *mem.Allocator = heap.page_allocator,
+    allocator: mem.Allocator = heap.page_allocator,
     diagnostic: ?*Diagnostic = null,
 };
 
@@ -294,19 +348,17 @@ pub fn parse(
     opt: ParseOptions,
 ) !Args(Id, params) {
     var iter = try args.OsIterator.init(opt.allocator);
-    var res = Args(Id, params){
-        .arena = iter.arena,
-        .exe_arg = iter.exe_arg,
-        .clap = undefined,
-    };
-
-    // Let's reuse the arena from the `OSIterator` since we already have
-    // it.
-    res.clap = try parseEx(Id, params, &iter, .{
-        .allocator = &res.arena.allocator,
+    const clap = try parseEx(Id, params, &iter, .{
+        // Let's reuse the arena from the `OSIterator` since we already have it.
+        .allocator = iter.arena.allocator(),
         .diagnostic = opt.diagnostic,
     });
-    return res;
+
+    return Args(Id, params){
+        .exe_arg = iter.exe_arg,
+        .arena = iter.arena,
+        .clap = clap,
+    };
 }
 
 pub fn parseAndHandleErrors(
@@ -316,7 +368,7 @@ pub fn parseAndHandleErrors(
     application_name: [] const u8,
     exit_code: u8
     ) Args(Id, params) {
-    return parse(Id, params, opt) catch |err| {
+    return parse(Id, params, opt) catch {
         const diag = opt.diagnostic orelse std.os.exit(exit_code);
         if (diag.name.short == null and diag.name.long == null) {
             std.debug.print("Non-option argument supplied which was not expected. Exiting.\n", .{});
@@ -379,7 +431,16 @@ pub fn helpFull(
         try stream.print("\t", .{});
         try printParam(cs.writer(), Id, param, Error, context, valueText);
         try stream.writeByteNTimes(' ', max_spacing - @intCast(usize, cs.bytes_written));
-        try stream.print("\t{s}\n", .{try helpText(context, param)});
+        const help_text = try helpText(context, param);
+        var help_text_line_it = mem.split(u8, help_text, "\n");
+        var indent_line = false;
+        while (help_text_line_it.next()) |line| : (indent_line = true) {
+            if (indent_line) {
+                try stream.print("\t", .{});
+                try stream.writeByteNTimes(' ', max_spacing);
+            }
+            try stream.print("\t{s}\n", .{line});
+        }
     }
 }
 
@@ -480,9 +541,12 @@ test "clap.help" {
             parseParam("--aa              Long flag.") catch unreachable,
             parseParam("--bb <V2>         Long option.") catch unreachable,
             parseParam("-c, --cc          Both flag.") catch unreachable,
+            parseParam("--complicate      Flag with a complicated and\nvery long description that\nspans multiple lines.") catch unreachable,
             parseParam("-d, --dd <V3>     Both option.") catch unreachable,
             parseParam("-d, --dd <V3>...  Both repeated option.") catch unreachable,
-            parseParam("<P>               Positional. This should not appear in the help message.") catch unreachable,
+            parseParam(
+                "<P>               Positional. This should not appear in the help message.",
+            ) catch unreachable,
         },
     );
 
@@ -492,6 +556,9 @@ test "clap.help" {
         "\t    --aa        \tLong flag.\n" ++
         "\t    --bb <V2>   \tLong option.\n" ++
         "\t-c, --cc        \tBoth flag.\n" ++
+        "\t    --complicate\tFlag with a complicated and\n" ++
+        "\t                \tvery long description that\n" ++
+        "\t                \tspans multiple lines.\n" ++
         "\t-d, --dd <V3>   \tBoth option.\n" ++
         "\t-d, --dd <V3>...\tBoth repeated option.\n";
 
@@ -532,12 +599,16 @@ pub fn usageFull(
 
         const prefix = if (param.names.short) |_| "-" else "--";
 
-        // Seems the zig compiler is being a little wierd. I doesn't allow me to write
-        // @as(*const [1]u8, s)                  VVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
-        const name = if (param.names.short) |*s| @ptrCast([*]const u8, s)[0..1] else param.names.long orelse {
-            positional = param;
-            continue;
-        };
+        const name = if (param.names.short) |*s|
+            // Seems the zig compiler is being a little wierd. I doesn't allow me to write
+            // @as(*const [1]u8, s)
+            @ptrCast([*]const u8, s)[0..1]
+        else
+            param.names.long orelse {
+                positional = param;
+                continue;
+            };
+
         if (cos.bytes_written != 0)
             try cs.writeByte(' ');
 
@@ -617,16 +688,19 @@ test "usage" {
     try testUsage("<file>", &.{
         try parseParam("<file>"),
     });
-    try testUsage("[-ab] [-c <value>] [-d <v>] [--e] [--f] [--g <value>] [--h <v>] [-i <v>...] <file>", &.{
-        try parseParam("-a"),
-        try parseParam("-b"),
-        try parseParam("-c <value>"),
-        try parseParam("-d <v>"),
-        try parseParam("--e"),
-        try parseParam("--f"),
-        try parseParam("--g <value>"),
-        try parseParam("--h <v>"),
-        try parseParam("-i <v>..."),
-        try parseParam("<file>"),
-    });
+    try testUsage(
+        "[-ab] [-c <value>] [-d <v>] [--e] [--f] [--g <value>] [--h <v>] [-i <v>...] <file>",
+        &.{
+            try parseParam("-a"),
+            try parseParam("-b"),
+            try parseParam("-c <value>"),
+            try parseParam("-d <v>"),
+            try parseParam("--e"),
+            try parseParam("--f"),
+            try parseParam("--g <value>"),
+            try parseParam("--h <v>"),
+            try parseParam("-i <v>..."),
+            try parseParam("<file>"),
+        },
+    );
 }

@@ -5,7 +5,7 @@ const linux = std.os.linux;
 
 const strings = @import("strings.zig");
 
-const kernel_stat = linux.kernel_stat;
+const kernel_stat = linux.Stat;
 
 const Allocator = std.mem.Allocator;
 pub const mode_t = linux.mode_t;
@@ -38,7 +38,7 @@ pub fn fileExists(stat: kernel_stat) bool {
     return stat.nlink > 0;
 }
 
-pub fn getAbsolutePath(allocator: *Allocator, path: []const u8) ![]u8 {
+pub fn getAbsolutePath(allocator: Allocator, path: []const u8) ![]u8 {
     const absolute_path_without_slash = try std.fs.path.relative(allocator, "/", path);
     defer allocator.free(absolute_path_without_slash);
     var result = try allocator.alloc(u8, absolute_path_without_slash.len + 1);
@@ -54,15 +54,15 @@ pub fn makeFifo(path: []const u8, mode: mode_t) MakeFifoError!void{
     if (result != 0) {
         const errno = std.c.getErrno(result);
         return switch (errno) {
-            linux.EACCES => MakeFifoError.WritePermissionDenied,
-            linux.EDQUOT => MakeFifoError.QuotaReached,
-            linux.EEXIST => MakeFifoError.FileAlreadyExists,
-            linux.ENAMETOOLONG => MakeFifoError.NameTooLong,
-            linux.ENOENT,linux.ENOTDIR  => MakeFifoError.IncorrectPath,
-            linux.ENOSPC => MakeFifoError.NoSpaceLeft,
-            linux.EROFS => MakeFifoError.ReadOnlyFileSystem,
-            linux.EOPNOTSUPP => MakeFifoError.NotSupported,
-            linux.ENOSYS => MakeFifoError.NotImplemented,
+            .ACCES => MakeFifoError.WritePermissionDenied,
+            .DQUOT => MakeFifoError.QuotaReached,
+            .EXIST => MakeFifoError.FileAlreadyExists,
+            .NAMETOOLONG => MakeFifoError.NameTooLong,
+            .NOENT,.NOTDIR  => MakeFifoError.IncorrectPath,
+            .NOSPC => MakeFifoError.NoSpaceLeft,
+            .ROFS => MakeFifoError.ReadOnlyFileSystem,
+            .OPNOTSUPP => MakeFifoError.NotSupported,
+            .NOSYS => MakeFifoError.NotImplemented,
             else => blk: {
                 std.debug.print("Unknown error encountered: {d}\n", .{errno});
                 break :blk MakeFifoError.Unknown;

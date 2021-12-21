@@ -159,9 +159,9 @@ pub fn getModeFromString(string: []const u8) ModeError!mode_t {
     var modifiers = ArrayList(ModeChange).init(default_allocator);
     defer modifiers.deinit();
 
-    var tokenIterator = std.mem.tokenize(string, ",");
+    var tokenIterator = std.mem.tokenize(u8, string, ",");
     var items: u32 = 0;
-    while (tokenIterator.next()) |token| {
+    while (tokenIterator.next()) |_| {
         items += 1;
     }
 
@@ -400,21 +400,21 @@ test "mode set string parsing" {
 }
 
 test "invalid number mode" {
-    const result = getModeFromString("10000") catch |err| {
+    _ = getModeFromString("10000") catch {
         return;
     };
     try testing.expect(false);
 }
 
 test "invalid combination of string and number" {
-    const result = getModeFromString("a=rw,755") catch |err| {
+    _ = getModeFromString("a=rw,755") catch {
         return;
     };
     try testing.expect(false);
 }
 
 test "no modifier specified" {
-    const result = getModeFromString("r") catch |err| {
+    _ = getModeFromString("r") catch {
         return;
     };
     try testing.expect(false);

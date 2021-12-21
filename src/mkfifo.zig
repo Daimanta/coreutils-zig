@@ -10,7 +10,6 @@ const version = @import("util/version.zig");
 const system = @import("util/system.zig");
 
 const Allocator = std.mem.Allocator;
-const time_t = time_info.time_t;
 const mode_t = mode.mode_t;
 const MakeFifoError = fileinfo.MakeFifoError;
 

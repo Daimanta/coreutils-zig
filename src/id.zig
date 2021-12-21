@@ -9,7 +9,6 @@ const users = @import("util/users.zig");
 
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
-const UtType = utmp.UtType;
 
 const default_allocator = std.heap.page_allocator;
 const print = std.debug.print;
@@ -73,6 +72,7 @@ pub fn main() !void {
     }
     
     const security_context = args.flag("-Z");
+    _ = security_context;
     const group_id = args.flag("-g");
     const all_groups = args.flag("-G");
     const name = args.flag("-n");
@@ -120,7 +120,7 @@ pub fn main() !void {
 }
 
 fn printUsernameInformation(user: []const u8, mode: Mode, name: bool, zero_terminator: bool) void {
-    const user_details: *users.Passwd = users.getUserByNameA(user) catch |err| {
+    const user_details: *users.Passwd = users.getUserByNameA(user) catch {
             print("{s}: user '{s}' not found\n", .{application_name, user});
             return;
     };

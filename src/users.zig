@@ -60,7 +60,7 @@ pub fn main() !void {
     try printUsers(allocator, current_user_file);
 }
 
-fn printUsers(alloc: *std.mem.Allocator, file_name: []const u8) !void {
+fn printUsers(alloc: std.mem.Allocator, file_name: []const u8) !void {
     const file_contents = fs.cwd().readFileAlloc(alloc, file_name, 1 << 20) catch "";
     if (file_contents.len > 0 and file_contents.len % @sizeOf(utmp.Utmp) == 0) {
         const utmp_logs = utmp.convertBytesToUtmpRecords(file_contents);

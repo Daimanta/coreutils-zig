@@ -40,8 +40,6 @@ pub fn main() !void {
         std.os.exit(0);
     }
 
-    const arguments = try std.process.argsAlloc(allocator);
-
     const c_hostid = gethostid();
     const hostid = @intCast(u32, c_hostid);
     std.debug.print("{x:0>8}\n", .{hostid});

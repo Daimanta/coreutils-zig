@@ -163,7 +163,7 @@ fn create_dir(path: []const u8, create_parents: bool, verbose: bool, used_mode: 
         const last_slash = strings.lastIndexOf(used_dir, '/');
         if (last_slash != null) {
             const check_path = used_dir[0..last_slash.?+1];
-            const open_dir_test = std.fs.cwd().openDir(check_path, .{}) catch |err| {
+            _ = std.fs.cwd().openDir(check_path, .{}) catch |err| {
                 handleOpenDirErrors(err, check_path);
                 return false;
             };

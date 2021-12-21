@@ -55,7 +55,7 @@ pub fn determine_utmp_file() []const u8 {
     // Last element is the default, use the last one if all others fail
     while (i < default_utmp_locations.len - 1): (i += 1) {
         const file = default_utmp_locations[i];
-        std.fs.cwd().access(file, .{}) catch |err| {
+        std.fs.cwd().access(file, .{}) catch {
             continue;
         };
         return default_utmp_locations[i];

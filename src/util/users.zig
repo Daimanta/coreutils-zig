@@ -5,7 +5,7 @@ const linux = std.os.linux;
 const mem = std.mem;
 
 const strings = @import("strings.zig");
-const utmp = @import("util/utmp.zig");
+const utmp = @import("utmp.zig");
 
 const uid = linux.uid_t;
 const gid = linux.gid_t;
@@ -57,7 +57,7 @@ pub fn getUserByName(name: [*:0]u8) !*Passwd {
 pub extern fn getgrgid (gid: gid) callconv(.C) *Group;
 extern fn getgrouplist(user: [*:0]const u8, group: gid, groups: [*]gid, ngroups: *c_int) callconv(.C) c_int;
 
-pub fn getGroupsFromPasswd(user: *Passwd, allocator: *Allocator) ![]gid {
+pub fn getGroupsFromPasswd(user: *Passwd, allocator: Allocator) ![]gid {
     var user_gid: gid = user.pw_gid;
     var groups: [*]gid = undefined;
     var group_count: c_int = 0;

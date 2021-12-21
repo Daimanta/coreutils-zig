@@ -95,8 +95,6 @@ pub fn main() !void {
     var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
     defer args.deinit();
 
-    var silent = false;
-
     if (args.flag("--help")) {
         std.debug.print(help_message, .{});
         std.os.exit(0);
@@ -188,7 +186,7 @@ fn sumFile(file_path: []const u8, algorithm: Algorithm, print_name: bool) void {
 
 fn sumStdin(algorithm: Algorithm) void {
     const stdin = std.io.getStdIn().reader();
-    const bytes = stdin.readAllAlloc(default_allocator, 1 << 30) catch |err|{
+    const bytes = stdin.readAllAlloc(default_allocator, 1 << 30) catch {
         std.debug.print("Reading stdin failed\n", .{});
         return;
     };

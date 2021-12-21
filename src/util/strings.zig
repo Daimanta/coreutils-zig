@@ -5,9 +5,9 @@ const mem = std.mem;
 
 const Allocator = std.mem.Allocator;
 
-pub fn toNullTerminatedPointer(slice: []const u8, allocator_impl: *Allocator) ![:0]u8 {
+pub fn toNullTerminatedPointer(slice: []const u8, allocator_impl: Allocator) ![:0]u8 {
     var result = try allocator_impl.alloc(u8, slice.len + 1);
-    for (slice) |byte, i| {
+    for (slice) |_, i| {
         result[i] = slice[i];
     }
     result[result.len - 1] = 0;
@@ -110,7 +110,7 @@ pub const StringBuilder = struct {
         return self.buffer[0..self.insertion_index];
     }
 
-    pub fn toOwnedSlice(self: *Self, allocator: *std.mem.Allocator) ![]u8 {
+    pub fn toOwnedSlice(self: *Self, allocator: std.mem.Allocator) ![]u8 {
         var result = try allocator.alloc(u8, self.insertion_index);
         std.mem.copy(u8, result, self.buffer[0..self.insertion_index]);
         return result;

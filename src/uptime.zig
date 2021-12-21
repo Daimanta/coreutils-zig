@@ -11,6 +11,7 @@ const utmp = @import("util/utmp.zig");
 
 const Allocator = std.mem.Allocator;
 const time_t = time_info.time_t;
+const Case = std.fmt.Case;
 
 const allocator = std.heap.page_allocator;
 
@@ -60,7 +61,7 @@ pub fn main() !void {
     std.debug.print("{s}\n", .{try getLoadString(allocator)});
 }
 
-fn getUptimeString(alloc: *std.mem.Allocator) ![]const u8 {
+fn getUptimeString(alloc: std.mem.Allocator) ![]const u8 {
     const read_file: []const u8 = "/proc/uptime";
     var now: time_t = undefined;
     time_info.getCurrentTime(&now);
@@ -79,7 +80,6 @@ fn getUptimeString(alloc: *std.mem.Allocator) ![]const u8 {
     var minutes: u32 = undefined;
     var uptime_buffer: [30]u8 = undefined;
     var stringBuilder = strings.StringBuilder.init(uptime_buffer[0..]);
-    var uptime_buffer_index: usize = 0;
     if (space_index != null) {
         const uptime_string = contents[0..space_index.?];
         const uptime_float = std.fmt.parseFloat(f64, uptime_string) catch std.math.nan(f64);
@@ -103,23 +103,23 @@ fn getUptimeString(alloc: *std.mem.Allocator) ![]const u8 {
         stringBuilder.append(" up ");
         var num_buffer: [10]u8 = undefined;
         if (days > 0) {
-            stringBuilder.append(std.fmt.bufPrintIntToSlice(num_buffer[0..], days, 10, false, std.fmt.FormatOptions{}));
+            stringBuilder.append(std.fmt.bufPrintIntToSlice(num_buffer[0..], days, 10, Case.lower, std.fmt.FormatOptions{}));
             const descr: []const u8 = switch(days > 1) {
                 true => " days ",
                 false => " day ",
             };
             stringBuilder.append(descr);
         }
-        stringBuilder.append(std.fmt.bufPrintIntToSlice(num_buffer[0..], hours, 10, false, std.fmt.FormatOptions{}));
+        stringBuilder.append(std.fmt.bufPrintIntToSlice(num_buffer[0..], hours, 10, Case.lower, std.fmt.FormatOptions{}));
         stringBuilder.append(":");
-        stringBuilder.append(std.fmt.bufPrintIntToSlice(num_buffer[0..], minutes, 10, false, std.fmt.FormatOptions{.width=2, .fill='0'}));
+        stringBuilder.append(std.fmt.bufPrintIntToSlice(num_buffer[0..], minutes, 10, Case.lower, std.fmt.FormatOptions{.width=2, .fill='0'}));
     } else {
         stringBuilder.append(" up ???? days ??:??");
     }
     return stringBuilder.toOwnedSlice(alloc);
 }
 
-fn getUsersString(alloc: *std.mem.Allocator, file_name: []const u8) ![]const u8 {
+fn getUsersString(alloc: std.mem.Allocator, file_name: []const u8) ![]const u8 {
     const file_contents = fs.cwd().readFileAlloc(alloc, file_name, 1 << 20) catch "";
     const count = switch (file_contents.len > 0 and file_contents.len % @sizeOf(utmp.Utmp) == 0) {
         false => 0,
@@ -128,7 +128,7 @@ fn getUsersString(alloc: *std.mem.Allocator, file_name: []const u8) ![]const u8 
     var buffer: [64]u8 = undefined;
     var numbuffer: [10]u8 = undefined;
     var stringBuilder = strings.StringBuilder.init(buffer[0..]);
-    stringBuilder.append(std.fmt.bufPrintIntToSlice(numbuffer[0..], count, 10, false, std.fmt.FormatOptions{}));
+    stringBuilder.append(std.fmt.bufPrintIntToSlice(numbuffer[0..], count, 10, Case.lower, std.fmt.FormatOptions{}));
     if (count == 1) {
         stringBuilder.append(" user");
     } else {
@@ -137,7 +137,7 @@ fn getUsersString(alloc: *std.mem.Allocator, file_name: []const u8) ![]const u8 
     return stringBuilder.toOwnedSlice(alloc);
 }
 
-fn getLoadString(alloc: *std.mem.Allocator) ![]const u8 {
+fn getLoadString(alloc: std.mem.Allocator) ![]const u8 {
     const file_name: []const u8 = "/proc/loadavg";
     const begin: []const u8 = "load average: ";
     const unknown: []const u8 = "?.?, ?.?, ?.?";

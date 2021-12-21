@@ -56,7 +56,7 @@ pub fn main() !void {
     }
 
     if (args.option("--ignore")) |count| {
-        var temp = std.fmt.parseInt(u32, count, 10) catch |err| {
+        var temp = std.fmt.parseInt(u32, count, 10) catch {
             std.debug.print("{s}: invalid number: '{s}'\n", .{application_name, count});
             std.os.exit(1);
         };

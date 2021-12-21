@@ -49,8 +49,6 @@ pub fn main() !void {
     var diag = clap.Diagnostic{};
     var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
 
-    var resolve_symlink = false;
-
     if (args.flag("--help")) {
         std.debug.print(help_message, .{});
         std.os.exit(0);
@@ -86,7 +84,6 @@ pub fn main() !void {
 fn processFile(file: []const u8, suffix: ?[]const u8, newline: []const u8) void {
     var first_char: usize = undefined;
     var last_char: usize = undefined;
-    var last_slash: ?usize = null;
     if (file[file.len - 1] == '/') {
         var last_non_slash: ?usize = strings.lastNonIndexOf(file, '/');
         if (last_non_slash == null) {
