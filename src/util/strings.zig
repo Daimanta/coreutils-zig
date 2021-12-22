@@ -38,6 +38,13 @@ pub fn indexOf(string: []const u8, match: u8) ?usize {
     return null;
 }
 
+pub fn noneIndexOf(string: []const u8, match: u8) ?usize {
+    for (string) |byte, i| {
+        if (byte != match) return i;
+    }
+    return null;
+}
+
 pub fn indexOfStartOnPos(string: []const u8, start: usize, match: u8) ?usize {
     if (start >= string.len) return null;
     var i = start;

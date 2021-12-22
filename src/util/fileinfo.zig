@@ -5,7 +5,7 @@ const linux = std.os.linux;
 
 const strings = @import("strings.zig");
 
-const kernel_stat = linux.Stat;
+const KernelStat = linux.Stat;
 
 const Allocator = std.mem.Allocator;
 pub const mode_t = linux.mode_t;
@@ -30,11 +30,11 @@ const S_IFLINK = 0o0120000;
 
 extern fn mkfifo(path: [*:0]const u8, mode: mode_t) c_int;
 
-pub fn isSymlink(stat: kernel_stat) bool {
+pub fn isSymlink(stat: KernelStat) bool {
     return (stat.mode & S_IFMT) == S_IFLINK;
 }
 
-pub fn fileExists(stat: kernel_stat) bool {
+pub fn fileExists(stat: KernelStat) bool {
     return stat.nlink > 0;
 }
 
@@ -45,6 +45,14 @@ pub fn getAbsolutePath(allocator: Allocator, path: []const u8) ![]u8 {
     result[0] = '/';
     std.mem.copy(u8, result[1..], absolute_path_without_slash[0..]);
     return result;
+}
+
+pub fn getLstat(path: []const u8) !KernelStat {
+    var my_kernel_stat: KernelStat = std.mem.zeroes(KernelStat);
+    const np_link = try strings.toNullTerminatedPointer(path, default_allocator);
+    defer default_allocator.free(np_link);
+    _ = linux.lstat(np_link, &my_kernel_stat);
+    return my_kernel_stat;
 }
 
 pub fn makeFifo(path: []const u8, mode: mode_t) MakeFifoError!void{

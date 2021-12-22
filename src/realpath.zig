@@ -4,6 +4,7 @@ const os = std.os;
 const io = std.io;
 
 const clap = @import("clap.zig");
+const fileinfo = @import("util/fileinfo.zig");
 const version = @import("util/version.zig");
 const strings = @import("util/strings.zig");
 const time_info = @import("util/time.zig");
@@ -12,7 +13,7 @@ const utmp = @import("util/utmp.zig");
 const Allocator = std.mem.Allocator;
 const time_t = time_info.time_t;
 
-const allocator = std.heap.page_allocator;
+const default_allocator = std.heap.page_allocator;
 const print = std.debug.print;
 
 const application_name = "realpath";
@@ -59,6 +60,14 @@ pub fn main() !void {
     var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
     defer args.deinit();
     
+    if (args.flag("--help")) {
+        std.debug.print(help_message, .{});
+        std.os.exit(0);
+    } else if (args.flag("--version")) {
+        version.printVersionInfo(application_name);
+        std.os.exit(0);
+    }
+    
     const must_exist = args.flag("-e");
     const may_exist = args.flag("-m");
     const logical = args.flag("-L");
@@ -69,26 +78,69 @@ pub fn main() !void {
     const strip = args.flag("-s") or args.flag("--no-symlinks");
     const zero = args.flag("-z");
     
-
-    if (args.flag("--help")) {
-        std.debug.print(help_message, .{});
-        std.os.exit(0);
-    } else if (args.flag("--version")) {
-        version.printVersionInfo(application_name);
-        std.os.exit(0);
+    const separator = if (zero) "\x00" else "\n";
+    _ = relative_to;
+    _ = relative_base;
+    
+    checkInconsistencies(must_exist, may_exist, physical, strip);
+    
+    const positionals = args.positionals();
+    
+    if (positionals.len == 0) {
+        print("{s}: No arguments supplied. Exiting.\n", .{application_name});
+        return;
     }
     
-    checkInconsistencies(must_exist, may_exist, logical, physical, strip);
-    
+    for (positionals) |arg, i| {
+        printRealpath(arg, must_exist, logical, !strip, quiet, i != positionals.len - 1, separator);
+    }
+    print("\n", .{});
 }
 
-fn checkInconsistencies(must_exist: bool, may_exist: bool, logical: bool, physical: bool, strip: bool) void {
+fn checkInconsistencies(must_exist: bool, may_exist: bool, physical: bool, strip: bool) void {
     if (must_exist and may_exist) {
         print("-e and -m cannot be active at the same time. Exiting.\n", .{});
     }
     
     if (physical and strip) {
         print("-P and -ms cannot be active at the same time. Exiting.\n", .{});
+    }
+}
+
+fn printRealpath(path: []const u8, must_exist: bool, logical: bool, physical: bool, quiet: bool, add_separator: bool, separator: []const u8) void {
+    _ = logical;
+    var exists = true;
+    std.fs.cwd().access(path, .{.write = false}) catch {
+        exists = false;
+    };
+    if (!exists and must_exist) {
+        if (!quiet) {
+           print("{s}: '{s}' does not exist.\n", .{application_name, path});
+        }
+        return;
+    }
+    
+    var print_absolute_path = !physical;
+    
+    if (exists and physical) {
+        const lstat = fileinfo.getLstat(path) catch return;
+        if (fileinfo.isSymlink(lstat)) {
+            // Follow symlink recursively and determine real path
+        } else {
+            print_absolute_path = true;
+        }
+    } else {
+        print_absolute_path = true;
+    }
+    
+    if (print_absolute_path) {
+        const absolute_path = fileinfo.getAbsolutePath(default_allocator, path) catch return;
+        defer default_allocator.free(absolute_path);
+        print("{s}", .{absolute_path});
+    }
+    
+    if (add_separator) {
+        print("{s}", .{separator});
     }
 }
 
