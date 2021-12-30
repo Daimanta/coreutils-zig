@@ -38,13 +38,50 @@ pub fn fileExists(stat: KernelStat) bool {
     return stat.nlink > 0;
 }
 
-pub fn getAbsolutePath(allocator: Allocator, path: []const u8) ![]u8 {
-    const absolute_path_without_slash = try std.fs.path.relative(allocator, "/", path);
-    defer allocator.free(absolute_path_without_slash);
-    var result = try allocator.alloc(u8, absolute_path_without_slash.len + 1);
-    result[0] = '/';
-    std.mem.copy(u8, result[1..], absolute_path_without_slash[0..]);
-    return result;
+pub fn getAbsolutePath(allocator: Allocator, path: []const u8, relative_to: ?[]const u8) ![]u8 {
+    if (relative_to == null) {
+        const absolute_path_without_slash = try std.fs.path.relative(allocator, "/", path);
+        defer allocator.free(absolute_path_without_slash);
+        var result = try allocator.alloc(u8, absolute_path_without_slash.len + 1);
+        result[0] = '/';
+        std.mem.copy(u8, result[1..], absolute_path_without_slash[0..]);
+        return result;
+    } else {
+        return try std.fs.path.relative(allocator, relative_to.?, path);
+    }
+    
+}
+
+// Follows a symlink recursively to the last path provided
+pub fn followSymlink(allocator: Allocator, link: []const u8) ![]u8 {
+    const max_path_length = 1 << 12;
+    var link_iterator = link;
+    var count: u8 = 0;
+    var my_kernel_stat: KernelStat = undefined;
+    var next: []u8 = undefined;
+    var link_buffer: [max_path_length]u8 = undefined;
+    var next_buffer: [max_path_length]u8 = undefined;
+    while (true) {
+        next = try std.fs.cwd().readLink(link_iterator, link_buffer[0..]);
+        if (next.len > 0 and next[0] != '/') {
+            const lastSlash = strings.lastIndexOf(link_iterator, '/');
+            if (lastSlash != null) {
+                std.mem.copy(u8, next_buffer[0..], link_iterator[0..lastSlash.?+1]);
+                std.mem.copy(u8, next_buffer[lastSlash.?+1..], next);
+                next = next_buffer[0..lastSlash.?+next.len+1];
+            }
+        }
+        my_kernel_stat = try getLstat(next);
+        const it_exists = fileExists(my_kernel_stat);
+        if (!it_exists or !isSymlink(my_kernel_stat)) {
+            return getAbsolutePath(allocator, next, null);
+        }
+        count += 1;
+        if (count > 64) {
+            return error.TooManyLinks;
+        }
+        link_iterator = next;
+    }
 }
 
 pub fn getLstat(path: []const u8) !KernelStat {

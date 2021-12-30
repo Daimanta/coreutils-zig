@@ -82,7 +82,8 @@ pub fn main() !void {
     _ = relative_to;
     _ = relative_base;
     
-    checkInconsistencies(must_exist, may_exist, physical, strip);
+    const errors = checkInconsistencies(must_exist, may_exist, physical, strip, relative_to, relative_base);
+    if (errors) os.exit(1);
     
     const positionals = args.positionals();
     
@@ -92,23 +93,32 @@ pub fn main() !void {
     }
     
     for (positionals) |arg, i| {
-        printRealpath(arg, must_exist, logical, !strip, quiet, i != positionals.len - 1, separator);
+        printRealpath(arg, must_exist, logical, !strip, quiet, relative_to, relative_base, i != positionals.len - 1, separator);
     }
     print("\n", .{});
 }
 
-fn checkInconsistencies(must_exist: bool, may_exist: bool, physical: bool, strip: bool) void {
+fn checkInconsistencies(must_exist: bool, may_exist: bool, physical: bool, strip: bool, relative_to: ?[]const u8, relative_base: ?[]const u8) bool {
     if (must_exist and may_exist) {
         print("-e and -m cannot be active at the same time. Exiting.\n", .{});
+        return true;
     }
     
     if (physical and strip) {
         print("-P and -ms cannot be active at the same time. Exiting.\n", .{});
+        return true;
     }
+    
+    if (relative_to != null and relative_base != null) {
+        print("relative_to and relative_base cannot be active at the same time. Exiting.\n", .{});
+        return true;
+    }
+    return false;
 }
 
-fn printRealpath(path: []const u8, must_exist: bool, logical: bool, physical: bool, quiet: bool, add_separator: bool, separator: []const u8) void {
+fn printRealpath(path: []const u8, must_exist: bool, logical: bool, physical: bool, quiet: bool, relative_to: ?[]const u8, relative_base: ?[]const u8, add_separator: bool, separator: []const u8) void {
     _ = logical;
+    _ = relative_base;
     var exists = true;
     std.fs.cwd().access(path, .{.write = false}) catch {
         exists = false;
@@ -121,11 +131,12 @@ fn printRealpath(path: []const u8, must_exist: bool, logical: bool, physical: bo
     }
     
     var print_absolute_path = !physical;
+    var absolute_path: ?[]const u8 = null;
     
     if (exists and physical) {
         const lstat = fileinfo.getLstat(path) catch return;
         if (fileinfo.isSymlink(lstat)) {
-            // Follow symlink recursively and determine real path
+            absolute_path = fileinfo.followSymlink(default_allocator, path) catch return;
         } else {
             print_absolute_path = true;
         }
@@ -134,9 +145,25 @@ fn printRealpath(path: []const u8, must_exist: bool, logical: bool, physical: bo
     }
     
     if (print_absolute_path) {
-        const absolute_path = fileinfo.getAbsolutePath(default_allocator, path) catch return;
-        defer default_allocator.free(absolute_path);
-        print("{s}", .{absolute_path});
+        absolute_path = fileinfo.getAbsolutePath(default_allocator, path, relative_to) catch return;
+    }
+    
+    if (absolute_path != null) {
+        var start_index: usize = 0;
+        if (relative_base != null) {
+            if (std.mem.startsWith(u8, absolute_path.?, relative_base.?)) {
+                start_index = relative_base.?.len;
+                if (absolute_path.?.len > start_index and absolute_path.?[start_index] == '/') {
+                    start_index += 1;
+                }
+            }
+        }
+        if (start_index >= absolute_path.?.len) {
+            print("", .{});
+        } else {
+            print("{s}", .{absolute_path.?[start_index..]});
+        }
+        default_allocator.free(absolute_path.?);
     }
     
     if (add_separator) {
