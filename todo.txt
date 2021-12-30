@@ -1,6 +1,5 @@
     237 expand.c
     263 runcon.c
-    277 realpath.c
     278 tee.c
     280 mknod.c
     309 fold.c
@@ -66,7 +65,6 @@
    3175 copy.c
    4780 sort.c
    5577 ls.c
-   
    
 SELinux on:
 - id

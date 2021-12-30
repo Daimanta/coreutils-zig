@@ -117,15 +117,15 @@ fn checkInconsistencies(must_exist: bool, may_exist: bool, physical: bool, strip
 }
 
 fn printRealpath(path: []const u8, must_exist: bool, logical: bool, physical: bool, quiet: bool, relative_to: ?[]const u8, relative_base: ?[]const u8, add_separator: bool, separator: []const u8) void {
-    _ = logical;
-    _ = relative_base;
+    _ = logical; // What does this do?
     var exists = true;
     std.fs.cwd().access(path, .{.write = false}) catch {
         exists = false;
     };
     if (!exists and must_exist) {
         if (!quiet) {
-           print("{s}: '{s}' does not exist.\n", .{application_name, path});
+           print("{s}: '{s}' does not exist.", .{application_name, path});
+           if (add_separator) print("\n", .{});
         }
         return;
     }
@@ -136,7 +136,9 @@ fn printRealpath(path: []const u8, must_exist: bool, logical: bool, physical: bo
     if (exists and physical) {
         const lstat = fileinfo.getLstat(path) catch return;
         if (fileinfo.isSymlink(lstat)) {
-            absolute_path = fileinfo.followSymlink(default_allocator, path) catch return;
+            const symlink_result: fileinfo.FollowSymlinkResult = fileinfo.followSymlink(default_allocator, path, false);
+            if (symlink_result.error_result != null) return;
+            absolute_path = symlink_result.path;
         } else {
             print_absolute_path = true;
         }
@@ -170,5 +172,3 @@ fn printRealpath(path: []const u8, must_exist: bool, logical: bool, physical: bo
         print("{s}", .{separator});
     }
 }
-
-

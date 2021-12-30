@@ -10,8 +10,10 @@ const version = @import("util/version.zig");
 
 const Allocator = std.mem.Allocator;
 
-const allocator = std.heap.page_allocator;
+const default_allocator = std.heap.page_allocator;
+const FollowSymlinkError = fileinfo.FollowSymlinkError;
 const kernel_stat = linux.Stat;
+const print = std.debug.print;
 
 const application_name = "readlink";
 const help_message =
@@ -162,8 +164,8 @@ fn process_link(link: []const u8, terminator: []const u8, read_mode: ReadMode, o
     var link_buffer: [max_path_length]u8 = undefined;
     var path_buffer: [max_path_length]u8 = undefined;
     var my_kernel_stat: kernel_stat = std.mem.zeroes(kernel_stat);
-    const np_link = try strings.toNullTerminatedPointer(link, allocator);
-    defer allocator.free(np_link);
+    const np_link = try strings.toNullTerminatedPointer(link, default_allocator);
+    defer default_allocator.free(np_link);
     _ = linux.lstat(np_link, &my_kernel_stat);
     const exists = fileinfo.fileExists(my_kernel_stat);
     if (!exists) {
@@ -172,7 +174,7 @@ fn process_link(link: []const u8, terminator: []const u8, read_mode: ReadMode, o
             if (fs.path.isAbsolute(link)) {
                 std.debug.print("{s}{s}", .{link, terminator});
             } else {
-                std.debug.print("{s}{s}", .{fileinfo.getAbsolutePath(allocator, link), terminator});
+                std.debug.print("{s}{s}", .{fileinfo.getAbsolutePath(default_allocator, link, null), terminator});
             }
             return true;
         } else {
@@ -210,54 +212,23 @@ fn process_link(link: []const u8, terminator: []const u8, read_mode: ReadMode, o
 }
 
 fn follow_symlinks(link: []const u8, terminator: []const u8, read_mode: ReadMode, output_mode: OutputMode) !bool {
-    var link_iterator = link;
-    var count: u8 = 0;
-    var my_kernel_stat: kernel_stat = undefined;
-    var next: []u8 = undefined;
-    var link_buffer: [max_path_length]u8 = undefined;
-    while (true) {
-        next = try std.fs.cwd().readLink(link_iterator, link_buffer[0..]);
-        my_kernel_stat = std.mem.zeroes(kernel_stat);
-        const it_np_link = try strings.toNullTerminatedPointer(next, allocator);
-        defer allocator.free(it_np_link);
-        _ = linux.lstat(it_np_link, &my_kernel_stat);
-        const it_exists = fileinfo.fileExists(my_kernel_stat);
-        if (!it_exists) {
-            if (read_mode == ReadMode.FOLLOW_ALL) {
-                if (output_mode == OutputMode.VERBOSE) {
-                    std.debug.print("{s}: {s}: link destination could not be resolved\n", .{application_name, next});
-                }
-                return false;
-            } else {
-                if (output_mode != OutputMode.QUIET) {
-                    const path = try fileinfo.getAbsolutePath(allocator, next);
-                    defer allocator.free(path);
-                    std.debug.print("{s}{s}", .{path, terminator});
-                }
-                return true;
-            }
-        } else {
-            if (!fileinfo.isSymlink(my_kernel_stat)) {
-                if (output_mode != OutputMode.QUIET) {
-                    std.debug.print("{s}{s}", .{next, terminator});
-                }
-                return true;
-            }
+    const symlink_result = fileinfo.followSymlink(default_allocator, link, read_mode == ReadMode.FOLLOW_ALL);
+    defer if (symlink_result.path != null) default_allocator.free(symlink_result.path.?);
+    if (symlink_result.error_result != null) {
+        const error_result = symlink_result.error_result.?;
+        if (output_mode == OutputMode.QUIET) return false;
+        if (error_result == FollowSymlinkError.TooManyLinks) {
+            print("Too many links{s}", .{terminator});
+        } else if (error_result == FollowSymlinkError.TargetDoesNotExist) {
+            print("'{s}' does not exist{s}", .{symlink_result.path.?, terminator});
+        } else if (error_result == FollowSymlinkError.NotLink) {
+            print("Target is not a link{s}", .{terminator});
+        } else if (error_result == FollowSymlinkError.UnknownError) {
+            print("Unknown error encountered{s}", .{terminator});
         }
-        count += 1;
-        if (count > 64) {
-            if (read_mode == ReadMode.ALLOW_MISSING) {
-                if (output_mode != OutputMode.QUIET) {
-                    std.debug.print("{s}{s}", .{link, terminator});
-                }
-                return true;
-            } else {
-                if (output_mode == OutputMode.VERBOSE) {
-                    std.debug.print("{s}: {s}: Too many levels of symbolic links\n", .{application_name, link});
-                }
-                return false;
-            }
-        }
-        link_iterator = next;
+        return false;
+    } else {
+        if (output_mode != OutputMode.QUIET) print("{s}{s}", .{symlink_result.path.?, terminator});
+        return true;
     }
 }

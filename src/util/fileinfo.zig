@@ -25,6 +25,18 @@ pub const MakeFifoError = error {
     Unknown
 };
 
+pub const FollowSymlinkError = error {
+    TooManyLinks,
+    TargetDoesNotExist,
+    NotLink,
+    UnknownError
+};
+
+pub const FollowSymlinkResult = struct {
+    error_result: ?FollowSymlinkError = null,
+    path: ?[]u8 = null
+};
+
 const S_IFMT = 0o0160000;
 const S_IFLINK = 0o0120000;
 
@@ -53,7 +65,7 @@ pub fn getAbsolutePath(allocator: Allocator, path: []const u8, relative_to: ?[]c
 }
 
 // Follows a symlink recursively to the last path provided
-pub fn followSymlink(allocator: Allocator, link: []const u8) ![]u8 {
+pub fn followSymlink(allocator: Allocator, link: []const u8, target_must_exist: bool) FollowSymlinkResult {
     const max_path_length = 1 << 12;
     var link_iterator = link;
     var count: u8 = 0;
@@ -62,7 +74,7 @@ pub fn followSymlink(allocator: Allocator, link: []const u8) ![]u8 {
     var link_buffer: [max_path_length]u8 = undefined;
     var next_buffer: [max_path_length]u8 = undefined;
     while (true) {
-        next = try std.fs.cwd().readLink(link_iterator, link_buffer[0..]);
+        next = std.fs.cwd().readLink(link_iterator, link_buffer[0..]) catch return .{.error_result = FollowSymlinkError.NotLink};
         if (next.len > 0 and next[0] != '/') {
             const lastSlash = strings.lastIndexOf(link_iterator, '/');
             if (lastSlash != null) {
@@ -71,14 +83,21 @@ pub fn followSymlink(allocator: Allocator, link: []const u8) ![]u8 {
                 next = next_buffer[0..lastSlash.?+next.len+1];
             }
         }
-        my_kernel_stat = try getLstat(next);
+        my_kernel_stat = getLstat(next) catch return .{.error_result = FollowSymlinkError.UnknownError};
         const it_exists = fileExists(my_kernel_stat);
-        if (!it_exists or !isSymlink(my_kernel_stat)) {
-            return getAbsolutePath(allocator, next, null);
+        if (!it_exists and target_must_exist) {
+            if (target_must_exist) {
+                return .{.error_result = FollowSymlinkError.TargetDoesNotExist, .path = getAbsolutePath(allocator, next, null) catch return .{.error_result = FollowSymlinkError.UnknownError}};
+            } else {
+                return .{.path = getAbsolutePath(allocator, next, null) catch return .{.error_result = FollowSymlinkError.UnknownError}};
+            }
+        }
+        if (!isSymlink(my_kernel_stat)) {
+            return .{.path = getAbsolutePath(allocator, next, null) catch return .{.error_result = FollowSymlinkError.UnknownError}};
         }
         count += 1;
         if (count > 64) {
-            return error.TooManyLinks;
+            return .{.error_result = FollowSymlinkError.TooManyLinks};
         }
         link_iterator = next;
     }
