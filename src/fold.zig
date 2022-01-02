@@ -65,9 +65,13 @@ pub fn main() !void {
     
     var width: u32 = 80;
     if (width_string != null) {
-    
+        if (std.fmt.parseInt(u32, width_string.?[0..], 10)) |num| {
+            width = num;
+        } else |_| {
+            print("Width is not a valid number\n", .{});
+            return;
+        }
     }
-    
     
     const positionals = args.positionals();
     
@@ -101,21 +105,22 @@ fn fold(path: []const u8, wrap_bytes: bool, break_only_at_spaces: bool, width: u
     const file_size = @intCast(u64, stat.size);
     
     const file = try fs.cwd().openFile(path, .{.read = true});
-    
+    defer file.close();
     
     var offset: usize = 0;
-    const chunk_size: usize = 150;
+    const chunk_size: usize = 1_000_000;
     var file_buffer: [chunk_size]u8 = undefined;
     var start: usize = 0;
     var current_line_size: usize = 0;
-    while (offset <= file_size) {
+    
+    while (offset < file_size) {
         const read = try file.pread(file_buffer[0..], offset);
         start = 0;
         while (start < read) {
-            var runner = start;
             var terminated = false;
+            var runner = start;
             var last_space = runner;
-            while (runner < read and (current_line_size <= width)) {
+            while (runner < read and (current_line_size < width - 1)) {
                 if (file_buffer[runner] == ' ') last_space = runner;
                 if (file_buffer[runner] == '\n') {
                     print("{s}", .{file_buffer[start..runner+1]});
@@ -146,6 +151,5 @@ fn fold(path: []const u8, wrap_bytes: bool, break_only_at_spaces: bool, width: u
         }
         offset += chunk_size;
     }
-    
 }
 
