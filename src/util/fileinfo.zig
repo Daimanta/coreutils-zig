@@ -37,8 +37,9 @@ pub const FollowSymlinkResult = struct {
     path: ?[]u8 = null
 };
 
-const S_IFMT = 0o0160000;
-const S_IFLINK = 0o0120000;
+const S_IFMT = 0o160000;
+const S_IFLINK = 0o120000;
+const S_IFDIR = 0o40000;
 
 extern fn mkfifo(path: [*:0]const u8, mode: mode_t) c_int;
 
@@ -48,6 +49,10 @@ pub fn isSymlink(stat: KernelStat) bool {
 
 pub fn fileExists(stat: KernelStat) bool {
     return stat.nlink > 0;
+}
+
+pub fn isDir(stat: KernelStat) bool {
+    return (stat.mode & S_IFMT) == S_IFDIR;
 }
 
 pub fn getAbsolutePath(allocator: Allocator, path: []const u8, relative_to: ?[]const u8) ![]u8 {
