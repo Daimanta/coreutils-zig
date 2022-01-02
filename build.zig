@@ -31,6 +31,11 @@ pub fn build(b: *std.build.Builder) void {
     false_app.setTarget(target);
     false_app.setBuildMode(mode);
     false_app.install();
+    
+    const fold = b.addExecutable("fold", "src/fold.zig");
+    fold.setTarget(target);
+    fold.setBuildMode(mode);
+    fold.install();
 
     const groups = b.addExecutable("groups", "src/groups.zig");
     groups.setTarget(target);
