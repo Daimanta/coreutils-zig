@@ -16,7 +16,12 @@ pub fn build(b: *std.build.Builder) void {
     basename.setTarget(target);
     basename.setBuildMode(mode);
     basename.install();
-
+    
+    const dircolors = b.addExecutable("dircolors", "src/dircolors.zig");
+    dircolors.setTarget(target);
+    dircolors.setBuildMode(mode);
+    dircolors.install();
+    
     const dirname = b.addExecutable("dirname", "src/dirname.zig");
     dirname.setTarget(target);
     dirname.setBuildMode(mode);

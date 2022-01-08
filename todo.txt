@@ -16,7 +16,6 @@
     431 chroot.c
     442 touch.c
     499 comm.c
-    508 dircolors.c
     518 mv.c
     528 paste.c
     567 tsort.c

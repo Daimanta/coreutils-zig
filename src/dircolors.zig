@@ -1,5 +1,6 @@
 const std = @import("std");
 const fs = std.fs;
+const mem = std.mem;
 const os = std.os;
 const io = std.io;
 
@@ -11,8 +12,10 @@ const defaults = @embedFile("../data/dircolors.defaults");
 
 const Allocator = std.mem.Allocator;
 
-const allocator = std.heap.page_allocator;
+const default_allocator = std.heap.page_allocator;
 const print = std.debug.print;
+const startsWith = mem.startsWith;
+const eql = mem.eql;
 
 const application_name = "dircolors";
 
@@ -77,7 +80,7 @@ pub fn main() !void {
     }
     
     if (arguments.len == 1) {
-    
+        try parseDircolorsFile(arguments[0], csh);
     } else {
         const env = os.getenv(env_name);
         if (env != null) {
@@ -92,5 +95,147 @@ pub fn main() !void {
             
         }
     }
+}
+
+fn parseDircolorsFile(path: []const u8, csh: bool) !void {
+    const file_contents = fs.cwd().readFileAlloc(default_allocator, path, 1 << 20) catch "";
+    defer default_allocator.free(file_contents);
+    var lines = std.mem.tokenize(u8, file_contents, "\n"[0..]);
+    var buffer: [1 << 20]u8 = undefined;
+    var string_builder = strings.StringBuilder.init(buffer[0..]);
+    if (csh) {
+        string_builder.append("setenv LS_COLORS '");
+    } else {
+        string_builder.append("LS_COLORS='");
+    }
     
+    while (lines.next()) |line| {
+        if (line.len > 0 and !std.mem.startsWith(u8, line, "#") and !std.mem.startsWith(u8, line, " #") and !std.mem.startsWith(u8, line, "TERM")) {
+            const considered = line[0..std.mem.indexOf(u8, line, " #") orelse line.len];
+            var pair = std.mem.tokenize(u8, considered, " ");
+            var first: []const u8 = undefined;
+            var second: []const u8 = undefined;
+            
+            if (pair.next()) |value| {
+                first = value;
+            } else {
+                continue;
+            }
+            
+            if (pair.next()) |value| {
+                second = value;
+            } else {
+                continue;
+            }
+            
+            if (!validColorString(second)) {
+                continue;
+            }
+            
+            if (std.mem.startsWith(u8, considered, ".")) {
+                // Extension
+                string_builder.append("*");
+                string_builder.append(first);
+            } else {
+                // Builtin
+                const matched = matchBuiltin(first);
+                if (matched == null) {
+                    continue;
+                }
+                string_builder.append(matched.?);
+            }
+            string_builder.append("=");
+            string_builder.append(second);
+            string_builder.append(":");
+        }
+    }
+    if (csh) {
+        string_builder.append("'\n");
+    } else {
+        string_builder.append("';\nexport LS_COLORS\n");
+    }
+    
+    print("{s}", .{string_builder.toSlice()});
+}
+
+fn matchBuiltin(key: []const u8) ?[]const u8 {
+    if (eql(u8, key, "NORMAL"[0..])) {
+        return "no"[0..];
+    }
+    if (eql(u8, key, "FILE"[0..])) {
+        return "fi"[0..];
+    }
+    if (eql(u8, key, "RESET"[0..])) {
+        return "rs"[0..];
+    }
+    if (eql(u8, key, "DIR"[0..])) {
+        return "di"[0..];
+    }
+    if (eql(u8, key, "LINK"[0..])) {
+        return "ln"[0..];
+    }
+    if (eql(u8, key, "MULTIHARDLINK"[0..])) {
+        return "mh"[0..];
+    }
+    if (eql(u8, key, "FIFO"[0..])) {
+        return "pi"[0..];
+    }
+    if (eql(u8, key, "SOCK"[0..])) {
+        return "so"[0..];
+    }
+    if (eql(u8, key, "DOOR"[0..])) {
+        return "do"[0..];
+    }
+    if (eql(u8, key, "BLK"[0..])) {
+        return "rs"[0..];
+    }
+    if (eql(u8, key, "CHR"[0..])) {
+        return "cd"[0..];
+    }
+    if (eql(u8, key, "ORPHAN"[0..])) {
+        return "or"[0..];
+    }
+    if (eql(u8, key, "MISSING"[0..])) {
+        return "mi"[0..];
+    }
+    if (eql(u8, key, "SETUID"[0..])) {
+        return "su"[0..];
+    }
+    if (eql(u8, key, "SETGID"[0..])) {
+        return "sg"[0..];
+    }
+    if (eql(u8, key, "CAPABILITY"[0..])) {
+        return "ca"[0..];
+    }
+    if (eql(u8, key, "STICKY_OTHER_WRITABLE"[0..])) {
+        return "tw"[0..];
+    }
+    if (eql(u8, key, "OTHER_WRITABLE"[0..])) {
+        return "ow"[0..];
+    }
+    if (eql(u8, key, "STICKY"[0..])) {
+        return "st"[0..];
+    }
+    if (eql(u8, key, "EXEC"[0..])) {
+        return "ex"[0..];
+    }
+    
+    return null;
+}
+
+fn validColorString(value: []const u8) bool {
+    var counter: u8 = 0;
+    var iterator = std.mem.tokenize(u8, value, ";");
+    while (iterator.next()) |number_string| {
+        const number = std.fmt.parseInt(u32, number_string, 10) catch return false;
+        if (number > 47 or (number > 8 and number < 30) or (number > 37 and number < 40)) {
+            return false;
+        }
+        counter += 1;
+        if (counter > 3) {
+            return false;
+        }
+    }
+    
+    return true;
 }
