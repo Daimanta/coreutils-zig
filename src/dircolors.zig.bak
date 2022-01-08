@@ -82,7 +82,7 @@ pub fn main() !void {
         const env = os.getenv(env_name);
         if (env != null) {
             if (print_database) {
-                print("{s}", .{defaults});
+                print("{s}", .{defaults})
             } else if (csh) {
                 print("setenv LS_COLORS '{s}'\n", .{env});
             } else {
