@@ -13,7 +13,7 @@ const SetHostnameError = system.SetHostnameError;
 const allocator = std.heap.page_allocator;
 const HOST_NAME_MAX = os.linux.HOST_NAME_MAX;
 
-const application_name = "unlink";
+const application_name = "hostname";
 
 const help_message =
 \\Usage: hostname [NAME]
