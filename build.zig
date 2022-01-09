@@ -152,6 +152,11 @@ pub fn build(b: *std.build.Builder) void {
     unlink.setTarget(target);
     unlink.setBuildMode(mode);
     unlink.install();
+    
+    const uname = b.addExecutable("uname", "src/uname.zig");
+    uname.setTarget(target);
+    uname.setBuildMode(mode);
+    uname.install();
 
     const uptime = b.addExecutable("uptime", "src/uptime.zig");
     uptime.setTarget(target);

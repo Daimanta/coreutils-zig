@@ -8,7 +8,6 @@
     331 chown.c
     350 mktemp.c
     373 rm.c
-    376 uname.c
     388 truncate.c
     394 stdbuf.c
     431 chroot.c
