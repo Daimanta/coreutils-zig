@@ -2,7 +2,6 @@
     263 runcon.c
     278 tee.c
     280 mknod.c
-    309 fold.c
     314 kill.c
     319 chgrp.c
     325 unexpand.c
@@ -12,7 +11,6 @@
     376 uname.c
     388 truncate.c
     394 stdbuf.c
-    411 cksum.c
     431 chroot.c
     442 touch.c
     499 comm.c

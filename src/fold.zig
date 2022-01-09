@@ -81,7 +81,14 @@ pub fn main() !void {
     }
     
     for (positionals) |arg| {
-        try fold(arg, wrap_bytes, break_only_at_spaces, width);
+        if (std.mem.eql(u8, arg, "-")) {
+            if (!handled_stdin) {
+                try handleStdin(break_only_at_spaces, width);
+                handled_stdin = true;
+            }
+        } else {
+            try fold(arg, wrap_bytes, break_only_at_spaces, width);
+        }
     }
 }
 
@@ -111,49 +118,62 @@ fn fold(path: []const u8, wrap_bytes: bool, break_only_at_spaces: bool, width: u
         var offset: usize = 0;
         const chunk_size: usize = 1_000_000;
         var file_buffer: [chunk_size]u8 = undefined;
-        var start: usize = 0;
         var current_line_size: usize = 0;
         
         while (offset < file_size) {
             const read = try file.pread(file_buffer[0..], offset);
-            start = 0;
-            while (start < read) {
-                var terminated = false;
-                var runner = start;
-                var last_space = runner;
-                while (runner < read and (current_line_size < width - 1)) {
-                    if (file_buffer[runner] == ' ') last_space = runner;
-                    if (file_buffer[runner] == '\n') {
-                        print("{s}", .{file_buffer[start..runner+1]});
-                        start = runner + 1;
-                        current_line_size = 0;
-                        terminated = true;
-                        break;
-                    }
-                    runner += 1;
-                    current_line_size += 1;
-                }
-                if (!terminated) {
-                    if (runner == read) {
-                        print("{s}", .{file_buffer[start..read]});
-                        break;
-                    } else {
-                        if (break_only_at_spaces) {
-                            print("{s}\n", .{file_buffer[start..last_space]});
-                            start = last_space + 1;
-                            current_line_size = 0;
-                        } else {
-                            print("{s}\n", .{file_buffer[start..runner+1]});
-                            start = runner + 1;
-                            current_line_size = 0;
-                        }
-                    }
-                }
-            }
+            processByteLoop(file_buffer[0..read], break_only_at_spaces, width, &current_line_size);
             offset += chunk_size;
         }
     } else {
         // Actually handle UTF-8 strings
+    }
+}
+
+fn handleStdin(break_only_at_spaces: bool, width: u32) !void {
+    const stdin = std.io.getStdIn().reader();
+    const bytes = stdin.readAllAlloc(default_allocator, 1 << 30) catch {
+        std.debug.print("Reading stdin failed\n", .{});
+        return;
+    };
+    var current_line_size: usize = 0;
+    processByteLoop(bytes, break_only_at_spaces, width, &current_line_size);
+}
+
+fn processByteLoop(file_buffer: []const u8, break_only_at_spaces: bool, width: u32, current_line_size: *usize) void {
+    var start: usize = 0;
+    while (start < file_buffer.len) {
+        var terminated = false;
+        var runner = start;
+        var last_space = runner;
+        while (runner < file_buffer.len and (current_line_size.* < width - 1)) {
+            if (file_buffer[runner] == ' ') last_space = runner;
+            if (file_buffer[runner] == '\n') {
+                print("{s}", .{file_buffer[start..runner+1]});
+                start = runner + 1;
+                current_line_size.* = 0;
+                terminated = true;
+                break;
+            }
+            runner += 1;
+            current_line_size.* += 1;
+        }
+        if (!terminated) {
+            if (runner == file_buffer.len) {
+                print("{s}", .{file_buffer[start..]});
+                break;
+            } else {
+                if (break_only_at_spaces) {
+                    print("{s}\n", .{file_buffer[start..last_space]});
+                    start = last_space + 1;
+                    current_line_size.* = 0;
+                } else {
+                    print("{s}\n", .{file_buffer[start..runner+1]});
+                    start = runner + 1;
+                    current_line_size.* = 0;
+                }
+            }
+        }
     }
 }
 

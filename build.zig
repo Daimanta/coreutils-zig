@@ -17,6 +17,11 @@ pub fn build(b: *std.build.Builder) void {
     basename.setBuildMode(mode);
     basename.install();
     
+    const cksum = b.addExecutable("cksum", "src/cksum.zig");
+    cksum.setTarget(target);
+    cksum.setBuildMode(mode);
+    cksum.install();
+    
     const dircolors = b.addExecutable("dircolors", "src/dircolors.zig");
     dircolors.setTarget(target);
     dircolors.setBuildMode(mode);
