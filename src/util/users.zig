@@ -33,6 +33,7 @@ pub const Group = extern struct {
 
 pub extern fn getpwuid (uid: uid) callconv(.C) *Passwd;
 pub extern fn getpwnam (name: [*:0]u8) callconv(.C) *Passwd;
+pub extern fn getgrnam(name: [*:0]const u8) callconv(.C) ?*Group;
 
 pub fn getUserByNameA(name: []const u8) !*Passwd {
     const nameZ = try strings.toNullTerminatedPointer(name, default_allocator);
@@ -53,6 +54,22 @@ pub fn getUserByName(name: [*:0]u8) !*Passwd {
         return result;
     }
 }
+
+pub fn getGroupByName(name: []const u8) !*Group {
+    const nameZ = try strings.toNullTerminatedPointer(name, default_allocator);
+    defer default_allocator.free(nameZ);
+    return getGroupByNameZ(nameZ);
+}
+
+pub fn getGroupByNameZ(name: [*:0]u8) !*Group {
+    const result = getgrnam(name);
+    if (result == null) {
+        return error.GroupNotFound;
+    } else {
+        return result.?;
+    }
+}
+
 
 pub extern fn getgrgid (gid: gid) callconv(.C) *Group;
 extern fn getgrouplist(user: [*:0]const u8, group: gid, groups: [*]gid, ngroups: *c_int) callconv(.C) c_int;

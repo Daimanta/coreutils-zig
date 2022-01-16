@@ -139,3 +139,13 @@ pub fn makeFifo(path: []const u8, mode: mode_t) MakeFifoError!void{
         };
     }
 }
+
+pub fn fsRoot(path: []const u8) bool {
+    const targets: [3][]const u8 = .{"/"[0..], "/."[0..], "/.."[0..]};
+    for (targets) |target| {
+        if (std.mem.eql(u8, target, path)) {
+            return true;
+        }
+    }
+    return false;
+}

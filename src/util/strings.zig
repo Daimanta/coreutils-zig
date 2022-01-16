@@ -122,4 +122,12 @@ pub const StringBuilder = struct {
         std.mem.copy(u8, result, self.buffer[0..self.insertion_index]);
         return result;
     }
+    
+    pub fn reset(self: *Self) void {
+        self.insertion_index = 0;
+    }
+    
+    pub fn resetTo(self: *Self, index: usize) void {
+        self.insertion_index = index;
+    }
 };
