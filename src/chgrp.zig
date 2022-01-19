@@ -220,7 +220,7 @@ fn changeGroup(path: []const u8, group: ?linux.gid_t, user: ?linux.uid_t, do_con
     }
 
     if (recursive and is_dir) {
-        traverseDir(path, target_group, target_user, verbosity, symlink_traversal);
+        traverseDir(path, target_group, target_user, verbosity, symlink_traversal, false);
     }
 }
 
@@ -235,9 +235,9 @@ fn changeItem(path: []const u8, group: ?linux.gid_t, user: ?linux.uid_t, verbosi
     }
 
     if (fileinfo.isDir(stat)) {
-        traverseDir(path, group, user, verbosity, symlink_traversal);
+        traverseDir(path, group, user, verbosity, symlink_traversal, true);
     } else {
-        if (symlink_traversal == SymlinkTraversal.ALL or fileinfo.isSymlink(stat)) {
+        if (symlink_traversal == SymlinkTraversal.ALL or !fileinfo.isSymlink(stat)) {
             changePlainFile(path, stat, group, user, verbosity);
         }
     }
@@ -276,7 +276,7 @@ fn changePlainFile(path: []const u8, kernel_stat: ?KernelStat, group: ?linux.gid
     }
 }
 
-fn traverseDir(path: []const u8, group: ?linux.gid_t, user: ?linux.uid_t, verbosity: Verbosity, symlink_traversal: SymlinkTraversal) void {
+fn traverseDir(path: []const u8, group: ?linux.gid_t, user: ?linux.uid_t, verbosity: Verbosity, symlink_traversal: SymlinkTraversal, also_process_dir: bool) void {
     var buffer: [8192]u8 = undefined;
     var string_builder = strings.StringBuilder.init(buffer[0..]);
     string_builder.append(path);
@@ -298,14 +298,16 @@ fn traverseDir(path: []const u8, group: ?linux.gid_t, user: ?linux.uid_t, verbos
         return;
     };
 
-    if (dir.chown(user, group)) {
-        if (verbosity == Verbosity.VERBOSE or (verbosity == Verbosity.CHANGED and ((user != null and current_user != user.?) or (group != null and current_group != group.?)))) {
-            print("Changed owner/group on '{s}'\n", .{path});
-        }
-    } else |err| {
-        switch (err) {
-            ChownError.AccessDenied => print("{s}: Access Denied to '{s}'\n", .{ application_name, path }),
-            else => print("{s}\n", .{err}),
+    if (also_process_dir) {
+        if (dir.chown(user, group)) {
+            if (verbosity == Verbosity.VERBOSE or (verbosity == Verbosity.CHANGED and ((user != null and current_user != user.?) or (group != null and current_group != group.?)))) {
+                print("Changed owner/group on '{s}'\n", .{path});
+            }
+        } else |err| {
+            switch (err) {
+                ChownError.AccessDenied => print("{s}: Access Denied to '{s}'\n", .{ application_name, path }),
+                else => print("{s}\n", .{err}),
+            }
         }
     }
 
