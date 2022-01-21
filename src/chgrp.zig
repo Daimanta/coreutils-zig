@@ -4,10 +4,8 @@ const os = std.os;
 const linux = os.linux;
 
 const clap = @import("clap.zig");
-const fileinfo = @import("util/fileinfo.zig");
-const strings = @import("util/strings.zig");
-const version = @import("util/version.zig");
 const file_ownership = @import("shared/file_ownership.zig");
+const users = @import("util/users.zig");
 
 const Allocator = std.mem.Allocator;
 

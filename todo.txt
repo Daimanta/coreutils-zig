@@ -3,7 +3,6 @@
     278 tee.c
     280 mknod.c
     314 kill.c
-    319 chgrp.c
     325 unexpand.c
     331 chown.c
     350 mktemp.c
