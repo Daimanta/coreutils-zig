@@ -27,42 +27,87 @@ const Verbosity = enum { QUIET, STANDARD, CHANGED, VERBOSE };
 
 const SymlinkTraversal = enum { NO, MAIN, ALL };
 
-const OwnershipOptions = struct { verbosity: Verbosity, dereference_main: bool, recursive: bool, symlink_traversal: SymlinkTraversal, preserve_root: bool, rfile_group: ?[]const u8 };
+const OwnershipOptions = struct { verbosity: Verbosity, dereference_main: bool, recursive: bool, symlink_traversal: SymlinkTraversal, preserve_root: bool, rfile_group: ?[]const u8, only_if_matching: ?[]const u8 };
+
+pub const Program = enum { CHGRP, CHOWN, CHMOD };
 
 const ChangeParams = struct {
     user: ?linux.uid_t,
     group: ?linux.gid_t,
     mode: ?u64,
     from_file: bool,
+    original_user_must_match: ?linux.uid_t,
+    original_group_must_match: ?linux.gid_t,
 
     fn isChown(self: @This()) bool {
         return self.user != null or self.group != null;
     }
+    
+    fn willChange(self: @This(), original_user: linux.uid_t, original_group: linux.gid_t) bool {
+        return (self.original_user_must_match == null or (self.original_user_must_match.? == original_user)) and (self.original_group_must_match == null or (self.original_group_must_match.? == original_group));
+    }
 };
 
-pub fn getParams() []const clap.Param(clap.Help) {
-    const result = comptime [_]clap.Param(clap.Help){
-        clap.parseParam("--help") catch unreachable,
-        clap.parseParam("--version") catch unreachable,
-        clap.parseParam("-c, --changes") catch unreachable,
-        clap.parseParam("-f, --silent") catch unreachable,
-        clap.parseParam("--quiet") catch unreachable,
-        clap.parseParam("-v, --verbose") catch unreachable,
-        clap.parseParam("--dereference") catch unreachable,
-        clap.parseParam("-h, --no-redereference") catch unreachable,
-        clap.parseParam("--no-preserve-root") catch unreachable,
-        clap.parseParam("--preserve-root") catch unreachable,
-        clap.parseParam("--reference <STR>") catch unreachable,
-        clap.parseParam("-R, --recursive") catch unreachable,
-        clap.parseParam("-H") catch unreachable,
-        clap.parseParam("-L") catch unreachable,
-        clap.parseParam("-P") catch unreachable,
-        clap.parseParam("<STRING>") catch unreachable,
+pub fn getParams(comptime program: Program) []const clap.Param(clap.Help) {
+    const result = switch (program) {
+        Program.CHGRP => [_]clap.Param(clap.Help){
+            clap.parseParam("--help") catch unreachable,
+            clap.parseParam("--version") catch unreachable,
+            clap.parseParam("-c, --changes") catch unreachable,
+            clap.parseParam("-f, --silent") catch unreachable,
+            clap.parseParam("--quiet") catch unreachable,
+            clap.parseParam("-v, --verbose") catch unreachable,
+            clap.parseParam("--dereference") catch unreachable,
+            clap.parseParam("-h, --no-redereference") catch unreachable,
+            clap.parseParam("--no-preserve-root") catch unreachable,
+            clap.parseParam("--preserve-root") catch unreachable,
+            clap.parseParam("--reference <STR>") catch unreachable,
+            clap.parseParam("-R, --recursive") catch unreachable,
+            clap.parseParam("-H") catch unreachable,
+            clap.parseParam("-L") catch unreachable,
+            clap.parseParam("-P") catch unreachable,
+            clap.parseParam("<STRING>") catch unreachable,
+        },
+        Program.CHOWN => [_]clap.Param(clap.Help){
+            clap.parseParam("--help") catch unreachable,
+            clap.parseParam("--version") catch unreachable,
+            clap.parseParam("-c, --changes") catch unreachable,
+            clap.parseParam("-f, --silent") catch unreachable,
+            clap.parseParam("--quiet") catch unreachable,
+            clap.parseParam("-v, --verbose") catch unreachable,
+            clap.parseParam("--dereference") catch unreachable,
+            clap.parseParam("-h, --no-redereference") catch unreachable,
+            clap.parseParam("--no-preserve-root") catch unreachable,
+            clap.parseParam("--preserve-root") catch unreachable,
+            clap.parseParam("--reference <STR>") catch unreachable,
+            clap.parseParam("--from <STR>") catch unreachable,
+            clap.parseParam("-R, --recursive") catch unreachable,
+            clap.parseParam("-H") catch unreachable,
+            clap.parseParam("-L") catch unreachable,
+            clap.parseParam("-P") catch unreachable,
+            clap.parseParam("<STRING>") catch unreachable,
+        },
+        Program.CHMOD => [_]clap.Param(clap.Help){
+            clap.parseParam("--help") catch unreachable,
+            clap.parseParam("--version") catch unreachable,
+            clap.parseParam("-c, --changes") catch unreachable,
+            clap.parseParam("-f, --silent") catch unreachable,
+            clap.parseParam("--quiet") catch unreachable,
+            clap.parseParam("-v, --verbose") catch unreachable,
+            clap.parseParam("--dereference") catch unreachable,
+            clap.parseParam("-h, --no-redereference") catch unreachable,
+            clap.parseParam("--no-preserve-root") catch unreachable,
+            clap.parseParam("--preserve-root") catch unreachable,
+            clap.parseParam("--reference <STR>") catch unreachable,
+            clap.parseParam("-R, --recursive") catch unreachable,
+            clap.parseParam("<STRING>") catch unreachable,
+        }
     };
+
     return result[0..];
 }
 
-pub fn getOwnershipOptions(comptime params: []const clap.Param(clap.Help), comptime application_name: []const u8, comptime help_message: []const u8) OwnershipOptions {
+pub fn getOwnershipOptions(comptime params: []const clap.Param(clap.Help), comptime application_name: []const u8, comptime help_message: []const u8, comptime program: Program) OwnershipOptions {
     var diag = clap.Diagnostic{};
     var args = clap.parseAndHandleErrors(clap.Help, params, .{ .diagnostic = &diag }, application_name, 1);
 
@@ -83,9 +128,10 @@ pub fn getOwnershipOptions(comptime params: []const clap.Param(clap.Help), compt
     const preserve_root = args.flag("--preserve-root");
     const rfile_group = args.option("--reference");
     const recursive = args.flag("-R");
-    const traverse_main_symlink = args.flag("-H");
-    const traverse_all_symlinks = args.flag("-L");
-    const no_traverse = args.flag("-P");
+    const traverse_main_symlink = (program != Program.CHMOD) and args.flag("-H");
+    const traverse_all_symlinks = (program != Program.CHMOD) and args.flag("-L");
+    const no_traverse = (program != Program.CHMOD) and args.flag("-P");
+    const only_if_matching = if (program == Program.CHOWN) args.option("--from") else null;
 
     checkInconsistencies(changed, quiet, verbose, dereference, no_dereference, no_preserve_root, preserve_root, traverse_main_symlink, traverse_all_symlinks, no_traverse);
 
@@ -102,7 +148,7 @@ pub fn getOwnershipOptions(comptime params: []const clap.Param(clap.Help), compt
     // Explict override possibility as both can be specified
     if (traverse_all_symlinks) symlink_traversal = SymlinkTraversal.ALL;
 
-    return OwnershipOptions{ .verbosity = verbosity, .dereference_main = dereference_main, .recursive = recursive, .symlink_traversal = symlink_traversal, .preserve_root = preserve_root, .rfile_group = rfile_group };
+    return OwnershipOptions{ .verbosity = verbosity, .dereference_main = dereference_main, .recursive = recursive, .symlink_traversal = symlink_traversal, .preserve_root = preserve_root, .rfile_group = rfile_group, .only_if_matching = only_if_matching };
 }
 
 fn traverseDir(path: []const u8, change_params: ChangeParams, verbosity: Verbosity, symlink_traversal: SymlinkTraversal, also_process_dir: bool, application_name: []const u8) void {
@@ -179,7 +225,9 @@ pub fn getChangeParams(ownership_options: OwnershipOptions, application_name: []
         .group = group_id_opt,
         .user = user_id_opt,
         .mode = mode,
-        .from_file = from_file
+        .from_file = from_file,
+        .original_user_must_match = null,
+        .original_group_must_match = null
     };
 }
 
@@ -213,17 +261,19 @@ pub fn changeRights(path: []const u8, change_params: ChangeParams, recursive: bo
             return;
         };
         if (change_params.isChown()) {
-            if (dir.chown(change_params.user, change_params.group)) {
-                if (verbosity == Verbosity.VERBOSE or (verbosity == Verbosity.CHANGED and ((change_params.group != null and (change_params.group.? != stat.gid)) or (change_params.user != null and (change_params.user.? != stat.uid))))) {
-                    print("Changed owner/group on '{s}'\n", .{path});
+            if (change_params.willChange(stat.uid, stat.gid)) {
+                if (dir.chown(change_params.user, change_params.group)) {
+                    if (verbosity == Verbosity.VERBOSE or (verbosity == Verbosity.CHANGED and ((change_params.group != null and (change_params.group.? != stat.gid)) or (change_params.user != null and (change_params.user.? != stat.uid))))) {
+                        print("Changed owner/group on '{s}'\n", .{path});
+                    }
+                } else |err| {
+                    switch (err) {
+                        ChownError.AccessDenied => print("{s}: Access Denied to '{s}'\n", .{ application_name, path }),
+                        else => print("{s}\n", .{err}),
+                    }
                 }
-            } else |err| {
-                switch (err) {
-                    ChownError.AccessDenied => print("{s}: Access Denied to '{s}'\n", .{ application_name, path }),
-                    else => print("{s}\n", .{err}),
-                }
-            }
-        } else {
+            } 
+        } else{
             if (dir.chmod(change_params.mode.?)) {
                 if (verbosity == Verbosity.VERBOSE or (verbosity == Verbosity.CHANGED and ((change_params.mode.? != stat.mode)))) {
                     print("Changed mode on '{s}'\n", .{path});
@@ -298,7 +348,7 @@ fn changePlainFile(path: []const u8, kernel_stat: ?KernelStat, change_params: Ch
                 }
             }
         }
-    } else {
+    } else if (fileinfo.isSymlink(stat)){
         if (file.chmod(change_params.mode.?)) {
             if (verbosity == Verbosity.VERBOSE or (verbosity == Verbosity.CHANGED and ((current_mode != change_params.mode.?)))) {
                 print("Changed owner/group on '{s}'\n", .{path});
