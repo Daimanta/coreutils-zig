@@ -32,6 +32,15 @@ pub const FollowSymlinkError = error {
     UnknownError
 };
 
+pub const ChownError = error {
+    AccessDenied,
+    InvalidPath,
+    OtherError,
+    LoopEncountered,
+    NameTooLong,
+    FileDoesNotExist,
+};
+
 pub const FollowSymlinkResult = struct {
     error_result: ?FollowSymlinkError = null,
     path: ?[]u8 = null
@@ -42,6 +51,7 @@ const S_IFLINK = 0o120000;
 const S_IFDIR = 0o40000;
 
 extern fn mkfifo(path: [*:0]const u8, mode: mode_t) c_int;
+extern fn chmod(pathname: [*:0]const u8, mode: mode_t) c_int;
 
 pub fn isSymlink(stat: KernelStat) bool {
     return (stat.mode & S_IFMT) == S_IFLINK;
@@ -148,4 +158,25 @@ pub fn fsRoot(path: []const u8) bool {
         }
     }
     return false;
+}
+
+pub fn chmodA(path: []const u8, mode: mode_t) ChownError!void {
+    const np_path = strings.toNullTerminatedPointer(path, default_allocator) catch return ChownError.OtherError;
+    const chmod_result = chmod(np_path, mode);
+    default_allocator.free(np_path);
+    if (chmod_result != 0) {
+        const errno = std.c.getErrno(chmod_result);
+        return switch (errno) {
+            .ACCES, .PERM => ChownError.AccessDenied,
+            .FAULT => ChownError.InvalidPath,
+            .IO, .ROFS, .NOMEM => ChownError.OtherError,
+            .LOOP => ChownError.LoopEncountered,
+            .NAMETOOLONG => ChownError.NameTooLong,
+            .NOENT => ChownError.FileDoesNotExist,
+            else => blk: {
+                std.debug.print("Unknown error encountered: {d}\n", .{errno});
+                break :blk ChownError.OtherError;
+            }
+        };
+    }
 }

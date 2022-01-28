@@ -462,4 +462,10 @@ test "add read to other, set other" {
     try testing.expectEqual(expected, result);
 }
 
+test "set read to all" {
+    const result = try getModeFromString("a=r");
+    const expected: mode_t = RUSR | RGRP | ROTH;
+    try testing.expectEqual(expected, result);
+}
+
 

@@ -5,6 +5,7 @@ const linux = os.linux;
 
 const clap = @import("clap.zig");
 const file_ownership = @import("shared/file_ownership.zig");
+const mode = @import("util/mode.zig");
 const strings = @import("util/strings.zig");
 const users = @import("util/users.zig");
 
@@ -60,36 +61,13 @@ pub fn main() !void {
     if (change_params.from_file) {
         start = 0;
     } else {
-        const owner_and_group = positionals[0];
-        const colon_index = strings.indexOf(owner_and_group, ':');
-
-        var user: []const u8 = undefined;
-        var group: ?[]const u8 = null;
-
-        if (colon_index != null) {
-            if (colon_index == owner_and_group.len - 1) {
-                print("{s}: Empty group provided. Exiting.\n", .{application_name});
-                exit(1);
-            }
-            user = owner_and_group[0..colon_index.?];
-            group = owner_and_group[colon_index.? + 1 ..];
-        } else {
-            user = owner_and_group;
-        }
-
-        const user_details = users.getUserByNameA(owner_and_group) catch {
-            print("{s}: Group not found. Exiting.\n", .{application_name});
-            exit(1);
+        const mode_string = positionals[0];
+        const parsed_mode = mode.getModeFromString(mode_string) catch {
+            print("{s}: Invalid mode string. Exiting.\n", .{application_name});
+            std.os.exit(1);
         };
-        change_params.user = user_details.pw_uid;
-
-        if (group != null) {
-            const group_details = users.getGroupByName(group.?) catch {
-                print("{s}: Group not found. Exiting.\n", .{application_name});
-                exit(1);
-            };
-            change_params.group = group_details.gr_gid;
-        }
+        change_params.mode = parsed_mode;
+        
     }
     for (positionals[start..]) |arg| {
         file_ownership.changeRights(arg, change_params, ownership_options.recursive, ownership_options.verbosity, ownership_options.dereference_main, ownership_options.preserve_root, ownership_options.symlink_traversal, application_name);
