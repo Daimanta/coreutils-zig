@@ -5,12 +5,14 @@ const linux = os.linux;
 
 const clap = @import("../clap.zig");
 const fileinfo = @import("../util/fileinfo.zig");
+const mode_import = @import("../util/mode.zig");
 const strings = @import("../util/strings.zig");
 const users = @import("../util/users.zig");
 const version = @import("../util/version.zig");
 
 const Allocator = std.mem.Allocator;
 const ChownError = os.FChownError;
+const ChmodError = fileinfo.ChmodError;
 const FChmodError = os.FChmodError;
 const OpenError = fs.Dir.OpenError;
 const OpenFileError = fs.File.OpenError;
@@ -19,6 +21,7 @@ const default_allocator = std.heap.page_allocator;
 const exit = std.os.exit;
 const FollowSymlinkError = fileinfo.FollowSymlinkError;
 const KernelStat = linux.Stat;
+const mode_t = linux.mode_t;
 const print = std.debug.print;
 
 const max_path_length = 1 << 12;
@@ -34,7 +37,8 @@ pub const Program = enum { CHGRP, CHOWN, CHMOD };
 const ChangeParams = struct {
     user: ?linux.uid_t,
     group: ?linux.gid_t,
-    mode: ?u64,
+    absolute_mode: ?mode_t,
+    mode_string: ?[]const u8,
     from_file: bool,
     original_user_must_match: ?linux.uid_t,
     original_group_must_match: ?linux.gid_t,
@@ -222,7 +226,7 @@ pub fn getChangeParams(ownership_options: OwnershipOptions, application_name: []
         from_file = true;
     }
 
-    return ChangeParams{ .group = group_id_opt, .user = user_id_opt, .mode = mode, .from_file = from_file, .original_user_must_match = null, .original_group_must_match = null };
+    return ChangeParams{ .group = group_id_opt, .user = user_id_opt, .absolute_mode = mode, .mode_string = null, .from_file = from_file, .original_user_must_match = null, .original_group_must_match = null };
 }
 
 pub fn changeRights(path: []const u8, change_params: ChangeParams, recursive: bool, verbosity: Verbosity, dereference_main: bool, preserve_root: bool, symlink_traversal: SymlinkTraversal, application_name: []const u8) void {
@@ -267,12 +271,13 @@ pub fn changeRights(path: []const u8, change_params: ChangeParams, recursive: bo
                     }
                 }
             } else {
-                if (fileinfo.chmodA(path, change_params.mode.?)) {
-                    if (verbosity == Verbosity.VERBOSE or (verbosity == Verbosity.CHANGED and ((change_params.mode.? != stat.mode)))) {
+                const used_mode = if (change_params.absolute_mode != null) change_params.absolute_mode.? else mode_import.getModeFromString(change_params.mode_string.?, stat.mode) catch return;
+                if (fileinfo.chmodA(path, used_mode)) {
+                    if (verbosity == Verbosity.VERBOSE or (verbosity == Verbosity.CHANGED and ((used_mode != stat.mode)))) {
                         print("Changed mode on '{s}'\n", .{path});
                     }
-                } else |_|{
-                    print("Error while chmodding dir.\n", .{});
+                } else |err| {
+                    print("{s}: Cannot chmod dir '{s}'. {s}\n", .{application_name, path, err});
                 }
             }
         }
@@ -313,21 +318,20 @@ fn changePlainFile(path: []const u8, kernel_stat: ?KernelStat, change_params: Ch
     const current_group = stat.gid;
     const current_mode = stat.mode;
 
-    const file = fs.cwd().openFile(path, .{}) catch |err| {
-        if (verbosity != Verbosity.QUIET) {
-            switch (err) {
-                OpenFileError.AccessDenied => print("{s}: Access Denied to '{s}'\n", .{ application_name, path }),
-                else => print("{s}\n", .{err}),
-            }
-        }
-
-        return;
-    };
-
-    defer file.close();
-
     if (change_params.willChange(stat)) {
         if (change_params.isChown()) {
+            const file = fs.cwd().openFile(path, .{}) catch |err| {
+                if (verbosity != Verbosity.QUIET) {
+                    switch (err) {
+                        OpenFileError.AccessDenied => print("{s}: Access Denied to '{s}'\n", .{ application_name, path }),
+                        else => print("{s}\n", .{err}),
+                    }
+                }
+                return;
+            };
+
+            defer file.close();
+
             if (file.chown(change_params.user, change_params.group)) {
                 if (verbosity == Verbosity.VERBOSE or (verbosity == Verbosity.CHANGED and ((change_params.user != null and current_user != change_params.user.?) or (change_params.group != null and current_group != change_params.group.?)))) {
                     print("Changed owner/group on '{s}'\n", .{path});
@@ -341,12 +345,18 @@ fn changePlainFile(path: []const u8, kernel_stat: ?KernelStat, change_params: Ch
                 }
             }
         } else if (!fileinfo.isSymlink(stat)) {
-            if (fileinfo.chmodA(path, change_params.mode.?)) {
-                if (verbosity == Verbosity.VERBOSE or (verbosity == Verbosity.CHANGED and ((current_mode != change_params.mode.?)))) {
+            const used_mode = if (change_params.absolute_mode != null) change_params.absolute_mode.? else mode_import.getModeFromString(change_params.mode_string.?, stat.mode) catch return;
+            if (fileinfo.chmodA(path, used_mode)) {
+                if (verbosity == Verbosity.VERBOSE or (verbosity == Verbosity.CHANGED and ((current_mode != used_mode)))) {
                     print("Changed owner/group on '{s}'\n", .{path});
                 }
             } else |err| {
-                print("Error while chmodding dir. {s}\n", .{err});
+                if (err == ChmodError.AccessDenied) {
+                    print("{s}: Cannot chmod file '{s}'. Access Denied\n", .{application_name, path});
+                } else {
+                    print("{s}: Cannot chmod file '{s}'. {s}\n", .{application_name, path, err});
+                }
+                
             }
         }
     }

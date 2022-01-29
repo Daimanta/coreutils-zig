@@ -4,7 +4,6 @@
     280 mknod.c
     314 kill.c
     325 unexpand.c
-    331 chown.c
     350 mktemp.c
     373 rm.c
     388 truncate.c
@@ -15,7 +14,6 @@
     518 mv.c
     528 paste.c
     567 tsort.c
-    573 chmod.c
     589 chcon.c
     602 pinky.c
     607 date.c

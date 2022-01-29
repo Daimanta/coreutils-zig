@@ -154,8 +154,9 @@ fn updateOther(mode: *mode_t, operation: Operation, absolute_change: AbsoluteCha
     }
 }
 
-pub fn getModeFromString(string: []const u8) ModeError!mode_t {
-    var result: mode_t = 0;
+
+pub fn getModeFromString(string: []const u8, initial_mode: mode_t) ModeError!mode_t {
+    var result: mode_t = initial_mode;
     var modifiers = ArrayList(ModeChange).init(default_allocator);
     defer modifiers.deinit();
 
@@ -195,6 +196,10 @@ pub fn getModeFromString(string: []const u8) ModeError!mode_t {
     }
 
     return result;
+}
+
+pub fn getModeFromStringAndZeroMode(string: []const u8) ModeError!mode_t {
+    return getModeFromString(string, 0);
 }
 
 fn handleNumber(token: []const u8, modifiers: *ArrayList(ModeChange)) ModeError!void {

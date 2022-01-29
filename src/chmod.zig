@@ -61,12 +61,7 @@ pub fn main() !void {
     if (change_params.from_file) {
         start = 0;
     } else {
-        const mode_string = positionals[0];
-        const parsed_mode = mode.getModeFromString(mode_string) catch {
-            print("{s}: Invalid mode string. Exiting.\n", .{application_name});
-            std.os.exit(1);
-        };
-        change_params.mode = parsed_mode;
+        change_params.mode_string = positionals[0];
         
     }
     for (positionals[start..]) |arg| {

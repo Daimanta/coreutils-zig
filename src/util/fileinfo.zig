@@ -32,7 +32,7 @@ pub const FollowSymlinkError = error {
     UnknownError
 };
 
-pub const ChownError = error {
+pub const ChmodError = error {
     AccessDenied,
     InvalidPath,
     OtherError,
@@ -160,22 +160,22 @@ pub fn fsRoot(path: []const u8) bool {
     return false;
 }
 
-pub fn chmodA(path: []const u8, mode: mode_t) ChownError!void {
-    const np_path = strings.toNullTerminatedPointer(path, default_allocator) catch return ChownError.OtherError;
+pub fn chmodA(path: []const u8, mode: mode_t) ChmodError!void {
+    const np_path = strings.toNullTerminatedPointer(path, default_allocator) catch return ChmodError.OtherError;
     const chmod_result = chmod(np_path, mode);
     default_allocator.free(np_path);
     if (chmod_result != 0) {
         const errno = std.c.getErrno(chmod_result);
         return switch (errno) {
-            .ACCES, .PERM => ChownError.AccessDenied,
-            .FAULT => ChownError.InvalidPath,
-            .IO, .ROFS, .NOMEM => ChownError.OtherError,
-            .LOOP => ChownError.LoopEncountered,
-            .NAMETOOLONG => ChownError.NameTooLong,
-            .NOENT => ChownError.FileDoesNotExist,
+            .ACCES, .PERM => ChmodError.AccessDenied,
+            .FAULT => ChmodError.InvalidPath,
+            .IO, .ROFS, .NOMEM => ChmodError.OtherError,
+            .LOOP => ChmodError.LoopEncountered,
+            .NAMETOOLONG => ChmodError.NameTooLong,
+            .NOENT => ChmodError.FileDoesNotExist,
             else => blk: {
                 std.debug.print("Unknown error encountered: {d}\n", .{errno});
-                break :blk ChownError.OtherError;
+                break :blk ChmodError.OtherError;
             }
         };
     }

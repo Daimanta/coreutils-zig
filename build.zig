@@ -22,6 +22,16 @@ pub fn build(b: *std.build.Builder) void {
     chgrp.setBuildMode(mode);
     chgrp.install();
     
+    const chmod = b.addExecutable("chmod", "src/chmod.zig");
+    chmod.setTarget(target);
+    chmod.setBuildMode(mode);
+    chmod.install();
+    
+    const chown = b.addExecutable("chown", "src/chown.zig");
+    chown.setTarget(target);
+    chown.setBuildMode(mode);
+    chown.install();
+    
     const cksum = b.addExecutable("cksum", "src/cksum.zig");
     cksum.setTarget(target);
     cksum.setBuildMode(mode);
@@ -185,6 +195,8 @@ pub fn build(b: *std.build.Builder) void {
 
     if (os == .linux) {
         chgrp.linkSystemLibrary("c");
+        chmod.linkSystemLibrary("c");
+        chown.linkSystemLibrary("c");
         groups.linkSystemLibrary("c");
         hostid.linkSystemLibrary("c");
         id.linkSystemLibrary("c");

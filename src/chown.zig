@@ -136,18 +136,28 @@ pub fn main() !void {
             user = owner_and_group;
         }
 
-        const user_details = users.getUserByNameA(owner_and_group) catch {
-            print("{s}: Group not found. Exiting.\n", .{application_name});
-            exit(1);
-        };
-        change_params.user = user_details.pw_uid;
-
-        if (group != null) {
-            const group_details = users.getGroupByName(group.?) catch {
+        const user_id = std.fmt.parseInt(u32, user, 10) catch null;
+        if (user_id != null) {
+            change_params.user = user_id.?;
+        } else {
+            const user_details = users.getUserByNameA(owner_and_group) catch {
                 print("{s}: Group not found. Exiting.\n", .{application_name});
                 exit(1);
             };
-            change_params.group = group_details.gr_gid;
+            change_params.user = user_details.pw_uid;
+        }
+
+        if (group != null) {
+            const group_id = std.fmt.parseInt(u32, group.?, 10) catch null;
+            if (group_id != null) {
+                change_params.group = group_id.?;
+            } else {
+                const group_details = users.getGroupByName(group.?) catch {
+                    print("{s}: Group not found. Exiting.\n", .{application_name});
+                    exit(1);
+                };
+                change_params.group = group_details.gr_gid;
+            }
         }
     }
     for (positionals[start..]) |arg| {
