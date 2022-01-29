@@ -21,7 +21,6 @@
     610 timeout.c
     616 shuf.c
     618 nl.c
-    622 remove.c
     662 uniq.c
     694 ln.c
     713 tac.c
