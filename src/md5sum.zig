@@ -4,17 +4,22 @@ const mem = std.mem;
 const os = std.os;
 const io = std.io;
 const testing = std.testing;
+const hash = std.crypto.hash;
 
 const clap = @import("clap.zig");
+const fileinfo = @import("util/fileinfo.zig");
 const version = @import("util/version.zig");
 
 const Allocator = std.mem.Allocator;
 const LinkError = os.LinkError;
+const Md5 = hash.Md5;
 
 const default_allocator = std.heap.page_allocator;
 const print = std.debug.print;
 
 const application_name = "md5sum";
+const HASH_BYTE_SIZE = 16;
+const block_read = 1 << 22;
 
 const help_message =
     \\Usage: md5sum [OPTION]... [FILE]...
@@ -112,20 +117,84 @@ fn checkFile(path: []const u8, ignore_missing: bool, quiet: bool, status: bool, 
     _ = status;
     _ = strict;
     _ = warn;
-    if (mem.eql(u8, "-", path)) {
+    if (mem.eql(u8, "-while ", path)) {
         if (!handled_stdin) {
-
+            handled_stdin = true;
         }
     }
 }
 
 fn hashFile(path: []const u8, bsd: bool, terminator: []const u8) void {
-    _ = path;
-    _ = bsd;
-    _ = terminator;
     if (mem.eql(u8, "-", path)) {
         if (!handled_stdin) {
-
+            const stdin = std.io.getStdIn().reader();
+            const bytes = stdin.readAllAlloc(default_allocator, 1 << 30) catch {
+                std.debug.print("Reading stdin failed\n", .{});
+                return;
+            };
+            var hash_result: [HASH_BYTE_SIZE]u8 = undefined;
+            Md5.hash(bytes, &hash_result, .{});
+            var hash_string: [2 * HASH_BYTE_SIZE]u8 = undefined;
+            digest_to_hex_string(&hash_result, &hash_string);
+            if (bsd) {
+                print("MD5 (-) = {s}{s}", .{ hash_string, terminator });
+            } else {
+                print("{s}  -{s}", .{ hash_string, terminator });
+            }
+            handled_stdin = true;
         }
-    }   
+    } else {
+        const stat = fileinfo.getLstat(path) catch |err| {
+            print("{s}\n", .{err});
+            return;
+        };
+        if (!fileinfo.fileExists(stat)) {
+            print("{s}: File '{s}' does not exist\n", .{ application_name, path });
+            return;
+        }
+
+        if (fileinfo.isDir(stat)) {
+            print("{s}: '{s}' is a directory.\n", .{ application_name, path });
+            return;
+        }
+
+        const file_size = @intCast(u64, stat.size);
+
+        const file = fs.cwd().openFile(path, .{ .read = true }) catch {
+            print("Could not read file.\n", .{});
+            return;
+        };
+        defer file.close();
+
+        var offset: usize = 0;
+        var file_buffer = default_allocator.alloc(u8, block_read) catch return;
+        defer default_allocator.free(file_buffer);
+        var hash_processor = Md5.init(.{});
+        while (offset < file_size) {
+            const read = file.pread(file_buffer[0..], offset) catch return;
+            hash_processor.update(file_buffer[0..read]);
+            offset += block_read;
+        }
+        var hash_result: [HASH_BYTE_SIZE]u8 = undefined;
+        hash_processor.final(&hash_result);
+        var hash_string: [2 * HASH_BYTE_SIZE]u8 = undefined;
+        digest_to_hex_string(&hash_result, &hash_string);
+        if (bsd) {
+            print("MD5 ({s}) = {s}{s}", .{ path, hash_string, terminator });
+        } else {
+            print("{s}  {s}{s}", .{ hash_string, path, terminator });
+        }
+    }
+}
+
+fn digest_to_hex_string(digest: *[HASH_BYTE_SIZE]u8, string: *[2 * HASH_BYTE_SIZE]u8) void {
+    var range: [16]u8 = .{ '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+    var i: usize = 0;
+    while (i < digest.len) : (i += 1) {
+        var upper: u8 = digest[i] >> 4;
+        var lower: u8 = digest[i] & 15;
+
+        string[2 * i] = range[upper];
+        string[(2 * i) + 1] = range[lower];
+    }
 }
