@@ -59,7 +59,7 @@ pub fn main() !void {
     const arguments = args.positionals();
 
     
-    var used_mode: mode_t = mode.getModeFromString("a=rw") catch unreachable;
+    var used_mode: mode_t = mode.getModeFromStringAndZeroMode("a=rw") catch unreachable;
     
     const mode_string = args.option("-m");
     const default_selinux_context = args.flag("-Z");
@@ -71,7 +71,7 @@ pub fn main() !void {
     }   
     
     if (mode_string != null) {
-        used_mode = mode.getModeFromString(mode_string.?) catch |err| {
+        used_mode = mode.getModeFromStringAndZeroMode(mode_string.?) catch |err| {
             switch (err) {
                 mode.ModeError.InvalidModeString => std.debug.print("Invalid mode. Exiting.\n", .{}),
                 mode.ModeError.UnknownError => std.debug.print("Unknown mode error. Exiting.\n", .{}),

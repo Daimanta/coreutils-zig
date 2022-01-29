@@ -2,6 +2,12 @@ const std = @import("std");
 const os = @import("builtin").os.tag;
 
 pub fn build(b: *std.build.Builder) void {
+    const current_zig_version = @import("builtin").zig_version;
+    if (current_zig_version.major != 0 or current_zig_version.minor < 9) {
+        std.debug.print("This project does not compile with a Zig version <0.9.x. Exiting.", .{});
+        std.os.exit(1);
+    }
+
     // Standard target options allows the person running `zig build` to choose
     // what target to build for. Here we do not override the defaults, which
     // means any target is allowed, and the default is native. Other options

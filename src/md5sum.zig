@@ -1,5 +1,6 @@
 const std = @import("std");
 const fs = std.fs;
+const mem = std.mem;
 const os = std.os;
 const io = std.io;
 const testing = std.testing;
@@ -111,10 +112,20 @@ fn checkFile(path: []const u8, ignore_missing: bool, quiet: bool, status: bool, 
     _ = status;
     _ = strict;
     _ = warn;
+    if (mem.eql(u8, "-", path)) {
+        if (!handled_stdin) {
+
+        }
+    }
 }
 
 fn hashFile(path: []const u8, bsd: bool, terminator: []const u8) void {
     _ = path;
     _ = bsd;
     _ = terminator;
+    if (mem.eql(u8, "-", path)) {
+        if (!handled_stdin) {
+
+        }
+    }   
 }
