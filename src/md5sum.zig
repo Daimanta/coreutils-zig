@@ -15,7 +15,7 @@ const LinkError = os.LinkError;
 const Md5 = hash.Md5;
 
 const default_allocator = std.heap.page_allocator;
-const print = std.debug.print;
+const print = @import("util/print_tools.zig").print;
 
 const application_name = "md5sum";
 const HASH_BYTE_SIZE = 16;
@@ -99,6 +99,11 @@ pub fn main() !void {
         print("When '--check' is not set, non-check flags may not be active.\n", .{});
         std.os.exit(1);
     }
+    
+    if (status_only and warn) {
+        print("When '--status' is set, --warn may not be active.\n", .{});
+        std.os.exit(1);
+    }
 
     const positionals = args.positionals();
     var clean = true;
@@ -126,7 +131,7 @@ fn checkFile(path: []const u8, ignore_missing: bool, quiet: bool, status: bool, 
             };
             defer default_allocator.free(bytes);            
             handled_stdin = true;
-            return checkBytes(bytes, ignore_missing, quiet, status, strict, warn);
+            return checkBytes("-", bytes, ignore_missing, quiet, status, strict, warn);
         }
     } else {
         const stat = fileinfo.getLstat(path) catch |err| {
@@ -150,20 +155,70 @@ fn checkFile(path: []const u8, ignore_missing: bool, quiet: bool, status: bool, 
         defer file.close();
         const bytes = file.readToEndAlloc(default_allocator, 1 << 30) catch return false;        
         defer default_allocator.free(bytes);
-        return checkBytes(bytes, ignore_missing, quiet, status, strict, warn);
+        return checkBytes(path, bytes, ignore_missing, quiet, status, strict, warn);
     }
     return true;
 
 }
 
-fn checkBytes(bytes: []const u8, ignore_missing: bool, quiet: bool, status_only: bool, strict: bool, warn: bool) bool {
-    _ = bytes;
-    _ = quiet;
-    _ = warn;
+fn checkBytes(path: []const u8, bytes: []const u8, ignore_missing: bool, quiet: bool, status_only: bool, strict: bool, warn: bool) bool {
     var result = true;
     var missing: u32 = 0;
     var incorrect: u32 = 0;
     var format: u32 = 0;
+    
+    var iterator = mem.split(u8, bytes, "\n");
+    var i: u32 = 0;
+    while (iterator.next()) |line| {
+        if (line.len > 0) {
+            const bsd_prefix: []const u8 = "MD5 (";
+            if (mem.startsWith(u8, line, bsd_prefix) and line.len > bsd_prefix.len) {
+                const string_index = mem.indexOf(u8, line[bsd_prefix.len..], ") = ");
+                if (string_index == null) {
+                    handleFormatFailure(warn, path, &i, &format);
+                    continue;
+                }
+                const file_path = line[bsd_prefix.len..string_index.?+bsd_prefix.len];
+                const hash_string = line[string_index.?+bsd_prefix.len+4..];
+                const match = checkFileHashMatch(file_path, hash_string);
+                if (match) {
+                    if (!quiet) {
+                        print("{s}: OK\n", .{file_path});
+                    }
+                } else {
+                    print("{s}: FAILED\n", .{file_path});
+                    incorrect += 1;
+                }
+            } else if (line.len > 34 and line[32] == ' ' and line[33] == ' ') {
+                var correct = true;
+                for (line[0..32]) |byte|{
+                    if (!std.ascii.isDigit(byte) and !std.ascii.isAlpha(byte)) {
+                        correct = false;
+                        break;
+                    }
+                }
+                if (!correct) {
+                    handleFormatFailure(warn, path, &i, &format);
+                    continue;
+                }
+                const file_path = line[34..];
+                const match = checkFileHashMatch(file_path, line[0..32]);
+                if (match) {
+                    if (!quiet) {
+                        print("{s}: OK\n", .{file_path});
+                    }
+                } else {
+                    print("{s}: FAILED\n", .{file_path});
+                    incorrect += 1;
+                }
+            } else {
+                handleFormatFailure(warn, path, &i, &format);
+                continue;
+            }
+        }
+        i += 1;
+    }
+    
     if ((missing > 0 and !ignore_missing) or incorrect > 0 or (format > 0 and strict)) {
         result = false;
     }
@@ -171,14 +226,28 @@ fn checkBytes(bytes: []const u8, ignore_missing: bool, quiet: bool, status_only:
         print("{s}: WARNING: {d} files could not be read\n", .{application_name, missing});
     }
 
-    if (incorrect > 0 and !status_only) {
-        print("{s}: WARNING: {d} hashes did not match\n", .{application_name, missing});
-    }
-
     if (format > 0 and !status_only) {
-        print("{s}: WARNING: {d} lines are improperly formatted\n", .{application_name, missing});
+        print("{s}: WARNING: {d} lines are improperly formatted\n", .{application_name, format});
+    }
+    
+    if (incorrect > 0 and !status_only) {
+        print("{s}: WARNING: {d} hashes did not match\n", .{application_name, incorrect});
     }
     return result;
+}
+
+fn handleFormatFailure(warn: bool, path:[]const u8, index: *u32, format: *u32) void {
+    format.* += 1;
+    if (warn) {
+        print("{s}: '{s}' line {d}: improperly formatted checksum line\n", .{application_name, path, index.*+1});
+    }
+    index.* += 1;
+}
+
+fn checkFileHashMatch(path: []const u8, provided_hash: []const u8) bool {
+    if (provided_hash.len != 32) return false;
+    const digest = digestFromFile(path) catch return false;
+    return std.mem.eql(u8, provided_hash, digest[0..]);
 }
 
 fn hashFile(path: []const u8, bsd: bool, terminator: []const u8) bool {
@@ -201,7 +270,7 @@ fn hashFile(path: []const u8, bsd: bool, terminator: []const u8) bool {
             handled_stdin = true;
         }
     } else {
-        const hash_string = digestFromFile(path) catch unreachable;
+        const hash_string = digestFromFile(path) catch return false;
         if (bsd) {
             print("MD5 ({s}) = {s}{s}", .{ path, hash_string, terminator });
         } else {
