@@ -109,7 +109,7 @@ pub fn main() !void {
     var clean = true;
     if (check) {
         for (positionals) |arg| {
-            clean = checkFile(arg, ignore_missing, quiet, status_only, strict, warn) and clean;
+            clean = checkVerificationFile(arg, ignore_missing, quiet, status_only, strict, warn) and clean;
         }
     } else {
         for (positionals) |arg| {
@@ -121,7 +121,7 @@ pub fn main() !void {
     }
 }
 
-fn checkFile(path: []const u8, ignore_missing: bool, quiet: bool, status: bool, strict: bool, warn: bool) bool {
+fn checkVerificationFile(path: []const u8, ignore_missing: bool, quiet: bool, status: bool, strict: bool, warn: bool) bool {
     if (mem.eql(u8, "-", path)) {
         if (!handled_stdin) {
             const stdin = std.io.getStdIn().reader();
@@ -180,15 +180,7 @@ fn checkBytes(path: []const u8, bytes: []const u8, ignore_missing: bool, quiet: 
                 }
                 const file_path = line[bsd_prefix.len..string_index.?+bsd_prefix.len];
                 const hash_string = line[string_index.?+bsd_prefix.len+4..];
-                const match = checkFileHashMatch(file_path, hash_string);
-                if (match) {
-                    if (!quiet) {
-                        print("{s}: OK\n", .{file_path});
-                    }
-                } else {
-                    print("{s}: FAILED\n", .{file_path});
-                    incorrect += 1;
-                }
+                handleHashCheck(file_path, hash_string, quiet, ignore_missing, &missing, &incorrect);
             } else if (line.len > 34 and line[32] == ' ' and line[33] == ' ') {
                 var correct = true;
                 for (line[0..32]) |byte|{
@@ -202,15 +194,8 @@ fn checkBytes(path: []const u8, bytes: []const u8, ignore_missing: bool, quiet: 
                     continue;
                 }
                 const file_path = line[34..];
-                const match = checkFileHashMatch(file_path, line[0..32]);
-                if (match) {
-                    if (!quiet) {
-                        print("{s}: OK\n", .{file_path});
-                    }
-                } else {
-                    print("{s}: FAILED\n", .{file_path});
-                    incorrect += 1;
-                }
+                const hash_string = line[0..32];
+                handleHashCheck(file_path, hash_string, quiet, ignore_missing, &missing, &incorrect);
             } else {
                 handleFormatFailure(warn, path, &i, &format);
                 continue;
@@ -236,6 +221,29 @@ fn checkBytes(path: []const u8, bytes: []const u8, ignore_missing: bool, quiet: 
     return result;
 }
 
+fn handleHashCheck(file_path: []const u8, hash_string:[]const u8, quiet: bool, ignore_missing: bool, missing: *u32, incorrect: *u32) void {
+    if (checkFileHashMatch(file_path, hash_string)) |match| {
+        if (match) {
+            if (!quiet) {
+                print("{s}: OK\n", .{file_path});
+            }
+        } else {
+            print("{s}: FAILED\n", .{file_path});
+            incorrect.* += 1;
+        }
+    } else |err| {
+        if (err == HashError.FileDoesNotExist) {
+            missing.* += 1;
+            if (!ignore_missing) {
+                print("{s}: FAILED\n", .{file_path});
+            }
+        } else {
+            print("{s}: FAILED\n", .{file_path});
+            incorrect.* += 1;
+        }
+    }
+}
+
 fn handleFormatFailure(warn: bool, path:[]const u8, index: *u32, format: *u32) void {
     format.* += 1;
     if (warn) {
@@ -244,9 +252,9 @@ fn handleFormatFailure(warn: bool, path:[]const u8, index: *u32, format: *u32) v
     index.* += 1;
 }
 
-fn checkFileHashMatch(path: []const u8, provided_hash: []const u8) bool {
+fn checkFileHashMatch(path: []const u8, provided_hash: []const u8) HashError!bool {
     if (provided_hash.len != 32) return false;
-    const digest = digestFromFile(path) catch return false;
+    const digest = try digestFromFile(path);
     return std.mem.eql(u8, provided_hash, digest[0..]);
 }
 
@@ -320,7 +328,7 @@ fn digestFromFile(path: []const u8) HashError![2 * HASH_BYTE_SIZE]u8 {
 }
 
 fn digest_to_hex_string(digest: *[HASH_BYTE_SIZE]u8, string: *[2 * HASH_BYTE_SIZE]u8) void {
-    var range: [16]u8 = .{ '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+    const range: [16]u8 = "0123456789abcdef".*;
     var i: usize = 0;
     while (i < digest.len) : (i += 1) {
         var upper: u8 = digest[i] >> 4;

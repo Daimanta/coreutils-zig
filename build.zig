@@ -98,6 +98,11 @@ pub fn build(b: *std.build.Builder) void {
     logname.setBuildMode(mode);
     logname.install();
     
+    const md5sum = b.addExecutable("md5sum", "src/md5sum.zig");
+    md5sum.setTarget(target);
+    md5sum.setBuildMode(mode);
+    md5sum.install();
+    
     const mkdir = b.addExecutable("mkdir", "src/mkdir.zig");
     mkdir.setTarget(target);
     mkdir.setBuildMode(mode);
