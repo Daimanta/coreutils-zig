@@ -35,7 +35,6 @@
    1027 install.c
    1046 fmt.c
    1095 head.c
-   1109 md5sum.c
    1140 du.c
    1198 join.c
    1235 cp.c
