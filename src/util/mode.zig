@@ -21,6 +21,31 @@ pub const ROTH: u12 = 0o0004;
 pub const WOTH: u12 = 0o0002;
 pub const XOTH: u12 = 0o0001;
 
+pub const ModeStruct = packed struct {
+    xoth: bool,
+    woth: bool,
+    roth: bool,
+    xgrp: bool,
+    wgrp: bool,
+    rgrp: bool,
+    xusr: bool,
+    wusr: bool,
+    rusr: bool,
+    svtx: bool,
+    sgid: bool,
+    suid: bool,
+    _padding1: u4,
+    _padding2: u16,
+
+     pub fn init(mode: mode_t) ModeStruct {
+         return @bitCast(ModeStruct, @truncate(u32, mode));
+     }
+
+     pub fn to_mode(self: *const ModeStruct) mode_t {
+        return @bitCast(u32, self.*);
+     }
+};
+
 pub const Operation = enum { ADD, REMOVE, SET };
 
 pub const ChangeDerivation = enum { ABSOLUTE, RELATIVE };
@@ -387,90 +412,97 @@ test "add read to write" {
 }
 
 test "mode number string parsing" {
-    const result = try getModeFromString("755");
+    const result = try getModeFromStringAndZeroMode("755");
     const expected: mode_t = RUSR | WUSR | XUSR | RGRP | XGRP | ROTH | XOTH;
     try testing.expectEqual(expected, result);
 }
 
 test "add mode number" {
-    const result = try getModeFromString("+4");
+    const result = try getModeFromStringAndZeroMode("+4");
     const expected: mode_t = ROTH;
     try testing.expectEqual(expected, result);
 }
 
 test "mode set string parsing" {
-    const result = try getModeFromString("a=rw");
+    const result = try getModeFromStringAndZeroMode("a=rw");
     const expected: mode_t = RUSR | WUSR | RGRP | WGRP | ROTH | WOTH;
     try testing.expectEqual(expected, result);
 }
 
 test "invalid number mode" {
-    _ = getModeFromString("10000") catch {
+    _ = getModeFromStringAndZeroMode("10000") catch {
         return;
     };
     try testing.expect(false);
 }
 
 test "invalid combination of string and number" {
-    _ = getModeFromString("a=rw,755") catch {
+    _ = getModeFromStringAndZeroMode("a=rw,755") catch {
         return;
     };
     try testing.expect(false);
 }
 
 test "no modifier specified" {
-    _ = getModeFromString("r") catch {
+    _ = getModeFromStringAndZeroMode("r") catch {
         return;
     };
     try testing.expect(false);
 }
 
 test "remove read" {
-    const result = try getModeFromString("-r");
+    const result = try getModeFromStringAndZeroMode("-r");
     const expected: mode_t = 0;
     try testing.expectEqual(expected, result);
 }
 
 test "add read" {
-    const result = try getModeFromString("+r");
+    const result = try getModeFromStringAndZeroMode("+r");
     const expected: mode_t = RUSR | RGRP | ROTH;
     try testing.expectEqual(expected, result);
 }
 
 test "set read" {
-    const result = try getModeFromString("=r");
+    const result = try getModeFromStringAndZeroMode("=r");
     const expected: mode_t = RUSR | RGRP | ROTH;
     try testing.expectEqual(expected, result);
 }
 
 test "set read and write" {
-    const result = try getModeFromString("=rw");
+    const result = try getModeFromStringAndZeroMode("=rw");
     const expected: mode_t = RUSR | RGRP | ROTH | WUSR | WGRP | WOTH;
     try testing.expectEqual(expected, result);
 }
 
 test "set read add write" {
-    const result = try getModeFromString("=r+w");
+    const result = try getModeFromStringAndZeroMode("=r+w");
     const expected: mode_t = RUSR | RGRP | ROTH | WUSR | WGRP | WOTH;
     try testing.expectEqual(expected, result);
 }
 
 test "set other" {
-    const result = try getModeFromString("=o");
+    const result = try getModeFromStringAndZeroMode("=o");
     const expected: mode_t = 0;
     try testing.expectEqual(expected, result);
 }
 
 test "add read to other, set other" {
-    const result = try getModeFromString("o+r,=o");
+    const result = try getModeFromStringAndZeroMode("o+r,=o");
     const expected: mode_t = RUSR | RGRP | ROTH;
     try testing.expectEqual(expected, result);
 }
 
 test "set read to all" {
-    const result = try getModeFromString("a=r");
+    const result = try getModeFromStringAndZeroMode("a=r");
     const expected: mode_t = RUSR | RGRP | ROTH;
     try testing.expectEqual(expected, result);
 }
 
+test "mode struct" {
+    const value: mode_t = 6;
+    const strct = ModeStruct.init(value);
+    try testing.expect(strct.woth and strct.roth);
+    const new_mode = strct.to_mode();
+    try testing.expectEqual(value, new_mode);
+}
 
