@@ -44,6 +44,18 @@ pub const ModeStruct = packed struct {
      pub fn to_mode(self: *const ModeStruct) mode_t {
         return @bitCast(u32, self.*);
      }
+
+     fn to_absolute_user_change(self: *const ModeStruct) AbsoluteChange {
+        return AbsoluteChange{ .read = self.rusr, .write = self.wusr, .execute = self.xusr, .set_uid = false, .set_gid = false, .sticky = false, .set_global_bits = false };
+     }
+
+     fn to_absolute_group_change(self: *const ModeStruct) AbsoluteChange {
+        return AbsoluteChange{ .read = self.rgrp, .write = self.wgrp, .execute = self.xgrp, .set_uid = false, .set_gid = false, .sticky = false, .set_global_bits = false };
+     }
+
+     fn to_absolute_other_change(self: *const ModeStruct) AbsoluteChange {
+        return AbsoluteChange{ .read = self.roth, .write = self.woth, .execute = self.xoth, .set_uid = false, .set_gid = false, .sticky = false, .set_global_bits = false };
+     }
 };
 
 pub const Operation = enum { ADD, REMOVE, SET };
@@ -77,15 +89,16 @@ fn getAbsoluteChange(change: *const ModeChange, mode: *mode_t) AbsoluteChange {
             return change.source.ABSOLUTE;
         },
         ChangeSource.RELATIVE => {
+            const mode_stct = ModeStruct.init(mode.*);
             switch (change.source.RELATIVE) {
                 UserType.USER => {
-                    return AbsoluteChange{ .read = mode.* & RUSR != 0, .write = mode.* & WUSR != 0, .execute = mode.* & XUSR != 0, .set_uid = false, .set_gid = false, .sticky = false, .set_global_bits = false };
+                    return mode_stct.to_absolute_user_change();
                 },
                 UserType.GROUP => {
-                    return AbsoluteChange{ .read = mode.* & RGRP != 0, .write = mode.* & WGRP != 0, .execute = mode.* & WGRP != 0, .set_uid = false, .set_gid = false, .sticky = false, .set_global_bits = false };
+                    return mode_stct.to_absolute_group_change();
                 },
                 UserType.OTHER => {
-                    return AbsoluteChange{ .read = mode.* & ROTH != 0, .write = mode.* & WOTH != 0, .execute = mode.* & XOTH != 0, .set_uid = false, .set_gid = false, .sticky = false, .set_global_bits = false };
+                    return mode_stct.to_absolute_other_change();
                 },
             }
         },
@@ -99,86 +112,93 @@ fn updateUserType(mode: *mode_t, user: UserType, operation: Operation, absolute_
         UserType.OTHER => updateOther(mode, operation, absolute_change),
     }
     if (absolute_change.set_global_bits) {
+        var mode_stct = ModeStruct.init(mode.*);
         switch (operation) {
             Operation.SET => {
-                if (absolute_change.set_uid) mode.* |= SUID else mode.* &= ~SUID;
-                if (absolute_change.set_gid) mode.* |= SGID else mode.* &= ~SGID;
-                if (absolute_change.sticky) mode.* |= SVTX else mode.* &= ~SVTX;
+                mode_stct.suid = absolute_change.set_uid;
+                mode_stct.sgid = absolute_change.set_gid;
+                mode_stct.svtx = absolute_change.sticky;
             },
             Operation.ADD => {
-                if (absolute_change.set_uid) mode.* |= SUID;
-                if (absolute_change.set_gid) mode.* |= SGID;
-                if (absolute_change.sticky) mode.* |= SVTX;
+                if (absolute_change.set_uid) mode_stct.suid = true;
+                if (absolute_change.set_gid) mode_stct.sgid = true;
+                if (absolute_change.sticky) mode_stct.svtx = true;
             },
             Operation.REMOVE => {
-                if (absolute_change.set_uid) mode.* &= ~SUID;
-                if (absolute_change.set_gid) mode.* &= ~SGID;
-                if (absolute_change.sticky) mode.* &= ~SVTX;
+                if (absolute_change.set_uid) mode_stct.suid = false;
+                if (absolute_change.set_gid) mode_stct.sgid = false;
+                if (absolute_change.sticky) mode_stct.svtx = false;
             },
         }
+        mode.* = mode_stct.to_mode();
     }
 }
 
 fn updateUser(mode: *mode_t, operation: Operation, absolute_change: AbsoluteChange) void {
+    var mode_stct = ModeStruct.init(mode.*);
     switch (operation) {
         Operation.SET => {
-            if (absolute_change.read) mode.* |= RUSR else mode.* &= ~RUSR;
-            if (absolute_change.write) mode.* |= WUSR else mode.* &= ~WUSR;
-            if (absolute_change.execute) mode.* |= XUSR else mode.* &= ~XUSR;
+            mode_stct.rusr = absolute_change.read;
+            mode_stct.wusr = absolute_change.write;
+            mode_stct.xusr = absolute_change.execute;
         },
         Operation.ADD => {
-            if (absolute_change.read) mode.* |= RUSR;
-            if (absolute_change.write) mode.* |= WUSR;
-            if (absolute_change.execute) mode.* |= XUSR;
+            if (absolute_change.read) mode_stct.rusr = true;
+            if (absolute_change.write) mode_stct.wusr = true;
+            if (absolute_change.execute) mode_stct.xusr = true;
         },
         Operation.REMOVE => {
-            if (absolute_change.read) mode.* &= ~RUSR;
-            if (absolute_change.write) mode.* &= ~WUSR;
-            if (absolute_change.execute) mode.* &= ~XUSR;
+            if (absolute_change.read) mode_stct.rusr = false;
+            if (absolute_change.write) mode_stct.wusr = false;
+            if (absolute_change.execute) mode_stct.xusr = false;
         },
     }
+    mode.* = mode_stct.to_mode();
 }
 
 fn updateGroup(mode: *mode_t, operation: Operation, absolute_change: AbsoluteChange) void {
+    var mode_stct = ModeStruct.init(mode.*);
     switch (operation) {
         Operation.SET => {
-            if (absolute_change.read) mode.* |= RGRP else mode.* &= ~RGRP;
-            if (absolute_change.write) mode.* |= WGRP else mode.* &= ~WGRP;
-            if (absolute_change.execute) mode.* |= XGRP else mode.* &= ~XGRP;
+            mode_stct.rgrp = absolute_change.read;
+            mode_stct.wgrp = absolute_change.write;
+            mode_stct.xgrp = absolute_change.execute;
         },
         Operation.ADD => {
-            if (absolute_change.read) mode.* |= RGRP;
-            if (absolute_change.write) mode.* |= WGRP;
-            if (absolute_change.execute) mode.* |= XGRP;
+            if (absolute_change.read) mode_stct.rgrp = true;
+            if (absolute_change.write) mode_stct.wgrp = true;
+            if (absolute_change.execute) mode_stct.xgrp = true;
         },
         Operation.REMOVE => {
-            if (absolute_change.read) mode.* &= ~RGRP;
-            if (absolute_change.write) mode.* &= ~WGRP;
-            if (absolute_change.execute) mode.* &= ~XGRP;
+            if (absolute_change.read) mode_stct.rgrp = false;
+            if (absolute_change.write) mode_stct.wgrp = false;
+            if (absolute_change.execute) mode_stct.xgrp = false;
         },
     }
+    mode.* = mode_stct.to_mode();
 }
 
 fn updateOther(mode: *mode_t, operation: Operation, absolute_change: AbsoluteChange) void {
+    var mode_stct = ModeStruct.init(mode.*);
     switch (operation) {
         Operation.SET => {
-            if (absolute_change.read) mode.* |= ROTH else mode.* &= ~ROTH;
-            if (absolute_change.write) mode.* |= WOTH else mode.* &= ~WOTH;
-            if (absolute_change.execute) mode.* |= XOTH else mode.* &= ~XOTH;
+            mode_stct.roth = absolute_change.read;
+            mode_stct.woth = absolute_change.write;
+            mode_stct.xoth = absolute_change.execute;
         },
         Operation.ADD => {
-            if (absolute_change.read) mode.* |= ROTH;
-            if (absolute_change.write) mode.* |= WOTH;
-            if (absolute_change.execute) mode.* |= XOTH;
+            if (absolute_change.read) mode_stct.roth = true;
+            if (absolute_change.write) mode_stct.woth = true;
+            if (absolute_change.execute) mode_stct.xoth = true;
         },
         Operation.REMOVE => {
-            if (absolute_change.read) mode.* &= ~ROTH;
-            if (absolute_change.write) mode.* &= ~WOTH;
-            if (absolute_change.execute) mode.* &= ~XOTH;
+            if (absolute_change.read) mode_stct.roth = false;
+            if (absolute_change.write) mode_stct.woth = false;
+            if (absolute_change.execute) mode_stct.xoth = false;
         },
     }
+    mode.* = mode_stct.to_mode();
 }
-
 
 pub fn getModeFromString(string: []const u8, initial_mode: mode_t) ModeError!mode_t {
     var result: mode_t = initial_mode;
@@ -243,9 +263,10 @@ fn handleNumber(token: []const u8, modifiers: *ArrayList(ModeChange)) ModeError!
     if (number > 0o7777) {
         return ModeError.InvalidModeString;
     } else {
-        const user_change: ModeChange = ModeChange{ .owner = true, .group = false, .other = false, .operation = operation, .source = ChangeSource{ .ABSOLUTE = AbsoluteChange{ .read = number & RUSR != 0, .write = number & WUSR != 0, .execute = number & XUSR != 0, .set_uid = false, .set_gid = false, .sticky = false, .set_global_bits = false } } };
-        const group_change: ModeChange = ModeChange{ .owner = false, .group = true, .other = false, .operation = operation, .source = ChangeSource{ .ABSOLUTE = AbsoluteChange{ .read = number & RGRP != 0, .write = number & WGRP != 0, .execute = number & XGRP != 0, .set_uid = false, .set_gid = false, .sticky = false, .set_global_bits = false } } };
-        const other_change: ModeChange = ModeChange{ .owner = false, .group = false, .other = true, .operation = operation, .source = ChangeSource{ .ABSOLUTE = AbsoluteChange{ .read = number & ROTH != 0, .write = number & WOTH != 0, .execute = number & XOTH != 0, .set_uid = false, .set_gid = false, .sticky = false, .set_global_bits = false } } };
+        var mode_stct = ModeStruct.init(number);
+        const user_change: ModeChange = ModeChange{ .owner = true, .group = false, .other = false, .operation = operation, .source = ChangeSource{ .ABSOLUTE = mode_stct.to_absolute_user_change() } };
+        const group_change: ModeChange = ModeChange{ .owner = false, .group = true, .other = false, .operation = operation, .source = ChangeSource{ .ABSOLUTE = mode_stct.to_absolute_group_change() } };
+        const other_change: ModeChange = ModeChange{ .owner = false, .group = false, .other = true, .operation = operation, .source = ChangeSource{ .ABSOLUTE = mode_stct.to_absolute_other_change() } };
 
         const global_change: ModeChange = ModeChange{ .owner = false, .group = false, .other = false, .operation = operation, .source = ChangeSource{ .ABSOLUTE = AbsoluteChange{ .read = false, .write = false, .execute = false, .set_uid = number & SUID != 0, .set_gid = number & SGID != 0, .sticky = number & SVTX != 0, .set_global_bits = true } } };
                         
