@@ -271,9 +271,9 @@ fn handleNumber(token: []const u8, modifiers: *ArrayList(ModeChange)) ModeError!
         const global_change: ModeChange = ModeChange{ .owner = false, .group = false, .other = false, .operation = operation, .source = ChangeSource{ .ABSOLUTE = AbsoluteChange{ .read = false, .write = false, .execute = false, .set_uid = number & SUID != 0, .set_gid = number & SGID != 0, .sticky = number & SVTX != 0, .set_global_bits = true } } };
                         
         modifiers.*.append(user_change) catch return ModeError.UnknownError;
-        modifiers.*.append(group_change)catch return ModeError.UnknownError;
-        modifiers.*.append(other_change)catch return ModeError.UnknownError;
-        modifiers.*.append(global_change)catch return ModeError.UnknownError;
+        modifiers.*.append(group_change) catch return ModeError.UnknownError;
+        modifiers.*.append(other_change) catch return ModeError.UnknownError;
+        modifiers.*.append(global_change) catch return ModeError.UnknownError;
     }
 }
 

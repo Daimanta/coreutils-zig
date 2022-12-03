@@ -361,29 +361,6 @@ pub fn parse(
     };
 }
 
-pub fn parseAndHandleErrors(
-    comptime Id: type,
-    comptime params: []const Param(Id),
-    opt: ParseOptions,
-    application_name: [] const u8,
-    exit_code: u8
-    ) Args(Id, params) {
-    return parse(Id, params, opt) catch {
-        const diag = opt.diagnostic orelse std.os.exit(exit_code);
-        if (diag.name.short == null and diag.name.long == null) {
-            std.debug.print("Non-option argument supplied which was not expected. Exiting.\n", .{});
-            std.os.exit(exit_code);
-        } else if (diag.name.short != null) {
-            std.debug.print("{s}: unrecognized option '-{c}'\n", .{application_name, diag.name.short.?});
-            std.os.exit(exit_code);
-        } else {
-            std.debug.print("{s}: unrecognized option '--{s}'\n", .{application_name, diag.name.long.?});
-            std.os.exit(exit_code);
-        }
-        unreachable;
-    };
-}
-
 /// Parses the command line arguments passed into the program based on an
 /// array of `Param`s.
 pub fn parseEx(
