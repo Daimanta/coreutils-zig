@@ -135,7 +135,7 @@ fn handleRmDirErrors(err: DeleteDirError, path: []const u8) void {
         error.SymLinkLoop => print("{s}: Symlink loop detected\n", .{application_name}),
         error.SystemResources => print("{s}: System resources error\n", .{application_name}),
         error.Unexpected => print("{s}: Unexpected error\n", .{application_name}),
-        else => print("{s}: Unknown error\n", .{application_name})
+        else => unreachable
     }
 }
 

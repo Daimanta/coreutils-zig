@@ -174,7 +174,7 @@ fn process_link(link: []const u8, terminator: []const u8, read_mode: ReadMode, o
             if (fs.path.isAbsolute(link)) {
                 std.debug.print("{s}{s}", .{link, terminator});
             } else {
-                std.debug.print("{s}{s}", .{fileinfo.getAbsolutePath(default_allocator, link, null), terminator});
+                std.debug.print("{s}{s}", .{try fileinfo.getAbsolutePath(default_allocator, link, null), terminator});
             }
             return true;
         } else {

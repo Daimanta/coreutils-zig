@@ -69,11 +69,11 @@ fn sumFile(file_path: []const u8) void {
     var result: u32 = 0;
     var segments: u64 = 0;
 
-    const file = fs.cwd().openFile(file_path, .{.read = true}) catch |err| {
+    const file = fs.cwd().openFile(file_path, .{.mode = .read_only}) catch |err| {
         if (err == error.FileNotFound) {
             std.debug.print("{s}: {s}: No such file or directory\n", .{application_name, file_path});
         } else {
-            std.debug.print("{s}: Unknown error encountered '{s}'\n", .{application_name, err});
+            std.debug.print("{s}: Unknown error encountered '{?}'\n", .{application_name, err});
         }
         return;
     };

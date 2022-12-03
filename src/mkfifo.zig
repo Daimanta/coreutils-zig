@@ -92,7 +92,7 @@ pub fn main() !void {
                 MakeFifoError.QuotaReached => std.debug.print("{s}: Quota reached\n", .{application_name}),
                 MakeFifoError.NoSpaceLeft => std.debug.print("{s}: No space left on device\n", .{application_name}),
                 MakeFifoError.NotImplemented => std.debug.print("{s}: Named pipes are not possible on file system\n", .{application_name}),
-                MakeFifoError.Unknown => std.debug.print("{s}: Unknown error encountered: '{s}'\n", .{application_name, err}),
+                MakeFifoError.Unknown => std.debug.print("{s}: Unknown error encountered: '{?}'\n", .{application_name, err}),
             }
         };
         success = false;

@@ -61,7 +61,7 @@ pub fn main() !void {
             const error_message = switch (err) {
                 SetHostnameError.AccessDenied => "Root rights are required to change the hostname",
                 SetHostnameError.InvalidAddress, SetHostnameError.NegativeLength => "Internal error",
-                else => err
+                else => unreachable
             };
             std.debug.print("{s}\n", .{error_message});
             std.os.exit(1);

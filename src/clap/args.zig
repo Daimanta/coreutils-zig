@@ -47,7 +47,7 @@ test "SliceIterator" {
 /// An argument iterator which wraps the ArgIterator in ::std.
 /// On windows, this iterator allocates.
 pub const OsIterator = struct {
-    const Error = process.ArgIterator.NextError;
+    const Error = error{InvalidCmdLine,OutOfMemory};
 
     arena: heap.ArenaAllocator,
     args: process.ArgIterator,
@@ -60,7 +60,7 @@ pub const OsIterator = struct {
     pub fn init(allocator: mem.Allocator) Error!OsIterator {
         var res = OsIterator{
             .arena = heap.ArenaAllocator.init(allocator),
-            .args = process.args(),
+            .args = try process.argsWithAllocator(allocator),
             .exe_arg = undefined,
         };
         res.exe_arg = try res.next();
@@ -73,9 +73,9 @@ pub const OsIterator = struct {
 
     pub fn next(iter: *OsIterator) Error!?[:0]const u8 {
         if (builtin.os.tag == .windows) {
-            return try iter.args.next(iter.arena.allocator()) orelse return null;
+            return iter.args.next() orelse return null;
         } else {
-            return iter.args.nextPosix();
+            return iter.args.next();
         }
     }
 };

@@ -153,7 +153,7 @@ pub fn ComptimeClap(
     };
 }
 
-test "" {
+test "a" {
     const params = comptime &.{
         clap.parseParam("-a, --aa") catch unreachable,
         clap.parseParam("-b, --bb") catch unreachable,

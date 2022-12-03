@@ -8,7 +8,7 @@ const clap = @import("clap.zig");
 const version = @import("util/version.zig");
 const strings = @import("util/strings.zig");
 
-const defaults = @embedFile("../data/dircolors.defaults");
+const defaults = @embedFile("./data/dircolors.defaults");
 
 const Allocator = std.mem.Allocator;
 
@@ -87,10 +87,10 @@ pub fn main() !void {
             if (print_database) {
                 print("{s}", .{defaults});
             } else if (csh) {
-                print("setenv LS_COLORS '{s}'\n", .{env});
+                print("setenv LS_COLORS '{s}'\n", .{env.?});
             } else {
                 // Bourne shell implied
-                print("LS_COLORS='{s}';\nexport LS_COLORS\n", .{env});
+                print("LS_COLORS='{s}';\nexport LS_COLORS\n", .{env.?});
             }
             
         }
