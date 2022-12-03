@@ -47,7 +47,7 @@ pub fn main() !void {
         std.debug.print("{s}: no login name\n", .{application_name});
         std.os.exit(1);
     } else {
-        std.debug.print("{s}\n", .{login});
+        std.debug.print("{s}\n", .{login.?});
         std.os.exit(0);
     }
 

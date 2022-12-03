@@ -61,7 +61,7 @@ pub fn main() !void {
             UnlinkError.IsDir => "Cannot unlink dir",
             UnlinkError.NameTooLong => "Name is too long",
             UnlinkError.FileNotFound => "File not found",
-            else => err
+            else => "Unknown error"
         };
         std.debug.print("{s}\n", .{error_message});
         std.os.exit(1);

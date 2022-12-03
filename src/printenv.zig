@@ -59,15 +59,14 @@ pub fn main() !void {
         for (vals) |arg| {
             const env = os.getenv(arg);
             if (env != null) {
-                std.debug.print("{s}{s}", .{env, separator});
+                std.debug.print("{s}{s}", .{env.?, separator});
             }
         }
     } else {
         const environment = std.c.environ;
-        var walker = environment;
-        while(walker.*) |param| {
-            std.debug.print("{s}\n", .{param});
-            walker += 1;
+        var iterator: usize = 0;
+        while (environment[iterator] != null): (iterator += 1) {
+            std.debug.print("{s}\n", .{environment[iterator].?});
         }
     }
 

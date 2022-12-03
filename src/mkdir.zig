@@ -208,7 +208,7 @@ fn handleOpenDirErrors(err: OpenError, check_path: []const u8) void {
         error.NotDir => std.debug.print("{s}: Basepath '{s}' is not a dir\n", .{application_name, check_path}),
         error.AccessDenied => std.debug.print("{s}: Access to '{s}' denied\n", .{application_name, check_path}),
         error.FileNotFound => std.debug.print("{s}: Basepath '{s}' does not exist\n", .{application_name, check_path}),
-        else => std.debug.print("{s}: Unknown error '{s}' encountered when trying to create directory\n", .{application_name, err}),
+        else => std.debug.print("{s}: Unknown error '{?}' encountered when trying to create directory\n", .{application_name, err}),
     }
 }
 

@@ -61,7 +61,8 @@ pub fn main() !void {
 }
 
 fn printUsers(alloc: std.mem.Allocator, file_name: []const u8) !void {
-    const file_contents = fs.cwd().readFileAlloc(alloc, file_name, 1 << 20) catch "";
+    var backup: []u8 = &.{};
+    var file_contents = fs.cwd().readFileAlloc(alloc, file_name, 1 << 20) catch backup;
     if (file_contents.len > 0 and file_contents.len % @sizeOf(utmp.Utmp) == 0) {
         const utmp_logs = utmp.convertBytesToUtmpRecords(file_contents);
         var count: u32 = 0;

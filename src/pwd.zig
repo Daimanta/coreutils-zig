@@ -59,9 +59,9 @@ pub fn main() !void {
 
     if (resolve_symlink) {
         const result = fs.cwd();
-        const path = result.realpathAlloc(allocator, ".");
+        const path = try result.realpathAlloc(allocator, ".");
         std.debug.print("{s}\n", .{path});
     } else {
-        std.debug.print("{s}\n", .{os.getenv("PWD")});
+        std.debug.print("{s}\n", .{os.getenv("PWD").?});
     }
 }

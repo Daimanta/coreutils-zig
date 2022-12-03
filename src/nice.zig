@@ -71,7 +71,7 @@ pub fn main() !void {
     var adjustment: i32 = 0;
     if (adjustment_string != null) {
         adjustment = std.fmt.parseInt(i32, adjustment_string.?, 10) catch {
-            std.debug.print("{s}: invalid number: '{s}'\n", .{application_name, adjustment_string});
+            std.debug.print("{s}: invalid number: '{s}'\n", .{application_name, adjustment_string.?});
             std.os.exit(1);
         };
     }
@@ -80,15 +80,14 @@ pub fn main() !void {
     if (effective_niceness > system.MINIMAL_NICENESS) effective_niceness = system.MINIMAL_NICENESS;
     if (effective_niceness < system.MAXIMAL_NICENESS) effective_niceness = system.MAXIMAL_NICENESS;
 
-    var child = try ChildProcess.init(arguments[0..], allocator);
-    defer child.deinit();
+    var child = ChildProcess.init(arguments[0..], allocator);
     try child.spawn();
 
     system.setPriority(PriorityType.PRIO_PROCESS, @intCast(u32, child.pid), @intCast(c_int, effective_niceness)) catch |err| {
         if (err == SetPriorityError.NoRightsForNiceValue) {
             std.debug.print("{s}: cannot set niceness: Permission denied\n", .{application_name});
         } else {
-            std.debug.print("{s}: cannot set niceness: Unknown error occurred: '{s}'\n", .{application_name, err});
+            std.debug.print("{s}: cannot set niceness: Unknown error occurred: '{?}'\n", .{application_name, err});
         }
     };
 
@@ -96,11 +95,11 @@ pub fn main() !void {
         if (err == SpawnError.FileNotFound) {
             std.debug.print("{s}: '{s}': No such file or directory\n", .{application_name, arguments[0]});
         } else {
-            std.debug.print("{s}: '{s}': Unknown error occurred: '{s}'\n", .{application_name, arguments[0], err});
+            std.debug.print("{s}: '{s}': Unknown error occurred: '{?}'\n", .{application_name, arguments[0], err});
         }
         std.os.exit(1);
     };
-
+    _ = try child.kill();
 }
 
 

@@ -95,7 +95,7 @@ pub fn main() !void {
 fn fold(path: []const u8, wrap_bytes: bool, break_only_at_spaces: bool, width: u32) !void {
 
     const stat = fileinfo.getLstat(path) catch |err| {
-        print("{s}\n", .{err});
+        print("{?}\n", .{err});
         return;
     };
     if (!fileinfo.fileExists(stat)) {
@@ -110,7 +110,7 @@ fn fold(path: []const u8, wrap_bytes: bool, break_only_at_spaces: bool, width: u
     
     const file_size = @intCast(u64, stat.size);
     
-    const file = try fs.cwd().openFile(path, .{.read = true});
+    const file = try fs.cwd().openFile(path, .{.mode = .read_only});
     defer file.close();
     
     //TODO: Actually handle UTF-8 strings (unlike GNU coreutils)

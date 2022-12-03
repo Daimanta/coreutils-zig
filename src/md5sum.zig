@@ -135,7 +135,7 @@ fn checkVerificationFile(path: []const u8, ignore_missing: bool, quiet: bool, st
         }
     } else {
         const stat = fileinfo.getLstat(path) catch |err| {
-            print("{s}\n", .{err});
+            print("{?}\n", .{err});
             return false;
         };
         if (!fileinfo.fileExists(stat)) {
@@ -148,7 +148,7 @@ fn checkVerificationFile(path: []const u8, ignore_missing: bool, quiet: bool, st
             return false;
         }
 
-        const file = fs.cwd().openFile(path, .{ .read = true }) catch {
+        const file = fs.cwd().openFile(path, .{ .mode = .read_only }) catch {
             print("Could not read file.\n", .{});
             return false;
         };
@@ -290,7 +290,7 @@ fn hashFile(path: []const u8, bsd: bool, terminator: []const u8) bool {
 
 fn digestFromFile(path: []const u8) HashError![2 * HASH_BYTE_SIZE]u8 {
     const stat = fileinfo.getLstat(path) catch |err| {
-        print("{s}\n", .{err});
+        print("{?}\n", .{err});
         return HashError.OtherError;
     };
     if (!fileinfo.fileExists(stat)) {
@@ -305,7 +305,7 @@ fn digestFromFile(path: []const u8) HashError![2 * HASH_BYTE_SIZE]u8 {
 
     const file_size = @intCast(u64, stat.size);
 
-    const file = fs.cwd().openFile(path, .{ .read = true }) catch {
+    const file = fs.cwd().openFile(path, .{ .mode = .read_only }) catch {
         print("Could not read file.\n", .{});
         return HashError.FileAccessFailed;
     };

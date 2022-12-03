@@ -79,8 +79,6 @@ pub fn main() !void {
     const zero = args.flag("-z");
     
     const separator = if (zero) "\x00" else "\n";
-    _ = relative_to;
-    _ = relative_base;
     
     const errors = checkInconsistencies(must_exist, may_exist, physical, strip, relative_to, relative_base);
     if (errors) os.exit(1);
@@ -119,7 +117,7 @@ fn checkInconsistencies(must_exist: bool, may_exist: bool, physical: bool, strip
 fn printRealpath(path: []const u8, must_exist: bool, logical: bool, physical: bool, quiet: bool, relative_to: ?[]const u8, relative_base: ?[]const u8, add_separator: bool, separator: []const u8) void {
     _ = logical; // What does this do?
     var exists = true;
-    std.fs.cwd().access(path, .{.write = false}) catch {
+    std.fs.cwd().access(path, .{.mode = .read_only}) catch {
         exists = false;
     };
     if (!exists and must_exist) {
