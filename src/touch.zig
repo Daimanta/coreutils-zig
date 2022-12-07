@@ -5,10 +5,12 @@ const io = std.io;
 const time = std.time;
 
 const clap = @import("clap.zig");
+const date_time = @import("util/datetime.zig");
 const fileinfo = @import("util/fileinfo.zig");
 const mode = @import("util/mode.zig");
 const version = @import("util/version.zig");
 const system = @import("util/system.zig");
+const strings = @import("util/strings.zig");
 
 const Allocator = std.mem.Allocator;
 const mode_t = mode.mode_t;
@@ -17,6 +19,7 @@ const print = @import("util/print_tools.zig").print;
 const pprint = @import("util/print_tools.zig").pprint;
 const exit = os.exit;
 const OpenError = fs.File.OpenError;
+const parseInt = std.fmt.parseInt;
 
 const allocator = std.heap.page_allocator;
 
@@ -122,9 +125,11 @@ pub fn main() !void {
     if (date_string != null) {
 
     } else if (use_timestamp != null) {
-        if (use_timestamp.?.len < 8) {
-            pprint("Incorrect timestamp format supplied. Exiting.\n");
-        }
+        const retrieved_date = parseTimestamp(use_timestamp.?) catch {
+              pprint("Incorrect timestamp format supplied. Exiting.\n");
+              exit(1);
+        };
+        _ = retrieved_date;
     } else if (use_reference_file_time != null) {
         const reference_file = fs.cwd().openFile(use_reference_file_time.?, .{.mode = .read_only}) catch |err| {
             switch (err) {
@@ -145,6 +150,41 @@ pub fn main() !void {
     for (arguments) |path| {
         touch_file(path, create_if_not_exists, affect_symlink, change_access_time, change_modification_time, reference_time_access, reference_time_mod);
     }
+}
+
+fn parseTimestamp(timestamp_string: []const u8) !date_time.Datetime {
+    if (timestamp_string.len < 8) return error.IncorrectFormat;
+    const last_point_index = strings.lastIndexOf(timestamp_string, '.');
+    var prepart = timestamp_string;
+    var year: u16 = date_time.Date.now().year;
+    var month: u32 = 1;
+    var day: u32 = 1;
+    var hours: u32 = 0;
+    var minutes: u32 = 0;
+    var seconds: u8 = 0;
+
+    if (last_point_index != null) {
+        if (strings.lastIndexOf(timestamp_string[0..last_point_index.?], '.') != null) return error.IncorrectFormat;
+        if (timestamp_string.len - last_point_index.? != 3) return error.IncorrectFormat;
+        prepart = timestamp_string[0..last_point_index.?];
+        seconds = parseInt(u8, timestamp_string[last_point_index.? + 1..], 10) catch return error.IncorrectFormat;
+    }
+    if (prepart.len > 12) return error.IncorrectFormat;
+
+    minutes = parseInt(u32, prepart[prepart.len - 2..], 10) catch return error.IncorrectFormat;
+    hours = parseInt(u32, prepart[prepart.len - 4.. prepart.len - 2], 10) catch return error.IncorrectFormat;
+    day = parseInt(u32, prepart[prepart.len - 6.. prepart.len - 4], 10) catch return error.IncorrectFormat;
+    month = parseInt(u32, prepart[prepart.len - 8.. prepart.len - 6], 10) catch return error.IncorrectFormat;
+
+    if (prepart.len >= 10) {
+        if (prepart.len == 12) {
+            year = parseInt(u16, prepart[0..4], 10) catch return error.IncorrectFormat;
+        } else {
+            year = 2000 + (parseInt(u16, prepart[0..2], 10) catch return error.IncorrectFormat);
+        }
+    }
+    // Create function will sort out if the date in question actually makes sense
+    return date_time.Datetime.create(year, month, day, hours, minutes, seconds, 0, null);
 }
 
 fn touch_file(path: []const u8, create_if_not_exists: bool, affect_symlink: bool, change_access_time: bool, change_mod_time: bool, reference_time_access: i128, reference_time_mod: i128) void {
