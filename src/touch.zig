@@ -20,6 +20,7 @@ const pprint = @import("util/print_tools.zig").pprint;
 const exit = os.exit;
 const OpenError = fs.File.OpenError;
 const parseInt = std.fmt.parseInt;
+const eql = std.mem.eql;
 
 const allocator = std.heap.page_allocator;
 
@@ -85,16 +86,25 @@ pub fn main() !void {
 
     const arguments = args.positionals();
 
-    const change_only_access_time = args.flag("-a");
+    var change_only_access_time = args.flag("-a");
     const create_if_not_exists = !args.flag("-c");
     const date_string = args.option("-d");
     const affect_symlink = args.flag("-h");
-    const change_only_modification_time = args.flag("-m");
+    var change_only_modification_time = args.flag("-m");
     const use_reference_file_time = args.option("-r");
     const use_timestamp = args.option("-t");
     const change_specified_attribute = args.option("--time");
 
-    _ = change_specified_attribute;
+    if (change_specified_attribute != null) {
+        if (eql(u8, change_specified_attribute.?, "access") or eql(u8, change_specified_attribute.?, "atime") or eql(u8, change_specified_attribute.?, "use")) {
+            change_only_access_time = true;
+        } else if (eql(u8, change_specified_attribute.?, "modify") or eql(u8, change_specified_attribute.?, "mtime")) {
+            change_only_modification_time = true;
+        } else {
+            pprint("Could not match the specified attribute. Exiting.\n");
+            exit(1);
+        }
+    }
 
     if (change_only_access_time and change_only_modification_time) {
         pprint("Cannot change only access time and only modification time. By default, both values are changed. Exiting.\n");
@@ -123,13 +133,20 @@ pub fn main() !void {
     var reference_time_mod: i128 = reference_time_access;
 
     if (date_string != null) {
-
+        // TODO: Add functionality to parse all kinds of date/time strings
+        const retrieved_date = date_time.Date.parseIso(date_string.?) catch {
+            pprint("Incorrect date format supplied. Exiting.\n");
+            exit(1);
+        };
+        reference_time_access = retrieved_date.toTimestamp();
+        reference_time_mod = reference_time_access;
     } else if (use_timestamp != null) {
         const retrieved_date = parseTimestamp(use_timestamp.?) catch {
               pprint("Incorrect timestamp format supplied. Exiting.\n");
               exit(1);
         };
-        _ = retrieved_date;
+        reference_time_access = retrieved_date.toTimestamp();
+        reference_time_mod = reference_time_access;
     } else if (use_reference_file_time != null) {
         const reference_file = fs.cwd().openFile(use_reference_file_time.?, .{.mode = .read_only}) catch |err| {
             switch (err) {
@@ -153,14 +170,10 @@ pub fn main() !void {
 }
 
 fn parseTimestamp(timestamp_string: []const u8) !date_time.Datetime {
-    if (timestamp_string.len < 8) return error.IncorrectFormat;
+    if (timestamp_string.len < 8 or timestamp_string.len > 15) return error.IncorrectFormat;
     const last_point_index = strings.lastIndexOf(timestamp_string, '.');
     var prepart = timestamp_string;
     var year: u16 = date_time.Date.now().year;
-    var month: u32 = 1;
-    var day: u32 = 1;
-    var hours: u32 = 0;
-    var minutes: u32 = 0;
     var seconds: u8 = 0;
 
     if (last_point_index != null) {
@@ -169,12 +182,12 @@ fn parseTimestamp(timestamp_string: []const u8) !date_time.Datetime {
         prepart = timestamp_string[0..last_point_index.?];
         seconds = parseInt(u8, timestamp_string[last_point_index.? + 1..], 10) catch return error.IncorrectFormat;
     }
-    if (prepart.len > 12) return error.IncorrectFormat;
 
-    minutes = parseInt(u32, prepart[prepart.len - 2..], 10) catch return error.IncorrectFormat;
-    hours = parseInt(u32, prepart[prepart.len - 4.. prepart.len - 2], 10) catch return error.IncorrectFormat;
-    day = parseInt(u32, prepart[prepart.len - 6.. prepart.len - 4], 10) catch return error.IncorrectFormat;
-    month = parseInt(u32, prepart[prepart.len - 8.. prepart.len - 6], 10) catch return error.IncorrectFormat;
+    if (prepart.len > 12) return error.IncorrectFormat;
+    var month: u32 = parseInt(u32, prepart[prepart.len - 8.. prepart.len - 6], 10) catch return error.IncorrectFormat;
+    var day: u32 = parseInt(u32, prepart[prepart.len - 6.. prepart.len - 4], 10) catch return error.IncorrectFormat;
+    var hours: u32 = parseInt(u32, prepart[prepart.len - 4.. prepart.len - 2], 10) catch return error.IncorrectFormat;
+    var minutes: u32 = parseInt(u32, prepart[prepart.len - 2..], 10) catch return error.IncorrectFormat;
 
     if (prepart.len >= 10) {
         if (prepart.len == 12) {
@@ -188,6 +201,25 @@ fn parseTimestamp(timestamp_string: []const u8) !date_time.Datetime {
 }
 
 fn touch_file(path: []const u8, create_if_not_exists: bool, affect_symlink: bool, change_access_time: bool, change_mod_time: bool, reference_time_access: i128, reference_time_mod: i128) void {
-    _ = path; _ = create_if_not_exists; _ = affect_symlink; _ = change_access_time; _ = change_mod_time; _ = reference_time_access; _ = reference_time_mod;
+    _ = affect_symlink; _ = change_access_time; _ = change_mod_time;
+    const stat = fileinfo.getLstat(path) catch |err| {
+        print("{?}\n", .{err});
+        return;
+    };
+    if (!fileinfo.fileExists(stat)) {
+        if (!create_if_not_exists) return;
+        const file = fs.cwd().createFile(path, .{}) catch |err| {
+            print("{?}\n", .{err});
+            return;
+        };
+        defer file.close();
+        file.updateTimes(reference_time_access, reference_time_mod) catch |err| {
+            print("{?}\n", .{err});
+            return;
+        };
+        return;
+    } else {
+
+    }
 }
 
