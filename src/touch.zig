@@ -132,13 +132,15 @@ pub fn main() !void {
     var reference_time_access: i128 = time.nanoTimestamp();
     var reference_time_mod: i128 = reference_time_access;
 
+    //TODO: Add timezone
     if (date_string != null) {
         // TODO: Add functionality to parse all kinds of date/time strings
         const retrieved_date = date_time.Date.parseIso(date_string.?) catch {
             pprint("Incorrect date format supplied. Exiting.\n");
             exit(1);
         };
-        reference_time_access = retrieved_date.toTimestamp();
+        // This timestamp is in milliseconds, so we multiply by 10^6
+        reference_time_access = retrieved_date.toTimestamp() * 1_000_000;
         reference_time_mod = reference_time_access;
     } else if (use_timestamp != null) {
         const retrieved_date = parseTimestamp(use_timestamp.?) catch {
@@ -209,17 +211,36 @@ fn touch_file(path: []const u8, create_if_not_exists: bool, affect_symlink: bool
     if (!fileinfo.fileExists(stat)) {
         if (!create_if_not_exists) return;
         const file = fs.cwd().createFile(path, .{}) catch |err| {
-            print("{?}\n", .{err});
+            switch (err) {
+                OpenError.AccessDenied => print("Access denied to '{s}'\n", .{path}),
+                OpenError.FileNotFound => print("File '{s}' not found\n", .{path}),
+                else => print("{?}\n", .{err}),
+            }
             return;
         };
         defer file.close();
         file.updateTimes(reference_time_access, reference_time_mod) catch |err| {
-            print("{?}\n", .{err});
+            switch (err) {
+                else => print("{?}\n", .{err}),
+            }
             return;
         };
         return;
     } else {
-
+        const file = fs.cwd().openFile(path, .{}) catch |err| {
+            switch (err) {
+                OpenError.AccessDenied => print("Access denied to '{s}'\n", .{path}),
+                OpenError.FileNotFound => print("File '{s}' not found\n", .{path}),
+                else => print("{?}\n", .{err}),
+            }
+            return;
+        };
+        file.updateTimes(reference_time_access, reference_time_mod) catch |err| {
+            switch (err) {
+                else => print("{?}\n", .{err}),
+            }
+            return;
+        };
     }
 }
 
