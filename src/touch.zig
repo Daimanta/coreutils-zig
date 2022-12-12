@@ -147,7 +147,7 @@ pub fn main() !void {
               pprint("Incorrect timestamp format supplied. Exiting.\n");
               exit(1);
         };
-        reference_time_access = retrieved_date.toTimestamp();
+        reference_time_access = (try retrieved_date.asInstant()).toTimestamp();
         reference_time_mod = reference_time_access;
     } else if (use_reference_file_time != null) {
         const reference_file = fs.cwd().openFile(use_reference_file_time.?, .{.mode = .read_only}) catch |err| {
@@ -171,7 +171,7 @@ pub fn main() !void {
     }
 }
 
-fn parseTimestamp(timestamp_string: []const u8) !date_time.Datetime {
+fn parseTimestamp(timestamp_string: []const u8) !date_time.LocalDatetime {
     if (timestamp_string.len < 8 or timestamp_string.len > 15) return error.IncorrectFormat;
     const last_point_index = strings.lastIndexOf(timestamp_string, '.');
     var prepart = timestamp_string;
@@ -199,7 +199,7 @@ fn parseTimestamp(timestamp_string: []const u8) !date_time.Datetime {
         }
     }
     // Create function will sort out if the date in question actually makes sense
-    return date_time.Datetime.create(year, month, day, hours, minutes, seconds, 0, null);
+    return date_time.LocalDatetime.create(year, month, day, hours, minutes, seconds, 0);
 }
 
 fn touch_file(path: []const u8, create_if_not_exists: bool, affect_symlink: bool, change_access_time: bool, change_mod_time: bool, reference_time_access: i128, reference_time_mod: i128) void {
