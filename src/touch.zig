@@ -143,11 +143,12 @@ pub fn main() !void {
         reference_time_access = retrieved_date.toTimestamp() * 1_000_000;
         reference_time_mod = reference_time_access;
     } else if (use_timestamp != null) {
-        const retrieved_date = parseTimestamp(use_timestamp.?) catch {
+        const retrieved_timestamp = parseTimestamp(use_timestamp.?) catch {
               pprint("Incorrect timestamp format supplied. Exiting.\n");
               exit(1);
         };
-        reference_time_access = (try retrieved_date.asInstant()).toTimestamp();
+        // Seconds to nanoseconds
+        reference_time_access = retrieved_timestamp.toSystemZoneTimestamp() * 1_000_000_000;
         reference_time_mod = reference_time_access;
     } else if (use_reference_file_time != null) {
         const reference_file = fs.cwd().openFile(use_reference_file_time.?, .{.mode = .read_only}) catch |err| {

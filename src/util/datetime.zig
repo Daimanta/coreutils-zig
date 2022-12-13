@@ -1225,6 +1225,28 @@ pub const LocalDatetime = struct {
             .date_time = try self.copy()
         };
     }
+
+    pub fn toSystemZoneTimestamp(self: LocalDatetime) i64 {
+        const c_time = @cImport({
+            @cInclude("time.h");
+        });
+        const struct_tm = c_time.tm;
+
+        var pre_struct = struct_tm{
+            .tm_sec = self.time.second,
+            .tm_min = self.time.minute,
+            .tm_hour = self.time.hour,
+            .tm_mday = self.date.day,
+            .tm_mon = self.date.month - 1,
+            .tm_year = self.date.year - 1900,
+            .tm_wday = 0,
+            .tm_yday = 0,
+            .tm_isdst = -1,
+            .tm_gmtoff = 0,
+            .tm_zone = 0
+        };
+        return @intCast(i64, c_time.mktime(&pre_struct));
+    }
 };
 
 /// Representation of time with timezone UTC
