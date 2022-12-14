@@ -1226,7 +1226,7 @@ pub const LocalDatetime = struct {
         };
     }
 
-    pub fn toSystemZoneTimestamp(self: LocalDatetime) i64 {
+    pub fn toSystemZoneTimestamp(self: LocalDatetime) !i64 {
         const c_time = @cImport({
             @cInclude("time.h");
         });
@@ -1245,7 +1245,12 @@ pub const LocalDatetime = struct {
             .tm_gmtoff = 0,
             .tm_zone = 0
         };
-        return @intCast(i64, c_time.mktime(&pre_struct));
+        const result = c_time.mktime(&pre_struct);
+        if (result == -1) {
+            return error.MakeTimeError;
+        } else {
+            return @intCast(i64, result);
+        }
     }
 };
 

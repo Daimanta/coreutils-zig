@@ -53,6 +53,7 @@ const help_message =
 \\      --version  output version information and exit
 \\
 \\Note that the -d and -t options accept different time-date formats.
+\\
 ;
 
 var success = true;
@@ -148,7 +149,12 @@ pub fn main() !void {
               exit(1);
         };
         // Seconds to nanoseconds
-        reference_time_access = retrieved_timestamp.toSystemZoneTimestamp() * 1_000_000_000;
+        const second_timestamp = retrieved_timestamp.toSystemZoneTimestamp() catch {
+            pprint("Could not proces timestamp. Exiting.\n");
+            exit(1);
+        };
+
+        reference_time_access = second_timestamp * 1_000_000_000;
         reference_time_mod = reference_time_access;
     } else if (use_reference_file_time != null) {
         const reference_file = fs.cwd().openFile(use_reference_file_time.?, .{.mode = .read_only}) catch |err| {
@@ -204,7 +210,7 @@ fn parseTimestamp(timestamp_string: []const u8) !date_time.LocalDatetime {
 }
 
 fn touch_file(path: []const u8, create_if_not_exists: bool, affect_symlink: bool, change_access_time: bool, change_mod_time: bool, reference_time_access: i128, reference_time_mod: i128) void {
-    _ = affect_symlink; _ = change_access_time; _ = change_mod_time;
+    _ = affect_symlink;
     const stat = fileinfo.getLstat(path) catch |err| {
         print("{?}\n", .{err});
         return;
@@ -220,13 +226,10 @@ fn touch_file(path: []const u8, create_if_not_exists: bool, affect_symlink: bool
             return;
         };
         defer file.close();
-        file.updateTimes(reference_time_access, reference_time_mod) catch |err| {
-            switch (err) {
-                else => print("{?}\n", .{err}),
-            }
+        update_times(file, change_access_time, change_mod_time, reference_time_access, reference_time_mod) catch |err| {
+            print("{?}\n", .{err});
             return;
         };
-        return;
     } else {
         const file = fs.cwd().openFile(path, .{}) catch |err| {
             switch (err) {
@@ -236,12 +239,25 @@ fn touch_file(path: []const u8, create_if_not_exists: bool, affect_symlink: bool
             }
             return;
         };
-        file.updateTimes(reference_time_access, reference_time_mod) catch |err| {
-            switch (err) {
-                else => print("{?}\n", .{err}),
-            }
+        defer file.close();
+        update_times(file, change_access_time, change_mod_time, reference_time_access, reference_time_mod) catch |err| {
+            print("{?}\n", .{err});
             return;
         };
     }
+}
+
+fn update_times(file: std.fs.File, change_access_time: bool, change_mod_time: bool, reference_time_access: i128, reference_time_mod: i128) !void {
+    const metadata = try file.metadata();
+    var used_access_time = reference_time_access;
+    if (!change_access_time) used_access_time = metadata.accessed();
+    var used_mod_time = reference_time_mod;
+    if (!change_mod_time) used_mod_time = metadata.modified();
+    file.updateTimes(reference_time_access, reference_time_mod) catch |err| {
+        switch (err) {
+            else => print("{?}\n", .{err}),
+        }
+        return;
+    };
 }
 
