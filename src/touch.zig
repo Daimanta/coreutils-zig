@@ -133,7 +133,6 @@ pub fn main() !void {
     var reference_time_access: i128 = time.nanoTimestamp();
     var reference_time_mod: i128 = reference_time_access;
 
-    //TODO: Add timezone
     if (date_string != null) {
         // TODO: Add functionality to parse all kinds of date/time strings
         const retrieved_date = date_time.Date.parseIso(date_string.?) catch {
@@ -210,6 +209,7 @@ fn parseTimestamp(timestamp_string: []const u8) !date_time.LocalDatetime {
 }
 
 fn touch_file(path: []const u8, create_if_not_exists: bool, affect_symlink: bool, change_access_time: bool, change_mod_time: bool, reference_time_access: i128, reference_time_mod: i128) void {
+    //TODO: Affect symlink
     _ = affect_symlink;
     const stat = fileinfo.getLstat(path) catch |err| {
         print("{?}\n", .{err});
@@ -253,7 +253,7 @@ fn update_times(file: std.fs.File, change_access_time: bool, change_mod_time: bo
     if (!change_access_time) used_access_time = metadata.accessed();
     var used_mod_time = reference_time_mod;
     if (!change_mod_time) used_mod_time = metadata.modified();
-    file.updateTimes(reference_time_access, reference_time_mod) catch |err| {
+    file.updateTimes(used_access_time, used_mod_time) catch |err| {
         switch (err) {
             else => print("{?}\n", .{err}),
         }
