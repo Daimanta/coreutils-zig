@@ -164,6 +164,11 @@ pub fn build(b: *std.build.Builder) void {
     sync.setBuildMode(mode);
     sync.install();
 
+    const touch = b.addExecutable("true", "src/touch.zig");
+    touch.setTarget(target);
+    touch.setBuildMode(mode);
+    touch.install();
+
     const true_app = b.addExecutable("true", "src/true.zig");
     true_app.setTarget(target);
     true_app.setBuildMode(mode);
