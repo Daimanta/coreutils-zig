@@ -8,3 +8,7 @@ const Allocator = std.mem.Allocator;
 pub fn print(comptime format_string: []const u8, args: anytype) void {
     std.io.getStdOut().writer().print(format_string, args) catch return;
 }
+
+pub fn pprint(comptime format_string: []const u8) void {
+    std.io.getStdOut().writer().print(format_string, .{}) catch return;
+}

@@ -2,8 +2,8 @@
 
 const std = @import("std");
 const c_time = @cImport({
-        @cInclude("time.h");
-    });
+    @cInclude("time.h");
+});
 pub const time_t = c_time.time_t;
 pub const struct_tm = c_time.struct_tm;
 
