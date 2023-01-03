@@ -2,10 +2,13 @@ const std = @import("std");
 const mem = std.mem;
 
 const Allocator = std.mem.Allocator;
+const print_tools = @import("print_tools.zig");
 const test_allocator = std.testing.allocator;
 const testing = std.testing;
 const strings = @import("strings.zig");
 const startsWith = mem.startsWith;
+const print = print_tools.print;
+const pprint = print_tools.pprint;
 
 pub const ParameterType = enum{
     UNSIGNED_CHAR,
@@ -42,6 +45,20 @@ const FormatTag = enum {
 pub const FormatStringElement = union(FormatTag) {
     STRING: []const u8,
     FORMATTER: Formatter
+};
+
+pub const ArgumentTag = enum {
+    UNSIGNED_INT,
+    SIGNED_INT,
+    STRING,
+    FLOAT
+};
+
+pub const FormatArgument = union(ArgumentTag) {
+    UNSIGNED_INT: u64,
+    SIGNED_INT: i64,
+    STRING: []const u8,
+    FLOAT: f64
 };
 
 pub const FormatString = struct {
@@ -88,65 +105,8 @@ pub const FormatString = struct {
                     temp_array[temp_array_used_element] = FormatStringElement{.STRING = result.backing_string[part_start..part_end]};
                     temp_array_used_element += 1;
 
-                    // determine flags
-                    var found_flags: [6]?bool = .{null, null, null, null, null, null};
                     var formatter_iterator: usize = part_end + 1;
-                    var flag_index = strings.indexOf(flags, string[formatter_iterator]);
-                    while (formatter_iterator < string.len and flag_index != null) {
-                        if (found_flags[flag_index.?] != null) return error.DuplicateFlag;
-                        found_flags[flag_index.?] = true;
-                        // Guaranteed to be one of six flags, none else
-                        formatter_iterator += 1;
-                        flag_index = strings.indexOf(flags, string[formatter_iterator]);
-                    }
-
-                    if (formatter_iterator == string.len) return error.InvalidFormatter;
-                    var width_supplied_as_argument = false;
-                    var width: ?u32 = null;
-                    var precision: ?u32 = null;
-                    // determine width
-                    if (string[formatter_iterator] == '*') {
-                        width_supplied_as_argument = true;
-                        formatter_iterator += 1;
-                    } else if (string[formatter_iterator] >= '0' and string[formatter_iterator] <= '9') {
-                        var number_iterator = formatter_iterator;
-                        while (string[number_iterator] >= '0' and string[number_iterator] <= '9'): (number_iterator += 1 ){}
-                        const width_string = string[formatter_iterator..number_iterator];
-                        if (std.fmt.parseInt(u32, width_string, 10)) |num| {
-                            width = num;
-                        } else |_| {
-                            return error.InvalidFormatter;
-                        }
-                        formatter_iterator += width_string.len;
-                    }
-                    // Retrieve precision
-                    if (string[formatter_iterator] == '.') {
-                        formatter_iterator += 1;
-                        if (formatter_iterator >= string.len or !(string[formatter_iterator] >= '0' and string[formatter_iterator] <= '9')) return error.InvalidFormatter;
-                        var number_iterator = formatter_iterator;
-                        while (string[number_iterator] >= '0' and string[number_iterator] <= '9'): (number_iterator += 1 ){}
-                        const precision_string = string[formatter_iterator..number_iterator];
-                        if (std.fmt.parseInt(u32, precision_string, 10)) |num| {
-                            precision = num;
-                        } else |_| {
-                            return error.InvalidFormatter;
-                        }
-                        formatter_iterator += precision_string.len;
-                    }
-                    var type_length: usize = undefined;
-                    const formatter_type = get_formatter_type(string[formatter_iterator..], &type_length) catch return error.InvalidFormatter;
-                    formatter_iterator += type_length;
-                    var formatter_struct = Formatter{
-                        .parameter_type = formatter_type,
-                        .left_align = found_flags[0] != null,
-                        .prepend_positive = found_flags[2] != null,
-                        .prepend_space = found_flags[3] != null,
-                        .prepend_zeros = found_flags[4] != null,
-                        .grouping_separator = found_flags[5] != null,
-                        .width_supplied_as_argument = false,
-                        .width = width,
-                        .precision = precision
-                    };
+                    const formatter_struct = try get_formatter(string, &formatter_iterator);
                     temp_array[temp_array_used_element] = FormatStringElement{.FORMATTER = formatter_struct};
                     temp_array_used_element += 1;
                     part_start = formatter_iterator;
@@ -165,57 +125,46 @@ pub const FormatString = struct {
         return result;
     }
 
-    fn min(a: usize, b: usize) usize {
-        if (a < b) return a;
-        return b;
-    }
-
-    fn startsWithAny(string: []const u8, matchers: []const []const u8) bool {
-        for (matchers) |matcher| {
-            if (startsWith(u8, string, matcher)) return true;
+    pub fn printf(self: *const FormatString, args: []const FormatArgument) !void {
+        const counts = self.count_types();
+        if (counts[1] != args.len) return error.ArgumentCountMismatch;
+        if (args.len == 0) {
+            const string = self.format_string_parts[0].STRING;
+            print("{s}",.{string});
+            return;
         }
-        return false;
-    }
-
-    fn get_formatter_type(string: []const u8, type_length: *usize) !ParameterType {
-        if (startsWithAny(string, &[_][]const u8{"d", "i"})) {
-            type_length.* = 1;
-            return ParameterType.SIGNED_INT;
-        } else if (startsWithAny(string, &[_][]const u8{"u"})) {
-            type_length.* = 1;
-            return ParameterType.UNSIGNED_INT;
-        } else if (startsWithAny(string, &[_][]const u8{"o"})) {
-            type_length.* = 1;
-            return ParameterType.OCTAL;
-        }else if (startsWithAny(string, &[_][]const u8{"x"})) {
-            type_length.* = 1;
-            return ParameterType.UNSIGNED_INT;
-        } else if (startsWithAny(string, &[_][]const u8{"X"})) {
-            type_length.* = 1;
-            return ParameterType.UNSIGNED_INT;
-        } else if (startsWithAny(string, &[_][]const u8{"f", "F", "g", "G", "a", "A"})) {
-            type_length.* = 1;
-            return ParameterType.DOUBLE;
-        } else if (startsWithAny(string, &[_][]const u8{"c"})) {
-            type_length.* = 1;
-            return ParameterType.UNSIGNED_CHAR;
-        } else if (startsWithAny(string, &[_][]const u8{"s"})) {
-            type_length.* = 1;
-            return ParameterType.STRING;
-        } else if (startsWithAny(string, &[_][]const u8{"hhd", "hhi"})) {
-            type_length.* = 3;
-            return ParameterType.SIGNED_INT;
-        }
-
-        return error.InvalidParameter;
-    }
-
-    pub fn count_formatters(self: *FormatString) u32 {
-        var result: u32 = 0;
+        var arg_it: usize = 0;
         for (self.format_string_parts) |elem| {
             switch (elem) {
-                FormatStringElement.STRING => continue,
-                FormatStringElement.FORMATTER => result += 1
+                FormatStringElement.STRING => print("{s}", .{elem.STRING}),
+                FormatStringElement.FORMATTER => |val| {
+                    const arg = args[arg_it];
+                    const param_type = val.parameter_type;
+                    if (any_match(&.{ParameterType.SIGNED_INT, ParameterType.UNSIGNED_INT}, param_type)) {
+                        if (arg != .UNSIGNED_INT and arg != .SIGNED_INT) return error.TypeMismatch;
+                        if (arg == .UNSIGNED_INT) {
+                            print("{d}", .{arg.UNSIGNED_INT});
+                        } else {
+                            print("{d}", .{arg.SIGNED_INT});
+                        }
+                    } else if (any_match(&.{ParameterType.STRING}, param_type)) {
+                        if (arg != .STRING) return error.TypeMismatch;
+                        print("{s}", .{arg.STRING});
+                    }
+
+                    arg_it += 1;
+                }
+            }
+        }
+
+    }
+
+    pub fn count_types(self: *const FormatString) [2]u32 {
+        var result: [2] u32 = [2]u32{0, 0};
+        for (self.format_string_parts) |elem| {
+            switch (elem) {
+                FormatStringElement.STRING => result[0] += 1,
+                FormatStringElement.FORMATTER => result[1] += 1
             }
         }
         return result;
@@ -227,21 +176,135 @@ pub const FormatString = struct {
     }
 };
 
+pub fn main() !void {
+    var input_string: []const u8 = "This is a %d plain string";
+    var result = try FormatString.init(input_string, std.heap.page_allocator);
+    defer result.deinit();
+    try result.printf(&.{FormatArgument{.UNSIGNED_INT = 3}});
+}
+
+fn any_match(list: []const ParameterType, parameter_type: ParameterType) bool {
+    for (list) |elem| {
+        if (elem == parameter_type) return true;
+    }
+    return false;
+}
+
+fn min(a: usize, b: usize) usize {
+    if (a < b) return a;
+    return b;
+}
+
+fn get_formatter(string: []const u8, formatter_iterator: *usize) !Formatter {
+    // determine flags
+    var found_flags: [6]?bool = .{null, null, null, null, null, null};
+    var flag_index = strings.indexOf(flags, string[formatter_iterator.*]);
+    while (formatter_iterator.* < string.len and flag_index != null) {
+        if (found_flags[flag_index.?] != null) return error.DuplicateFlag;
+        found_flags[flag_index.?] = true;
+        // Guaranteed to be one of six flags, none else
+        formatter_iterator.* += 1;
+        flag_index = strings.indexOf(flags, string[formatter_iterator.*]);
+    }
+
+    if (formatter_iterator.* == string.len) return error.InvalidFormatter;
+    var width_supplied_as_argument = false;
+    var width: ?u32 = null;
+    var precision: ?u32 = null;
+    // determine width
+    if (string[formatter_iterator.*] == '*') {
+        width_supplied_as_argument = true;
+        formatter_iterator.* += 1;
+    } else if (string[formatter_iterator.*] >= '0' and string[formatter_iterator.*] <= '9') {
+        var number_iterator = formatter_iterator.*;
+        while (string[number_iterator] >= '0' and string[number_iterator] <= '9'): (number_iterator += 1 ){}
+        const width_string = string[formatter_iterator.*..number_iterator];
+        if (std.fmt.parseInt(u32, width_string, 10)) |num| {
+            width = num;
+        } else |_| {
+            return error.InvalidFormatter;
+        }
+        formatter_iterator.* += width_string.len;
+    }
+    // Retrieve precision
+    if (string[formatter_iterator.*] == '.') {
+        formatter_iterator.* += 1;
+        if (formatter_iterator.* >= string.len or !(string[formatter_iterator.*] >= '0' and string[formatter_iterator.*] <= '9')) return error.InvalidFormatter;
+        var number_iterator = formatter_iterator.*;
+        while (string[number_iterator] >= '0' and string[number_iterator] <= '9'): (number_iterator += 1 ){}
+        const precision_string = string[formatter_iterator.*..number_iterator];
+        if (std.fmt.parseInt(u32, precision_string, 10)) |num| {
+            precision = num;
+        } else |_| {
+            return error.InvalidFormatter;
+        }
+        formatter_iterator.* += precision_string.len;
+    }
+    var type_length: usize = undefined;
+    const formatter_type = get_formatter_type(string[formatter_iterator.*..], &type_length) catch return error.InvalidFormatter;
+    formatter_iterator.* += type_length;
+    return Formatter{
+        .parameter_type = formatter_type,
+        .left_align = found_flags[0] != null,
+        .prepend_positive = found_flags[2] != null,
+        .prepend_space = found_flags[3] != null,
+        .prepend_zeros = found_flags[4] != null,
+        .grouping_separator = found_flags[5] != null,
+        .width_supplied_as_argument = false,
+        .width = width,
+        .precision = precision
+    };
+}
+
+
+fn get_formatter_type(string: []const u8, type_length: *usize) !ParameterType {
+    if (startsWithAny(string, &[_][]const u8{"d", "i"})) {
+        type_length.* = 1;
+        return ParameterType.SIGNED_INT;
+    } else if (startsWithAny(string, &[_][]const u8{"u"})) {
+        type_length.* = 1;
+        return ParameterType.UNSIGNED_INT;
+    } else if (startsWithAny(string, &[_][]const u8{"o"})) {
+        type_length.* = 1;
+        return ParameterType.OCTAL;
+    }else if (startsWithAny(string, &[_][]const u8{"x"})) {
+        type_length.* = 1;
+        return ParameterType.UNSIGNED_INT;
+    } else if (startsWithAny(string, &[_][]const u8{"X"})) {
+        type_length.* = 1;
+        return ParameterType.UNSIGNED_INT;
+    } else if (startsWithAny(string, &[_][]const u8{"f", "F", "g", "G", "a", "A"})) {
+        type_length.* = 1;
+        return ParameterType.DOUBLE;
+    } else if (startsWithAny(string, &[_][]const u8{"c"})) {
+        type_length.* = 1;
+        return ParameterType.UNSIGNED_CHAR;
+    } else if (startsWithAny(string, &[_][]const u8{"s"})) {
+        type_length.* = 1;
+        return ParameterType.STRING;
+    } else if (startsWithAny(string, &[_][]const u8{"hhd", "hhi"})) {
+        type_length.* = 3;
+        return ParameterType.SIGNED_INT;
+    }
+
+    return error.InvalidParameter;
+}
+
+fn startsWithAny(string: []const u8, matchers: []const []const u8) bool {
+    for (matchers) |matcher| {
+        if (startsWith(u8, string, matcher)) return true;
+    }
+    return false;
+}
+
 test "parse plain string" {
     const input_string: []const u8 = "This is a plain string";
     var result = try FormatString.init(input_string, test_allocator);
     defer result.deinit();
-    var plain_strings: u32 = 0;
-    var formatters: u32 = 0;
     try testing.expectEqual(@as(usize, 1), result.format_string_parts.len);
-    for (result.format_string_parts) |elem| {
-        switch (elem) {
-            FormatStringElement.STRING => plain_strings += 1,
-            FormatStringElement.FORMATTER => formatters += 1
-        }
-    }
-    try testing.expectEqual(@as(usize,1), plain_strings);
-    try testing.expectEqual(@as(usize,0), formatters);
+    const counters = result.count_types();
+    try testing.expectEqual(@as(u32,1), counters[0]);
+    try testing.expectEqual(@as(u32,0), counters[1]);
     try testing.expectEqual(input_string.len, result.format_string_parts[0].STRING.len);
 }
 
@@ -249,17 +312,10 @@ test "string with one literal percent sign" {
     const input_string: []const u8 = "This is a '%%' plain string";
     var result = try FormatString.init(input_string, test_allocator);
     defer result.deinit();
-    var plain_strings: u32 = 0;
-    var formatters: u32 = 0;
     try testing.expectEqual(@as(usize, 2), result.format_string_parts.len);
-    for (result.format_string_parts) |elem| {
-        switch (elem) {
-            FormatStringElement.STRING => plain_strings += 1,
-            FormatStringElement.FORMATTER => formatters += 1
-        }
-    }
-    try testing.expectEqual(@as(usize,2), plain_strings);
-    try testing.expectEqual(@as(usize,0), formatters);
+    const counters = result.count_types();
+    try testing.expectEqual(@as(u32,2), counters[0]);
+    try testing.expectEqual(@as(u32,0), counters[1]);
     try testing.expectEqual(@as(usize, 12), result.format_string_parts[0].STRING.len);
     try testing.expectEqual(@as(usize, 14), result.format_string_parts[1].STRING.len);
 }
@@ -327,7 +383,19 @@ test "string with one decimal mark with flags" {
     var result = try FormatString.init(input_string, test_allocator);
     defer result.deinit();
     try testing.expectEqual(@as(usize, 3), result.format_string_parts.len);
-
+    const actual = result.format_string_parts[1].FORMATTER;
+    const expected = Formatter{
+        .parameter_type = .SIGNED_INT,
+        .left_align = false,
+        .prepend_positive = true,
+        .prepend_space = false,
+        .prepend_zeros = true,
+        .grouping_separator = false,
+        .width_supplied_as_argument = false,
+        .width = null,
+        .precision = null
+    };
+    try testing.expectEqual(expected, actual);
 }
 
 test "string with one decimal mark with width" {
@@ -384,4 +452,18 @@ test "invalid percent sign at end" {
         return;
     };
     try testing.expect(false);
+}
+
+test "foo" {
+    const input_string: []const u8 = "There are %10d elements";
+    var result = try FormatString.init(input_string, test_allocator);
+    defer result.deinit();
+    try result.printf(&.{FormatArgument{.UNSIGNED_INT = 3}});
+}
+
+test "bar" {
+    var input_string: []const u8 = "This is a plain string";
+    var result = try FormatString.init(input_string, test_allocator);
+    defer result.deinit();
+    try result.printf(&.{});
 }
