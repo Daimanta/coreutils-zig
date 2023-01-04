@@ -126,6 +126,9 @@ pub const FormatString = struct {
     }
 
     pub fn printf(self: *const FormatString, args: []const FormatArgument) !void {
+        // TODO: This is very incomplete
+        // This needs to respect flags and probably needs a refactor because it checks and prints arg by arg
+        // All checking should be done first to prevent partial printing
         const counts = self.count_types();
         if (counts[1] != args.len) return error.ArgumentCountMismatch;
         if (args.len == 0) {
@@ -150,8 +153,10 @@ pub const FormatString = struct {
                     } else if (any_match(&.{ParameterType.STRING}, param_type)) {
                         if (arg != .STRING) return error.TypeMismatch;
                         print("{s}", .{arg.STRING});
+                    } else if (any_match(&.{ParameterType.DOUBLE_SCIENTIFIC_LOWERCASE, ParameterType.DOUBLE_SCIENTIFIC_UPPERCASE, ParameterType.DOUBLE}, param_type)) {
+                        if (arg != .FLOAT) return error.TypeMismatch;
+                        print("{d}", .{arg.FLOAT});
                     }
-
                     arg_it += 1;
                 }
             }
