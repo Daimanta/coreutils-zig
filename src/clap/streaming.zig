@@ -41,6 +41,7 @@ pub fn StreamingClap(comptime Id: type, comptime ArgIterator: type) type {
         state: State = .normal,
         positional: ?*const clap.Param(Id) = null,
         diagnostic: ?*clap.Diagnostic = null,
+        numbers_can_be_flags: bool = true,
 
         /// Get the next Arg that matches a Param.
         pub fn next(parser: *@This()) !?Arg(Id) {
@@ -189,9 +190,9 @@ pub fn StreamingClap(comptime Id: type, comptime ArgIterator: type) type {
                 return ArgInfo{ .arg = full_arg, .kind = .positional };
             if (mem.startsWith(u8, full_arg, "--"))
                 return ArgInfo{ .arg = full_arg[2..], .kind = .long };
-            if (mem.startsWith(u8, full_arg, "-"))
+            if (mem.startsWith(u8, full_arg, "-") and (parser.numbers_can_be_flags or full_arg[1] < '0' or full_arg[1] > '9')) {
                 return ArgInfo{ .arg = full_arg[1..], .kind = .short };
-
+            }
             return ArgInfo{ .arg = full_arg, .kind = .positional };
         }
 

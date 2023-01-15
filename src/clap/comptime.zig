@@ -61,11 +61,11 @@ pub fn ComptimeClap(
                 .pos = undefined,
                 .allocator = allocator,
             };
-
             var stream = clap.StreamingClap(usize, @typeInfo(@TypeOf(iter)).Pointer.child){
                 .params = converted_params,
                 .iter = iter,
                 .diagnostic = opt.diagnostic,
+                .numbers_can_be_flags = opt.numbers_can_be_flags
             };
             while (try stream.next()) |arg| {
                 const param = arg.param;

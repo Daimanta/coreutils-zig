@@ -339,6 +339,7 @@ pub const ParseOptions = struct {
     ///       is fine, as it wraps it in an arena)
     allocator: mem.Allocator = heap.page_allocator,
     diagnostic: ?*Diagnostic = null,
+    numbers_can_be_flags: bool = true,
 };
 
 /// Same as `parseEx` but uses the `args.OsIterator` by default.
@@ -352,6 +353,7 @@ pub fn parse(
         // Let's reuse the arena from the `OSIterator` since we already have it.
         .allocator = iter.arena.allocator(),
         .diagnostic = opt.diagnostic,
+        .numbers_can_be_flags = opt.numbers_can_be_flags
     });
 
     return Args(Id, params){
