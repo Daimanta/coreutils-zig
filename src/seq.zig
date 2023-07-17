@@ -6,11 +6,13 @@ const linux = os.linux;
 const clap = @import("clap.zig");
 const fileinfo = @import("util/fileinfo.zig");
 const print_tools = @import("util/print_tools.zig");
+const printf = @import("util/printf.zig");
 const strings = @import("util/strings.zig");
 const version = @import("util/version.zig");
 const zig_fixes = @import("util/fmt_zig_temp.zig");
 
 const Allocator = std.mem.Allocator;
+const FormatString = printf.FormatString;
 
 const default_allocator = std.heap.page_allocator;
 const FollowSymlinkError = fileinfo.FollowSymlinkError;
@@ -163,26 +165,31 @@ fn process_integers(arguments: []const []const u8, equal_width: bool, separator:
         const actual_last_value = first + (@divFloor(last-first, increment) * increment);
         width = std.math.max(count_digits(first), count_digits(actual_last_value));
     }
+    var format_string: ?FormatString = null;
+    if (format != null) {
+        format_string = FormatString.init(format.?, default_allocator) catch std.os.exit(1);
+    }
+    defer if (format_string != null) format_string.?.deinit();
 
     var buffer: [255]u8 = undefined;
 
     if (increment > 0) {
         while (iterator <= last): (iterator += increment) {
-            print_integer(iterator, separator, width, format, &buffer);
+            print_integer(iterator, separator, width, format_string, &buffer);
         }
     } else {
         while (iterator >= last): (iterator += increment) {
-            print_integer(iterator, separator, width, format, &buffer);
+            print_integer(iterator, separator, width, format_string, &buffer);
         }
     }
 }
 
-fn print_integer(iterator: i64, separator: []const u8, width: ?u8, format: ?[]const u8, buffer: []u8) void {
+fn print_integer(iterator: i64, separator: []const u8, width: ?u8, format: ?FormatString, buffer: []u8) void {
     if (width != null) {
         const len = zig_fixes.formatIntBuf(buffer, iterator, 10, .lower, .{.fill = '0', .width = width.?});
-        std.debug.print("{s}\n", .{buffer[0..len]});
+        print("{s}{s}", .{buffer[0..len], separator});
     } else if (format != null) {
-
+        format.?.printf(&.{printf.FormatArgument{.FLOAT = @intToFloat(f64, iterator)}}) catch std.os.exit(1);
     } else {
         print("{d}{s}", .{iterator, separator});
     }
