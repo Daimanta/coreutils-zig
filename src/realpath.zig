@@ -90,7 +90,7 @@ pub fn main() !void {
         return;
     }
     
-    for (positionals) |arg, i| {
+    for (positionals, 0..) |arg, i| {
         printRealpath(arg, must_exist, logical, !strip, quiet, relative_to, relative_base, i != positionals.len - 1, separator);
     }
     print("\n", .{});

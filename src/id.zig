@@ -169,7 +169,7 @@ fn printUserInformation(user_details: *users.Passwd, mode: Mode, name: bool, zer
         print_terminator(zero_terminator, "\n");
     } else if (mode == Mode.GROUPS) {
         const groups = users.getGroupsFromPasswd(user_details, default_allocator) catch unreachable;
-        for (groups) |group, i| {
+        for (groups, 0..) |group, i| {
             const group_struct = users.getgrgid(group);
             if (name) {
                 print("{s}", .{group_struct.gr_name});

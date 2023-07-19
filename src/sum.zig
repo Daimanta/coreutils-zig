@@ -73,7 +73,7 @@ pub const SysVSum = struct {
 
     pub fn final(self: *Self) u16 {
         const r = (self.state % RING_SIZE) + (self.state / RING_SIZE);
-        return @truncate(u16, (r % RING_SIZE) + (r / RING_SIZE));
+        return @truncate((r % RING_SIZE) + (r / RING_SIZE));
     }
 };
 

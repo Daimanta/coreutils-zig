@@ -64,7 +64,7 @@ pub fn main() !void {
     const adjustment_string = args.option("-n");
 
     if (arguments.len == 0 and adjustment_string == null) {
-        std.debug.print("{d}\n", .{getpriority(@enumToInt(PriorityType.PRIO_PROCESS), 0)});
+        std.debug.print("{d}\n", .{getpriority(@intFromEnum(PriorityType.PRIO_PROCESS), 0)});
         std.os.exit(0);
     }
 

@@ -184,7 +184,7 @@ fn checkBytes(path: []const u8, bytes: []const u8, ignore_missing: bool, quiet: 
             } else if (line.len > 34 and line[32] == ' ' and line[33] == ' ') {
                 var correct = true;
                 for (line[0..32]) |byte|{
-                    if (!std.ascii.isDigit(byte) and !std.ascii.isAlpha(byte)) {
+                    if (!std.ascii.isDigit(byte) and !std.ascii.isAlphabetic(byte)) {
                         correct = false;
                         break;
                     }
