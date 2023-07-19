@@ -303,7 +303,7 @@ fn digestFromFile(path: []const u8) HashError![2 * HASH_BYTE_SIZE]u8 {
         return HashError.IsDir;
     }
 
-    const file_size = @intCast(u64, stat.size);
+    const file_size: u64 = @intCast(stat.size);
 
     const file = fs.cwd().openFile(path, .{ .mode = .read_only }) catch {
         print("Could not read file.\n", .{});

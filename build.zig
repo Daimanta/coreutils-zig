@@ -1,213 +1,79 @@
 const std = @import("std");
 const os = @import("builtin").os.tag;
+const version = @import("version.zig");
+const Builder = std.Build;
 
-pub fn build(b: *std.build.Builder) void {
+pub fn build(b: *Builder) void {
     const current_zig_version = @import("builtin").zig_version;
     if (current_zig_version.major != 0 or current_zig_version.minor < 10) {
         std.debug.print("This project does not compile with a Zig version <0.10.x. Exiting.", .{});
         std.os.exit(1);
     }
 
-    // Standard target options allows the person running `zig build` to choose
-    // what target to build for. Here we do not override the defaults, which
-    // means any target is allowed, and the default is native. Other options
-    // for restricting supported target set are available.
-    const target = b.standardTargetOptions(.{});
-
     // Standard release options allow the person running `zig build` to select
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
-    const mode = b.standardReleaseOptions();
+    const basename = addExe(b, "basename");
+    const chgrp = addExe(b, "chgrp");
+    const chmod = addExe(b, "chmod");
+    const chown = addExe(b, "chown");
+    const cksum = addExe(b, "cksum");
+    const dircolors = addExe(b, "dircolors");
+    const dirname = addExe(b, "dirname");
+    const echo = addExe(b, "echo");
+    const false_app = addExe(b, "false");
+    const fold = addExe(b, "fold");
+    const groups = addExe(b, "groups");
+    const hostid = addExe(b, "hostid");
+    const hostname = addExe(b, "hostname");
+    const id = addExe(b, "id");
+    const link = addExe(b, "link");
+    const logname = addExe(b, "logname");
+    const md5sum = addExe(b, "md5sum");
+    const mkdir = addExe(b, "mkdir");
+    const mkfifo = addExe(b, "mkfifo");
+    const nice = addExe(b, "nice");
+    const nproc = addExe(b, "nproc");
+    const printenv = addExe(b, "printenv");
+    const pwd = addExe(b, "pwd");
+    const readlink = addExe(b, "readlink");
+    const realpath = addExe(b, "realpath");
+    const rmdir = addExe(b, "rmdir");
+    const sleep = addExe(b, "sleep");
+    const sum = addExe(b, "sum");
+    const sync = addExe(b, "sync");
+    const touch = addExe(b, "true");
+    const true_app = addExe(b, "true");
+    const tty = addExe(b, "tty");
+    const unlink = addExe(b, "unlink");
+    const uname = addExe(b, "uname");
+    const uptime = addExe(b, "uptime");
+    const users = addExe(b, "users");
+    const whoami = addExe(b, "whoami");
+    const yes = addExe(b, "yes");
 
-    const basename = b.addExecutable("basename", "src/basename.zig");
-    basename.setTarget(target);
-    basename.setBuildMode(mode);
-    basename.install();
-    
-    const chgrp = b.addExecutable("chgrp", "src/chgrp.zig");
-    chgrp.setTarget(target);
-    chgrp.setBuildMode(mode);
-    chgrp.install();
-    
-    const chmod = b.addExecutable("chmod", "src/chmod.zig");
-    chmod.setTarget(target);
-    chmod.setBuildMode(mode);
-    chmod.install();
-    
-    const chown = b.addExecutable("chown", "src/chown.zig");
-    chown.setTarget(target);
-    chown.setBuildMode(mode);
-    chown.install();
-    
-    const cksum = b.addExecutable("cksum", "src/cksum.zig");
-    cksum.setTarget(target);
-    cksum.setBuildMode(mode);
-    cksum.install();
-    
-    const dircolors = b.addExecutable("dircolors", "src/dircolors.zig");
-    dircolors.setTarget(target);
-    dircolors.setBuildMode(mode);
-    dircolors.install();
-    
-    const dirname = b.addExecutable("dirname", "src/dirname.zig");
-    dirname.setTarget(target);
-    dirname.setBuildMode(mode);
-    dirname.install();
-
-    const echo = b.addExecutable("echo", "src/echo.zig");
-    echo.setTarget(target);
-    echo.setBuildMode(mode);
-    echo.install();
-
-    const false_app = b.addExecutable("false", "src/false.zig");
-    false_app.setTarget(target);
-    false_app.setBuildMode(mode);
-    false_app.install();
-    
-    const fold = b.addExecutable("fold", "src/fold.zig");
-    fold.setTarget(target);
-    fold.setBuildMode(mode);
-    fold.install();
-
-    const groups = b.addExecutable("groups", "src/groups.zig");
-    groups.setTarget(target);
-    groups.setBuildMode(mode);
-    groups.install();
-
-    const hostid = b.addExecutable("hostid", "src/hostid.zig");
-    hostid.setTarget(target);
-    hostid.setBuildMode(mode);
-    hostid.install();
-
-    const hostname = b.addExecutable("hostname", "src/hostname.zig");
-    hostname.setTarget(target);
-    hostname.setBuildMode(mode);
-    hostname.install();
-    
-    const id = b.addExecutable("id", "src/id.zig");
-    id.setTarget(target);
-    id.setBuildMode(mode);
-    id.install();
-
-    const link = b.addExecutable("link", "src/link.zig");
-    link.setTarget(target);
-    link.setBuildMode(mode);
-    link.install();
-
-    const logname = b.addExecutable("logname", "src/logname.zig");
-    logname.setTarget(target);
-    logname.setBuildMode(mode);
-    logname.install();
-    
-    const md5sum = b.addExecutable("md5sum", "src/md5sum.zig");
-    md5sum.setTarget(target);
-    md5sum.setBuildMode(mode);
-    md5sum.install();
-    
-    const mkdir = b.addExecutable("mkdir", "src/mkdir.zig");
-    mkdir.setTarget(target);
-    mkdir.setBuildMode(mode);
-    mkdir.addPackagePath("libselinux", "/lib/x86_64-linux-gnu/libselinux.so.1");
-    mkdir.install();
-    
-    const mkfifo = b.addExecutable("mkfifo", "src/mkfifo.zig");
-    mkfifo.setTarget(target);
-    mkfifo.setBuildMode(mode);
-    mkfifo.install();
-
-    const nice = b.addExecutable("nice", "src/nice.zig");
-    nice.setTarget(target);
-    nice.setBuildMode(mode);
-    nice.install();
-
-    const nproc = b.addExecutable("nproc", "src/nproc.zig");
-    nproc.setTarget(target);
-    nproc.setBuildMode(mode);
-    nproc.install();
-
-    const printenv = b.addExecutable("printenv", "src/printenv.zig");
-    printenv.setTarget(target);
-    printenv.setBuildMode(mode);
-    printenv.install();
-
-    const pwd = b.addExecutable("pwd", "src/pwd.zig");
-    pwd.setTarget(target);
-    pwd.setBuildMode(mode);
-    pwd.install();
-
-    const readlink = b.addExecutable("readlink", "src/readlink.zig");
-    readlink.setTarget(target);
-    readlink.setBuildMode(mode);
-    readlink.install();
-    
-    const realpath = b.addExecutable("realpath", "src/realpath.zig");
-    realpath.setTarget(target);
-    realpath.setBuildMode(mode);
-    realpath.install();
-    
-    const rmdir = b.addExecutable("rmdir", "src/rmdir.zig");
-    rmdir.setTarget(target);
-    rmdir.setBuildMode(mode);
-    rmdir.install();
-
-    const sleep = b.addExecutable("sleep", "src/sleep.zig");
-    sleep.setTarget(target);
-    sleep.setBuildMode(mode);
-    sleep.install();
-    
-    const sum = b.addExecutable("sum", "src/sum.zig");
-    sum.setTarget(target);
-    sum.setBuildMode(mode);
-    sum.install();
-    
-    const sync = b.addExecutable("sync", "src/sync.zig");
-    sync.setTarget(target);
-    sync.setBuildMode(mode);
-    sync.install();
-
-    const touch = b.addExecutable("true", "src/touch.zig");
-    touch.setTarget(target);
-    touch.setBuildMode(mode);
-    touch.install();
-
-    const true_app = b.addExecutable("true", "src/true.zig");
-    true_app.setTarget(target);
-    true_app.setBuildMode(mode);
-    true_app.install();
-
-    const tty = b.addExecutable("tty", "src/tty.zig");
-    tty.setTarget(target);
-    tty.setBuildMode(mode);
-    tty.install();
-
-    const unlink = b.addExecutable("unlink", "src/unlink.zig");
-    unlink.setTarget(target);
-    unlink.setBuildMode(mode);
-    unlink.install();
-    
-    const uname = b.addExecutable("uname", "src/uname.zig");
-    uname.setTarget(target);
-    uname.setBuildMode(mode);
-    uname.install();
-
-    const uptime = b.addExecutable("uptime", "src/uptime.zig");
-    uptime.setTarget(target);
-    uptime.setBuildMode(mode);
-    uptime.install();
-
-    const users = b.addExecutable("users", "src/users.zig");
-    users.setTarget(target);
-    users.setBuildMode(mode);
-    users.install();
-
-    const whoami = b.addExecutable("whoami", "src/whoami.zig");
-    whoami.setTarget(target);
-    whoami.setBuildMode(mode);
-    whoami.install();
-
-    const yes = b.addExecutable("yes", "src/yes.zig");
-    yes.setTarget(target);
-    yes.setBuildMode(mode);
-    yes.install();
+    _ = basename;
+    _ = cksum;
+    _ = dircolors;
+    _ = dirname;
+    _ = echo;
+    _ = false_app;
+    _ = fold;
+    _ = hostname;
+    _ = link;
+    _ = md5sum;
+    _ = pwd;
+    _ = readlink;
+    _ = realpath;
+    _ = rmdir;
+    _ = sleep;
+    _ = sum;
+    _ = sync;
+    _ = touch;
+    _ = true_app;
+    _ = unlink;
+    _ = uname;
+    _ = users;
+    _ = yes;
 
     if (os == .linux) {
         chgrp.linkSystemLibrary("c");
@@ -226,5 +92,11 @@ pub fn build(b: *std.build.Builder) void {
         uptime.linkSystemLibrary("c");
         whoami.linkSystemLibrary("c");
     }
+}
 
+fn addExe(b: *Builder, comptime name: []const u8) *Builder.Step.Compile {
+    const exe = b.addExecutable(.{ .name = name, .root_source_file = .{ .path = "src/" ++ name ++ ".zig" }, .optimize = .ReleaseSafe, .version = .{ .major = version.major, .minor = version.minor, .patch = version.patch } });
+    b.default_step.dependOn(&exe.step);
+    b.installArtifact(exe);
+    return exe;
 }

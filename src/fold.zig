@@ -108,7 +108,7 @@ fn fold(path: []const u8, wrap_bytes: bool, break_only_at_spaces: bool, width: u
         return;
     }
     
-    const file_size = @intCast(u64, stat.size);
+    const file_size: u64 = @intCast(stat.size);
     
     const file = try fs.cwd().openFile(path, .{.mode = .read_only});
     defer file.close();

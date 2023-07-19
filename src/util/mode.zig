@@ -38,11 +38,11 @@ pub const ModeStruct = packed struct {
     _padding2: u16,
 
      pub fn init(mode: mode_t) ModeStruct {
-         return @bitCast(ModeStruct, @truncate(u32, mode));
+         return @bitCast(@as(u32, @truncate(mode)));
      }
 
      pub fn to_mode(self: *const ModeStruct) mode_t {
-        return @bitCast(u32, self.*);
+        return @as(u32, @bitCast(self.*));
      }
 
      fn to_absolute_user_change(self: *const ModeStruct) AbsoluteChange {
@@ -219,7 +219,7 @@ pub fn getModeFromString(string: []const u8, initial_mode: mode_t) ModeError!mod
         if (token.len == 0) return ModeError.InvalidModeString;
 
         var numerical = true;
-        for (token) |byte, i| {
+        for (token, 0..) |byte, i| {
             if ((byte < '0' or byte > '9') and (i != 0 or (i == 0 and byte != '=' and byte != '+' and byte != '-'))) {
                 numerical = false;
                 break;
@@ -387,7 +387,7 @@ fn handleString(token: []const u8, modifiers: *ArrayList(ModeChange)) ModeError!
 
 
 
-test "set zero" {
+test "set zero from struct" {
     var mode: mode_t = 0;
     const mode_change: ModeChange = ModeChange{ .owner = true, .group = true, .other = true, .operation = Operation.SET, .source = ChangeSource{ .ABSOLUTE = AbsoluteChange{ .read = false, .write = false, .execute = false, .set_uid = false, .set_gid = false, .sticky = false, .set_global_bits = false } } };
     applyModeChange(&mode_change, &mode);
@@ -396,7 +396,7 @@ test "set zero" {
     try testing.expectEqual(expected, mode);
 }
 
-test "set read" {
+test "set read from struct" {
     var mode: mode_t = 0;
     const mode_change: ModeChange = ModeChange{ .owner = true, .group = true, .other = true, .operation = Operation.SET, .source = ChangeSource{ .ABSOLUTE = AbsoluteChange{ .read = true, .write = false, .execute = false, .set_uid = false, .set_gid = false, .sticky = false, .set_global_bits = false } } };
     applyModeChange(&mode_change, &mode);
@@ -405,7 +405,7 @@ test "set read" {
     try testing.expectEqual(expected, mode);
 }
 
-test "set read and write" {
+test "set read and write from struct" {
     var mode: mode_t = 0;
     const mode_change: ModeChange = ModeChange{ .owner = true, .group = true, .other = true, .operation = Operation.SET, .source = ChangeSource{ .ABSOLUTE = AbsoluteChange{ .read = true, .write = true, .execute = false, .set_uid = false, .set_gid = false, .sticky = false, .set_global_bits = false } } };
     applyModeChange(&mode_change, &mode);

@@ -64,7 +64,7 @@ pub fn determine_utmp_file() []const u8 {
 }
 
 pub fn convertBytesToUtmpRecords(bytes: []u8) []Utmp{
-    var aligned = @alignCast(@alignOf(Utmp), bytes);
+    var aligned:[]align(@alignOf(Utmp))u8 = @alignCast(bytes);
     return std.mem.bytesAsSlice(Utmp, aligned[0..]);
 }
 

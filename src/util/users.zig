@@ -39,7 +39,7 @@ pub fn getUserByNameA(name: []const u8) !*Passwd {
     const nameZ = try strings.toNullTerminatedPointer(name, default_allocator);
     defer default_allocator.free(nameZ);
     const result = getpwnam(nameZ);
-    if (@ptrToInt(result) == 0) {
+    if (@intFromPtr(result) == 0) {
         return error.UserNotFound;
     } else {
         return result;
@@ -48,7 +48,7 @@ pub fn getUserByNameA(name: []const u8) !*Passwd {
 
 pub fn getUserByName(name: [*:0]u8) !*Passwd {
     const result = getpwnam(name);
-    if (@ptrToInt(result) == 0) {
+    if (@intFromPtr(result) == 0) {
         return error.UserNotFound;
     } else {
         return result;
@@ -81,7 +81,7 @@ pub fn getGroupsFromPasswd(user: *Passwd, allocator: Allocator) ![]gid {
 
     // Size iteration
     _ = getgrouplist(user.pw_name, user_gid, groups, &group_count);
-    var group_count_usize = @intCast(usize, group_count);
+    var group_count_usize: usize = @intCast(group_count);
     var group_alloc = try allocator.alloc(gid, group_count_usize);
     groups = group_alloc.ptr;
     // Actually allocate the groups

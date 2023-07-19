@@ -93,7 +93,7 @@ fn printUsers(alloc: std.mem.Allocator, file_name: []const u8) !void {
                 }
             }
         }
-        for (users[0..insert_index]) |user, i| {
+        for (users[0..insert_index], 0..) |user, i| {
             std.debug.print("{s}", .{user});
             if (i != users[0..insert_index].len - 1) {
                 std.debug.print(" ", .{});

@@ -114,7 +114,7 @@ fn create_dir(path: []const u8, create_parents: bool, verbose: bool, used_mode: 
         used_dir = path;
     }
     
-    const cast_mode = @intCast(u32, used_mode);
+    const cast_mode: u32 = @intCast(used_mode);
     
     if (create_parents) {
         var slash_position = strings.indexOf(used_dir, '/');

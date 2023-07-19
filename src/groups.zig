@@ -104,7 +104,7 @@ fn displayGroup (user: *users.Passwd, print_name: bool) !void {
 
     // Size iteration
     _ = getgrouplist(user.pw_name, user_gid, groups, &group_count);
-    var group_count_usize = @intCast(usize, group_count);
+    var group_count_usize: usize = @intCast(group_count);
     var group_alloc = try allocator.alloc(gid, group_count_usize);
     groups = group_alloc.ptr;
     defer allocator.free(group_alloc);
@@ -114,7 +114,7 @@ fn displayGroup (user: *users.Passwd, print_name: bool) !void {
     if (print_name) {
         std.debug.print("{s} : ", .{user.pw_name});
     }
-    for (groups[0..@intCast(usize, group_count)]) |group| {
+    for (groups[0..@intCast(group_count)]) |group| {
         const grp = users.getgrgid(group);
         std.debug.print("{s} ", .{grp.gr_name});
     }

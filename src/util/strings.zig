@@ -7,7 +7,7 @@ const Allocator = std.mem.Allocator;
 
 pub fn toNullTerminatedPointer(slice: []const u8, allocator_impl: Allocator) ![:0]u8 {
     var result = try allocator_impl.alloc(u8, slice.len + 1);
-    for (slice) |_, i| {
+    for (slice, 0..) |_, i| {
         result[i] = slice[i];
     }
     result[result.len - 1] = 0;
@@ -15,7 +15,7 @@ pub fn toNullTerminatedPointer(slice: []const u8, allocator_impl: Allocator) ![:
 }
 
 pub fn convertOptionalSentinelString(ptr: [*:0]u8) ?[]u8 {
-    if (@ptrToInt(ptr) == 0) {
+    if (@intFromPtr(ptr) == 0) {
         return null;
     } else {
         return std.mem.sliceTo(ptr, 0);
@@ -32,14 +32,14 @@ pub fn substringFromNullTerminatedSlice(str: []const u8) []const u8 {
 }
 
 pub fn indexOf(string: []const u8, match: u8) ?usize {
-    for (string) |byte, i| {
+    for (string, 0..) |byte, i| {
         if (byte == match) return i;
     }
     return null;
 }
 
 pub fn noneIndexOf(string: []const u8, match: u8) ?usize {
-    for (string) |byte, i| {
+    for (string, 0..) |byte, i| {
         if (byte != match) return i;
     }
     return null;

@@ -66,7 +66,7 @@ pub fn main() !void {
     const csh = args.flag("-c");
     const print_database = args.flag("-p");
     
-    const flag_count = @boolToInt(bourne) + @boolToInt(csh) + @boolToInt(print_database);
+    const flag_count = @intFromBool(bourne) + @intFromBool(csh) + @intFromBool(print_database);
     if (flag_count > 1) {
         print("A maximum of one of -b, -c, and -p is allowed. Exiting.\n", .{});
         os.exit(1);
