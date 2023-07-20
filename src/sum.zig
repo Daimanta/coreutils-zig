@@ -44,7 +44,7 @@ pub const BsdSum = struct {
             state +%= byte;
             state &= 0xffff;
         }
-        self.state = @truncate(u16, state);
+        self.state = @truncate(state);
     }
 
     pub fn final(self: *Self) u16 {
