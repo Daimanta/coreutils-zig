@@ -76,9 +76,7 @@ pub fn main() !void {
         };
     }
 
-    var effective_niceness: i32 = adjustment;
-    if (effective_niceness > system.MINIMAL_NICENESS) effective_niceness = system.MINIMAL_NICENESS;
-    if (effective_niceness < system.MAXIMAL_NICENESS) effective_niceness = system.MAXIMAL_NICENESS;
+    var effective_niceness: i32 = std.math.clamp(adjustment, system.MAXIMAL_NICENESS, system.MINIMAL_NICENESS);
 
     var child = ChildProcess.init(arguments[0..], allocator);
     try child.spawn();
