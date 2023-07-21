@@ -184,7 +184,7 @@ fn checkBytes(path: []const u8, bytes: []const u8, ignore_missing: bool, quiet: 
             } else if (line.len > 34 and line[32] == ' ' and line[33] == ' ') {
                 var correct = true;
                 for (line[0..32]) |byte|{
-                    if (!std.ascii.isDigit(byte) and !std.ascii.isAlpha(byte)) {
+                    if (!std.ascii.isDigit(byte) and !std.ascii.isAlphabetic(byte)) {
                         correct = false;
                         break;
                     }
@@ -303,7 +303,7 @@ fn digestFromFile(path: []const u8) HashError![2 * HASH_BYTE_SIZE]u8 {
         return HashError.IsDir;
     }
 
-    const file_size = @intCast(u64, stat.size);
+    const file_size: u64 = @intCast(stat.size);
 
     const file = fs.cwd().openFile(path, .{ .mode = .read_only }) catch {
         print("Could not read file.\n", .{});

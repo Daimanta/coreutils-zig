@@ -116,8 +116,8 @@ fn getTimesFromDoubleAndTimeType(double: f64, time_type: TimeType, seconds: *u64
         multiplied_value = double * 60 * 60 * 24;
     }
 
-    var int_part = @floatToInt(u64, multiplied_value);
-    var nanos_part = @floatToInt(u64, (multiplied_value-@intToFloat(f64, int_part)) * 1_000_000_000);
+    var int_part: u64 = @intFromFloat(multiplied_value);
+    var nanos_part: u64 = @intFromFloat((multiplied_value-@as(f64, @floatFromInt(int_part))) * 1_000_000_000);
     seconds.* = int_part;
     nanos.* = nanos_part;
 }

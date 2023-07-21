@@ -124,7 +124,7 @@ pub fn main() !void {
 
 fn printEscapedString(string: []const u8, space: bool) bool {
     var found_backslash = false;
-    for (string) |byte, i| {
+    for (string, 0..) |byte, i| {
         if (i != string.len - 1 and byte == '\\') {
             found_backslash = true;
             break;

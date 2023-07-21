@@ -86,7 +86,7 @@ fn getUptimeString(alloc: std.mem.Allocator) ![]const u8 {
         if (uptime_float == std.math.nan(f64)) {
             can_determine_uptime = false;
         } else {
-            var uptime_int = @floatToInt(u32, uptime_float);
+            var uptime_int: u32 = @intFromFloat(uptime_float);
             days = uptime_int / std.time.s_per_day;
             uptime_int -= days * std.time.s_per_day;
             hours = uptime_int / std.time.s_per_hour;

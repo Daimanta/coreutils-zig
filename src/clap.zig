@@ -119,7 +119,7 @@ fn parseParamRest(line: []const u8) Param(Help) {
     if (mem.startsWith(u8, line, "<")) blk: {
         const len = mem.indexOfScalar(u8, line, '>') orelse break :blk;
         const takes_many = mem.startsWith(u8, line[len + 1 ..], "...");
-        const help_start = len + 1 + @as(usize, 3) * @boolToInt(takes_many);
+        const help_start = len + 1 + @as(usize, 3) * @intFromBool(takes_many);
         return .{
             .takes_value = if (takes_many) .many else .one,
             .id = .{
@@ -419,7 +419,7 @@ pub fn helpFull(
             var cs = io.countingWriter(io.null_writer);
             try printParam(cs.writer(), Id, param, Error, context, valueText);
             if (res < cs.bytes_written)
-                res = @intCast(usize, cs.bytes_written);
+                res = @intCast(cs.bytes_written);
         }
 
         break :blk res;
@@ -432,7 +432,7 @@ pub fn helpFull(
         var cs = io.countingWriter(stream);
         try stream.print("\t", .{});
         try printParam(cs.writer(), Id, param, Error, context, valueText);
-        try stream.writeByteNTimes(' ', max_spacing - @intCast(usize, cs.bytes_written));
+        try stream.writeByteNTimes(' ', max_spacing - @as(usize, @intCast(cs.bytes_written)));
         const help_text = try helpText(context, param);
         var help_text_line_it = mem.split(u8, help_text, "\n");
         var indent_line = false;
@@ -604,7 +604,7 @@ pub fn usageFull(
         const name = if (param.names.short) |*s|
             // Seems the zig compiler is being a little wierd. I doesn't allow me to write
             // @as(*const [1]u8, s)
-            @ptrCast([*]const u8, s)[0..1]
+            @as([*]const u8, @ptrCast(s))[0..1]
         else
             param.names.long orelse {
                 positional = param;

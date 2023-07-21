@@ -66,12 +66,12 @@ pub fn main() !void {
 
     var result: u32 = 0;
     if (all_processors) {
-        result = @intCast(u32, get_nprocs());
+        result = @intCast(get_nprocs());
     } else {
-        result = @intCast(u32, get_nprocs_conf());
+        result = @intCast(get_nprocs_conf());
     }
     if (ignore != 0) {
-        result = std.math.max(1, result-ignore);
+        result = @max(1, result-ignore);
     }
 
     std.debug.print("{d}\n", .{result});

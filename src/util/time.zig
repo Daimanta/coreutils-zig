@@ -29,11 +29,11 @@ pub fn getLocalTimeStructFromi32(time: i32) *struct_tm {
 
 pub fn toLocalDateTimeStringAlloc(alloc: std.mem.Allocator, local_time: *struct_tm) ![]const u8 {
     var result = try alloc.alloc(u8, 16);
-    _ = std.fmt.bufPrintIntToSlice(result[0..4], @intCast(u32, local_time.tm_year + 1900), 10, Case.lower, std.fmt.FormatOptions{.width=4, .fill='0'});
-    _ = std.fmt.bufPrintIntToSlice(result[5..7], @intCast(u32, local_time.tm_mon + 1), 10, Case.lower, std.fmt.FormatOptions{.width=2, .fill='0'});
-    _ = std.fmt.bufPrintIntToSlice(result[8..10], @intCast(u32, local_time.tm_mday), 10, Case.lower, std.fmt.FormatOptions{.width=2, .fill='0'});
-    _ = std.fmt.bufPrintIntToSlice(result[11..13], @intCast(u32, local_time.tm_hour), 10, Case.lower, std.fmt.FormatOptions{.width=2, .fill='0'});
-    _ = std.fmt.bufPrintIntToSlice(result[14..], @intCast(u32, local_time.tm_min), 10, Case.lower, std.fmt.FormatOptions{.width=2, .fill='0'});
+    _ = std.fmt.bufPrintIntToSlice(result[0..4], @as(u32, @intCast(local_time.tm_year + 1900)), 10, Case.lower, std.fmt.FormatOptions{.width=4, .fill='0'});
+    _ = std.fmt.bufPrintIntToSlice(result[5..7], @as(u32, @intCast(local_time.tm_mon + 1)), 10, Case.lower, std.fmt.FormatOptions{.width=2, .fill='0'});
+    _ = std.fmt.bufPrintIntToSlice(result[8..10], @as(u32, @intCast(local_time.tm_mday)), 10, Case.lower, std.fmt.FormatOptions{.width=2, .fill='0'});
+    _ = std.fmt.bufPrintIntToSlice(result[11..13], @as(u32, @intCast(local_time.tm_hour)), 10, Case.lower, std.fmt.FormatOptions{.width=2, .fill='0'});
+    _ = std.fmt.bufPrintIntToSlice(result[14..], @as(u32, @intCast(local_time.tm_min)), 10, Case.lower, std.fmt.FormatOptions{.width=2, .fill='0'});
     result[4] = '-';
     result[7] = '-';
     result[10] = ' ';
@@ -43,9 +43,9 @@ pub fn toLocalDateTimeStringAlloc(alloc: std.mem.Allocator, local_time: *struct_
 
 pub fn toTimeStringAlloc(alloc: std.mem.Allocator, local_time: *struct_tm) ![]const u8 {
     var result = try alloc.alloc(u8, 8);
-    _ = std.fmt.bufPrintIntToSlice(result[0..2], @intCast(u32, local_time.tm_hour), 10, Case.lower, std.fmt.FormatOptions{.width=2, .fill='0'});
-    _ = std.fmt.bufPrintIntToSlice(result[3..5], @intCast(u32, local_time.tm_min), 10, Case.lower, std.fmt.FormatOptions{.width=2, .fill='0'});
-    _ = std.fmt.bufPrintIntToSlice(result[6..], @intCast(u32, local_time.tm_sec), 10, Case.lower, std.fmt.FormatOptions{.width=2, .fill='0'});
+    _ = std.fmt.bufPrintIntToSlice(result[0..2], @as(u32, @intCast(local_time.tm_hour)), 10, Case.lower, std.fmt.FormatOptions{.width=2, .fill='0'});
+    _ = std.fmt.bufPrintIntToSlice(result[3..5], @as(u32, @intCast(local_time.tm_min)), 10, Case.lower, std.fmt.FormatOptions{.width=2, .fill='0'});
+    _ = std.fmt.bufPrintIntToSlice(result[6..], @as(u32, @intCast(local_time.tm_sec)), 10, Case.lower, std.fmt.FormatOptions{.width=2, .fill='0'});
     result[2] = ':';
     result[5] = ':';
     return result;

@@ -32,7 +32,7 @@ pub const PriorityType = enum(u8) {
 };
 
 pub fn setHostname(name: []const u8) SetHostnameError!void {
-    const result = linux.syscall2(set_hostname_syscall, @ptrToInt(&name[0]), name.len);
+    const result = linux.syscall2(set_hostname_syscall, @intFromPtr(&name[0]), name.len);
     if (result != 0) {
         const errno = linux.getErrno(result);
         return switch (errno) {
@@ -49,7 +49,7 @@ pub const id_t = u32;
 extern fn setpriority(which: c_int, who: id_t, prio: c_int) c_int;
 
 pub fn setPriority(which: PriorityType, who: id_t, prio: c_int) SetPriorityError!void {
-    const result = setpriority(@enumToInt(which), who, prio);
+    const result = setpriority(@intFromEnum(which), who, prio);
     if (result != 0) {
         return switch (std.c.getErrno(result)) {
             .SRCH, .INVAL => SetPriorityError.ProcessNotFound,
