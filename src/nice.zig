@@ -76,14 +76,12 @@ pub fn main() !void {
         };
     }
 
-    var effective_niceness: i32 = adjustment;
-    if (effective_niceness > system.MINIMAL_NICENESS) effective_niceness = system.MINIMAL_NICENESS;
-    if (effective_niceness < system.MAXIMAL_NICENESS) effective_niceness = system.MAXIMAL_NICENESS;
+    var effective_niceness: i32 = std.math.clamp(adjustment, system.MAXIMAL_NICENESS, system.MINIMAL_NICENESS);
 
     var child = ChildProcess.init(arguments[0..], allocator);
     try child.spawn();
 
-    system.setPriority(PriorityType.PRIO_PROCESS, @intCast(u32, child.pid), @intCast(c_int, effective_niceness)) catch |err| {
+    system.setPriority(PriorityType.PRIO_PROCESS, @as(u32, @intCast(child.id)), @as(c_int, @intCast(effective_niceness))) catch |err| {
         if (err == SetPriorityError.NoRightsForNiceValue) {
             std.debug.print("{s}: cannot set niceness: Permission denied\n", .{application_name});
         } else {

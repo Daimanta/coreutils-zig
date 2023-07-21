@@ -41,7 +41,7 @@ pub fn main() !void {
     }
 
     const c_hostid = gethostid();
-    const hostid = @intCast(u32, c_hostid);
+    const hostid: u32 = @intCast(c_hostid);
     std.debug.print("{x:0>8}\n", .{hostid});
 
 }

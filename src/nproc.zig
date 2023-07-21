@@ -71,7 +71,7 @@ pub fn main() !void {
         result = @intCast(get_nprocs_conf());
     }
     if (ignore != 0) {
-        result = std.math.max(1, result-ignore);
+        result = @max(1, result-ignore);
     }
 
     std.debug.print("{d}\n", .{result});

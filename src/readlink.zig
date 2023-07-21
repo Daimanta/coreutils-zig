@@ -40,7 +40,7 @@ const help_message =
 \\
 ;
 
-const max_path_length = 98302;
+const max_path_length = fs.MAX_PATH_BYTES;
 
 const ReadMode = enum {
     FOLLOW_ALMOST_ALL,
