@@ -12,6 +12,7 @@ const SetHostnameError = system.SetHostnameError;
 
 const allocator = std.heap.page_allocator;
 const HOST_NAME_MAX = os.linux.HOST_NAME_MAX;
+const print = @import("util/print_tools.zig").print;
 
 const application_name = "hostname";
 
@@ -37,7 +38,7 @@ pub fn main() !void {
     defer args.deinit();
 
     if (args.flag("--help")) {
-        std.debug.print(help_message, .{});
+        print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
@@ -47,14 +48,14 @@ pub fn main() !void {
     const positionals = args.positionals();
 
     if (positionals.len > 1) {
-        std.debug.print("Too many arguments. Exiting\n", .{});
+        print("Too many arguments. Exiting\n", .{});
         std.os.exit(1);
     }
 
     if (positionals.len == 0) {
         var name_buffer: [HOST_NAME_MAX]u8 = undefined;
         const hostname = try os.gethostname(&name_buffer);
-        std.debug.print("{s}\n", .{hostname});
+        print("{s}\n", .{hostname});
         std.os.exit(0);
     } else {
         system.setHostname(positionals[0]) catch |err| {
@@ -63,7 +64,7 @@ pub fn main() !void {
                 SetHostnameError.InvalidAddress, SetHostnameError.NegativeLength => "Internal error",
                 else => unreachable
             };
-            std.debug.print("{s}\n", .{error_message});
+            print("{s}\n", .{error_message});
             std.os.exit(1);
         };
         std.os.exit(0);

@@ -14,6 +14,7 @@ const OpenError = fs.Dir.OpenError;
 
 const allocator = std.heap.page_allocator;
 const mkdir = os.mkdir;
+const print = @import("util/print_tools.zig").print;
 
 const application_name = "mkdir";
 
@@ -53,7 +54,7 @@ pub fn main() !void {
     defer args.deinit();
 
     if (args.flag("--help")) {
-        std.debug.print(help_message, .{});
+        print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
@@ -71,15 +72,15 @@ pub fn main() !void {
     const special_selinux_context = args.option("--context");
     
     if (default_selinux_context and special_selinux_context != null) {
-        std.debug.print("SELinux context cannot be both default and specific. Exiting.\n", .{});
+        print("SELinux context cannot be both default and specific. Exiting.\n", .{});
         std.os.exit(1);
     }   
     
     if (mode_string != null) {
         used_mode = mode.getModeFromStringAndZeroMode(mode_string.?) catch |err| {
             switch (err) {
-                mode.ModeError.InvalidModeString => std.debug.print("Invalid mode. Exiting.\n", .{}),
-                mode.ModeError.UnknownError => std.debug.print("Unknown mode error. Exiting.\n", .{}),
+                mode.ModeError.InvalidModeString => print("Invalid mode. Exiting.\n", .{}),
+                mode.ModeError.UnknownError => print("Unknown mode error. Exiting.\n", .{}),
             }
             std.os.exit(1);
         };
@@ -99,14 +100,14 @@ pub fn main() !void {
 fn create_dir(path: []const u8, create_parents: bool, verbose: bool, used_mode: mode_t) bool {
     const absolute = (path[0] == '/');
     if (absolute and path.len == 1) {
-        std.debug.print("'/' cannot be created.\n", .{});
+        print("'/' cannot be created.\n", .{});
         return false;
     }
     var used_dir: []const u8 = undefined;
     if (path[path.len - 1] == '/') {
         const last_non_index = strings.lastNonIndexOf(path, '/');
         if (last_non_index == null) {
-            std.debug.print("'/' cannot be created.\n", .{});
+            print("'/' cannot be created.\n", .{});
             return false;
         }
         used_dir = path[0..last_non_index.?+1];
@@ -123,7 +124,7 @@ fn create_dir(path: []const u8, create_parents: bool, verbose: bool, used_mode: 
                 handleMkdirErrors(err);
                 return false;
             };
-            if (verbose) std.debug.print("{s}: created directory '{s}'\n", .{application_name, used_dir});
+            if (verbose) print("{s}: created directory '{s}'\n", .{application_name, used_dir});
         } else {
             var existing_base_path = used_dir;
             var slash_index = strings.indexOfStartOnPos(existing_base_path, 1, '/');
@@ -142,7 +143,7 @@ fn create_dir(path: []const u8, create_parents: bool, verbose: bool, used_mode: 
                         handleMkdirErrors(err);
                         return false;
                     };
-                    if (verbose) std.debug.print("{s}: created directory '{s}'\n", .{application_name, existing_base_path[0..slash_index.?]});
+                    if (verbose) print("{s}: created directory '{s}'\n", .{application_name, existing_base_path[0..slash_index.?]});
                     slash_index = strings.indexOfStartOnPos(existing_base_path, slash_index.?+1, '/');
                 }
                 
@@ -150,13 +151,13 @@ fn create_dir(path: []const u8, create_parents: bool, verbose: bool, used_mode: 
                     handleMkdirErrors(err);
                     return false;
                 };
-                if (verbose) std.debug.print("{s}: created directory '{s}'\n", .{application_name, used_dir});
+                if (verbose) print("{s}: created directory '{s}'\n", .{application_name, used_dir});
             } else {
                 mkdir(used_dir, cast_mode) catch |err| {
                     handleMkdirErrors(err);
                     return false;
                 };
-                if (verbose) std.debug.print("{s}: created directory '{s}'\n", .{application_name, used_dir});
+                if (verbose) print("{s}: created directory '{s}'\n", .{application_name, used_dir});
             }
         }
     } else {
@@ -171,13 +172,13 @@ fn create_dir(path: []const u8, create_parents: bool, verbose: bool, used_mode: 
                 handleMkdirErrors(err);
                 return false;
             };
-            if (verbose) std.debug.print("{s}: created directory '{s}'\n", .{application_name, used_dir});
+            if (verbose) print("{s}: created directory '{s}'\n", .{application_name, used_dir});
         } else {
             mkdir(used_dir, cast_mode) catch |err| {
                 handleMkdirErrors(err);
                 return false;
             };
-            if (verbose) std.debug.print("{s}: created directory '{s}'\n", .{application_name, used_dir});
+            if (verbose) print("{s}: created directory '{s}'\n", .{application_name, used_dir});
         }
     }
     return true;
@@ -185,30 +186,30 @@ fn create_dir(path: []const u8, create_parents: bool, verbose: bool, used_mode: 
 
 fn handleMkdirErrors(err: MakeDirError) void {
     switch (err) {
-        MakeDirError.AccessDenied => std.debug.print("{s}: Access Denied\n", .{application_name}),
-        MakeDirError.DiskQuota => std.debug.print("{s}: Disk Quota Reached\n", .{application_name}),
-        MakeDirError.PathAlreadyExists => std.debug.print("{s}: Directory Already Exists\n", .{application_name}),
-        MakeDirError.SymLinkLoop => std.debug.print("{s}: Symlink loop detected\n", .{application_name}),
-        MakeDirError.LinkQuotaExceeded => std.debug.print("{s}: Link Quota Exceeded\n", .{application_name}),
-        MakeDirError.NameTooLong => std.debug.print("{s}: Name Too Long\n", .{application_name}),
-        MakeDirError.FileNotFound => std.debug.print("{s}: File Not Found\n", .{application_name}),
-        MakeDirError.SystemResources => std.debug.print("{s}: System Resources Error\n", .{application_name}),
-        MakeDirError.NoSpaceLeft => std.debug.print("{s}: No Space Left On Device\n", .{application_name}),
-        MakeDirError.NotDir => std.debug.print("{s}: Base Path Is Not A Directory \n", .{application_name}),
-        MakeDirError.ReadOnlyFileSystem => std.debug.print("{s}: Read Only File System\n", .{application_name}),
-        MakeDirError.InvalidUtf8 => std.debug.print("{s}: Invalid UTF-8 Detected\n", .{application_name}),
-        MakeDirError.BadPathName => std.debug.print("{s}: Bad Path Name\n", .{application_name}),
-        MakeDirError.NoDevice => std.debug.print("{s}: No Device\n", .{application_name}),
-        else => std.debug.print("{s}: Unknown error\n", .{application_name})
+        MakeDirError.AccessDenied => print("{s}: Access Denied\n", .{application_name}),
+        MakeDirError.DiskQuota => print("{s}: Disk Quota Reached\n", .{application_name}),
+        MakeDirError.PathAlreadyExists => print("{s}: Directory Already Exists\n", .{application_name}),
+        MakeDirError.SymLinkLoop => print("{s}: Symlink loop detected\n", .{application_name}),
+        MakeDirError.LinkQuotaExceeded => print("{s}: Link Quota Exceeded\n", .{application_name}),
+        MakeDirError.NameTooLong => print("{s}: Name Too Long\n", .{application_name}),
+        MakeDirError.FileNotFound => print("{s}: File Not Found\n", .{application_name}),
+        MakeDirError.SystemResources => print("{s}: System Resources Error\n", .{application_name}),
+        MakeDirError.NoSpaceLeft => print("{s}: No Space Left On Device\n", .{application_name}),
+        MakeDirError.NotDir => print("{s}: Base Path Is Not A Directory \n", .{application_name}),
+        MakeDirError.ReadOnlyFileSystem => print("{s}: Read Only File System\n", .{application_name}),
+        MakeDirError.InvalidUtf8 => print("{s}: Invalid UTF-8 Detected\n", .{application_name}),
+        MakeDirError.BadPathName => print("{s}: Bad Path Name\n", .{application_name}),
+        MakeDirError.NoDevice => print("{s}: No Device\n", .{application_name}),
+        else => print("{s}: Unknown error\n", .{application_name})
     }
 }
 
 fn handleOpenDirErrors(err: OpenError, check_path: []const u8) void {
     switch (err) {
-        error.NotDir => std.debug.print("{s}: Basepath '{s}' is not a dir\n", .{application_name, check_path}),
-        error.AccessDenied => std.debug.print("{s}: Access to '{s}' denied\n", .{application_name, check_path}),
-        error.FileNotFound => std.debug.print("{s}: Basepath '{s}' does not exist\n", .{application_name, check_path}),
-        else => std.debug.print("{s}: Unknown error '{?}' encountered when trying to create directory\n", .{application_name, err}),
+        error.NotDir => print("{s}: Basepath '{s}' is not a dir\n", .{application_name, check_path}),
+        error.AccessDenied => print("{s}: Access to '{s}' denied\n", .{application_name, check_path}),
+        error.FileNotFound => print("{s}: Basepath '{s}' does not exist\n", .{application_name, check_path}),
+        else => print("{s}: Unknown error '{?}' encountered when trying to create directory\n", .{application_name, err}),
     }
 }
 

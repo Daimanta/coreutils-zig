@@ -10,6 +10,7 @@ const version = @import("util/version.zig");
 const Allocator = std.mem.Allocator;
 
 const default_allocator = std.heap.page_allocator;
+const print = @import("util/print_tools.zig").print;
 
 const application_name = "echo";
 
@@ -61,7 +62,7 @@ pub fn main() !void {
     if (options[0] == '-' and options.len > 1) {
         if (options.len == 1) {
             if (mem.eql(u8, options, "--help")) {
-                std.debug.print(help_message, .{});
+                print(help_message, .{});
                 std.os.exit(0);
             } else if (mem.eql(u8, options, "--version")) {
                 version.printVersionInfo(application_name);
@@ -92,7 +93,7 @@ pub fn main() !void {
     }
 
     if (flag_e and flag_E) {
-        std.debug.print("Cannot combine -e and -E. Exiting\n",.{});
+        print("Cannot combine -e and -E. Exiting\n",.{});
         std.os.exit(1);
     }
 
@@ -112,14 +113,14 @@ pub fn main() !void {
         var i: usize = 1;
         if (ignore_first_argument) i += 1;
         while (i < arguments.len - 1): (i += 1) {
-            std.debug.print("{s} ", .{arguments[i]});
+            print("{s} ", .{arguments[i]});
         }
 
         if (arguments.len > 1) {
-            std.debug.print("{s}", .{arguments[arguments.len - 1]});
+            print("{s}", .{arguments[arguments.len - 1]});
         }
     }
-    if (print_newline) std.debug.print("\n", .{});
+    if (print_newline) print("\n", .{});
 }
 
 fn printEscapedString(string: []const u8, space: bool) bool {
@@ -136,62 +137,62 @@ fn printEscapedString(string: []const u8, space: bool) bool {
         var old_begin: usize = 0;
         while (i < string.len): (i += 1) {
             if (string[i] == 92 and i < string.len - 1) {
-                std.debug.print("{s}", .{string[old_begin..i]});
+                print("{s}", .{string[old_begin..i]});
                 if (string[i + 1] == 92) {
-                    std.debug.print("\\", .{});
+                    print("\\", .{});
                     old_begin = i + 2;
                     i += 2;
                 } else if (string [i + 1] == 'a') {
-                    std.debug.print("\x07", .{});
+                    print("\x07", .{});
                     old_begin = i + 2;
                     i += 2;
                 } else if (string [i + 1] == 'b') {
-                    std.debug.print("\x08", .{});
+                    print("\x08", .{});
                     old_begin = i + 2;
                     i += 2;
                 } else if (string [i + 1] == 'c') {
                     return true;
                 } else if (string [i + 1] == 'e') {
-                    std.debug.print("\x1B", .{});
+                    print("\x1B", .{});
                     old_begin = i + 2;
                     i += 2;
                 } else if (string [i + 1] == 'f') {
-                    std.debug.print("\x0C", .{});
+                    print("\x0C", .{});
                     old_begin = i + 2;
                     i += 2;
                 } else if (string [i + 1] == 'n') {
-                    std.debug.print("\n", .{});
+                    print("\n", .{});
                     old_begin = i + 2;
                     i += 2;
                 } else if (string [i + 1] == 'r') {
-                    std.debug.print("\r", .{});
+                    print("\r", .{});
                     old_begin = i + 2;
                     i += 2;
                 } else if (string [i + 1] == 't') {
-                    std.debug.print("\t", .{});
+                    print("\t", .{});
                     old_begin = i + 2;
                     i += 2;
                 } else if (string [i + 1] == 'v') {
-                    std.debug.print("\x0B", .{});
+                    print("\x0B", .{});
                     old_begin = i + 2;
                     i += 2;
                 } else if (string [i + 1] == '0') {
                     if (i + 4 < string.len and byteIsOct(string[i + 2]) and byteIsOct(string[i + 3]) and byteIsOct(string[i + 4])) {
                         const byte = std.fmt.parseInt(u8, string[i+1..i+5], 8) catch unreachable;
                         const byte_string: [1]u8 = .{byte};
-                        std.debug.print("{s}", .{byte_string});
+                        print("{s}", .{byte_string});
                         old_begin = i + 5;
                         i += 5;
                     } else if (i + 3 < string.len and byteIsOct(string[i + 2]) and byteIsOct(string[i + 3])) {
                         const byte = std.fmt.parseInt(u8, string[i+1..i+4], 8) catch unreachable;
                         const byte_string: [1]u8 = .{byte};
-                        std.debug.print("{s}", .{byte_string});
+                        print("{s}", .{byte_string});
                         old_begin = i + 4;
                         i += 4;
                     } else if (i + 2 < string.len and byteIsOct(string[i + 2])) {
                         const byte = std.fmt.parseInt(u8, string[i+1..i+3], 8) catch unreachable;
                         const byte_string: [1]u8 = .{byte};
-                        std.debug.print("{s}", .{byte_string});
+                        print("{s}", .{byte_string});
                         old_begin = i + 3;
                         i += 3;
                     } else {
@@ -201,13 +202,13 @@ fn printEscapedString(string: []const u8, space: bool) bool {
                     if (i + 3 < string.len and byteIsHex(string[i + 2]) and byteIsHex(string[i + 3])) {
                         const byte = std.fmt.parseInt(u8, string[i+2..i+4], 16) catch unreachable;
                         const byte_string: [1]u8 = .{byte};
-                        std.debug.print("{s}", .{byte_string});
+                        print("{s}", .{byte_string});
                         old_begin = i + 4;
                         i += 4;
                     } else if (i + 2 < string.len and byteIsHex(string[i + 2])) {
                         const byte = std.fmt.parseInt(u8, string[i+2..i+3], 16) catch unreachable;
                         const byte_string: [1]u8 = .{byte};
-                        std.debug.print("{s}", .{byte_string});
+                        print("{s}", .{byte_string});
                         old_begin = i + 3;
                         i += 3;
                     } else {
@@ -220,11 +221,11 @@ fn printEscapedString(string: []const u8, space: bool) bool {
             }
         }
         if (old_begin < string.len) {
-            std.debug.print("{s}", .{string[old_begin..string.len]});
+            print("{s}", .{string[old_begin..string.len]});
         }
     } else {
-        std.debug.print("{s}", .{string});
-        if (space) std.debug.print(" ", .{});
+        print("{s}", .{string});
+        if (space) print(" ", .{});
     }
     return false;
 }

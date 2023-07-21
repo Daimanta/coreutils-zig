@@ -13,7 +13,7 @@ const Allocator = std.mem.Allocator;
 const default_allocator = std.heap.page_allocator;
 const FollowSymlinkError = fileinfo.FollowSymlinkError;
 const kernel_stat = linux.Stat;
-const print = std.debug.print;
+const print = @import("util/print_tools.zig").print;
 
 const application_name = "readlink";
 const help_message =
@@ -74,7 +74,7 @@ pub fn main() !void {
     var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
 
     if (args.flag("--help")) {
-        std.debug.print(help_message, .{});
+        print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
@@ -94,10 +94,10 @@ pub fn main() !void {
 
     const positionals = args.positionals();
     if (positionals.len == 0) {
-        std.debug.print("{s}: missing operand\n", .{application_name});
+        print("{s}: missing operand\n", .{application_name});
         std.os.exit(1);
     } else if (positionals.len > 2 and suppress_newline) {
-        std.debug.print("{s}: ignoring --no-newline with multiple arguments\n", .{application_name});
+        print("{s}: ignoring --no-newline with multiple arguments\n", .{application_name});
         suppress_newline = false;
     }
     
@@ -130,31 +130,31 @@ pub fn main() !void {
 
 fn checkInconsistencies(quiet: bool, silent: bool, verbose: bool, zero: bool, suppress_newline: bool, find_all_but_last_link: bool, find_all_links: bool, accept_missing_links: bool) void {
     if (silent and verbose) {
-        std.debug.print("Silent and verbose flags cannot be active at the same time. Exiting.\n", .{});
+        print("Silent and verbose flags cannot be active at the same time. Exiting.\n", .{});
         std.os.exit(1);
     }
 
     if (zero and suppress_newline) {
-        std.debug.print("Zero delimiter and no delimiter cannot be active at the same time. Exiting.\n", .{});
+        print("Zero delimiter and no delimiter cannot be active at the same time. Exiting.\n", .{});
         std.os.exit(1);
     }
 
     if (find_all_but_last_link and find_all_links) {
-        std.debug.print("Canonicalize and canonicalize-existing cannot be active at the same time. Exiting.\n", .{});
+        print("Canonicalize and canonicalize-existing cannot be active at the same time. Exiting.\n", .{});
         std.os.exit(1);
     }
     if (find_all_but_last_link and accept_missing_links) {
-        std.debug.print("Canonicalize and canonicalize-missing cannot be active at the same time. Exiting.\n", .{});
+        print("Canonicalize and canonicalize-missing cannot be active at the same time. Exiting.\n", .{});
         std.os.exit(1);
     }
 
     if (find_all_links and accept_missing_links) {
-        std.debug.print("Canonicalize-existing and canonicalize-missing cannot be active at the same time. Exiting.\n", .{});
+        print("Canonicalize-existing and canonicalize-missing cannot be active at the same time. Exiting.\n", .{});
         std.os.exit(1);
     }
 
     if (quiet and verbose) {
-        std.debug.print("Quiet and verbose flags cannot be active at the same time. Exiting.\n", .{});
+        print("Quiet and verbose flags cannot be active at the same time. Exiting.\n", .{});
         std.os.exit(1);
     }
 
@@ -172,14 +172,14 @@ fn process_link(link: []const u8, terminator: []const u8, read_mode: ReadMode, o
         if (read_mode == ReadMode.ALLOW_MISSING) {
             if (output_mode == OutputMode.QUIET) return true;
             if (fs.path.isAbsolute(link)) {
-                std.debug.print("{s}{s}", .{link, terminator});
+                print("{s}{s}", .{link, terminator});
             } else {
-                std.debug.print("{s}{s}", .{try fileinfo.getAbsolutePath(default_allocator, link, null), terminator});
+                print("{s}{s}", .{try fileinfo.getAbsolutePath(default_allocator, link, null), terminator});
             }
             return true;
         } else {
             if (output_mode == OutputMode.VERBOSE) {
-                std.debug.print("{s}: {s}: No such file or directory{s}", .{application_name, link, terminator});
+                print("{s}: {s}: No such file or directory{s}", .{application_name, link, terminator});
             }
             return false;
         }
@@ -189,12 +189,12 @@ fn process_link(link: []const u8, terminator: []const u8, read_mode: ReadMode, o
     if (!is_symlink) {
         if (read_mode == ReadMode.FOLLOW_ALMOST_ALL or read_mode == ReadMode.FOLLOW_ALL or read_mode == ReadMode.READ_ONE) {
             if (output_mode == OutputMode.VERBOSE) {
-                std.debug.print("{s}: {s}: Not a link{s}", .{application_name, link, terminator});
+                print("{s}: {s}: Not a link{s}", .{application_name, link, terminator});
             }
             return false;
         } else if (read_mode == ReadMode.ALLOW_MISSING) {
             if (output_mode != OutputMode.QUIET) {
-                std.debug.print("{s}{s}", .{try std.os.realpath(link, &path_buffer), terminator});
+                print("{s}{s}", .{try std.os.realpath(link, &path_buffer), terminator});
             }
             return true;
         } else {
@@ -203,7 +203,7 @@ fn process_link(link: []const u8, terminator: []const u8, read_mode: ReadMode, o
     }
     if (read_mode == ReadMode.READ_ONE) {
         const result = try std.fs.cwd().readLink(link, link_buffer[0..]);
-        std.debug.print("{s}{s}", .{result, terminator});
+        print("{s}{s}", .{result, terminator});
         return true;
     } else if (read_mode == ReadMode.FOLLOW_ALMOST_ALL or read_mode == ReadMode.FOLLOW_ALL or read_mode == ReadMode.ALLOW_MISSING) {
         return try follow_symlinks(link, terminator, read_mode, output_mode);

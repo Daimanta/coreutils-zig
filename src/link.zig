@@ -10,6 +10,7 @@ const Allocator = std.mem.Allocator;
 const LinkError = os.LinkError;
 
 const allocator = std.heap.page_allocator;
+const print = @import("util/print_tools.zig").print;
 const AT_SYMLINK_FOLLOW: i32 = 0x400;
 const AT_EMPTY_PATH: i32 = 0x1000;
 
@@ -37,7 +38,7 @@ pub fn main() !void {
     defer args.deinit();
 
     if (args.flag("--help")) {
-        std.debug.print(help_message, .{});
+        print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
@@ -47,7 +48,7 @@ pub fn main() !void {
     const positionals = args.positionals();
 
     if (positionals.len != 2) {
-        std.debug.print("Exactly two files need to be specified. Exiting\n", .{});
+        print("Exactly two files need to be specified. Exiting\n", .{});
         std.os.exit(1);
     }
 
@@ -55,7 +56,7 @@ pub fn main() !void {
     const file_source = positionals[1];
 
     if (file_source.len == 0 or file_target.len == 0) {
-        std.debug.print("{s}: cannot create link '{s}' to '{s}': No such file or directory\n", .{application_name, file_source, file_target});
+        print("{s}: cannot create link '{s}' to '{s}': No such file or directory\n", .{application_name, file_source, file_target});
         std.os.exit(1);
     }
 
@@ -73,7 +74,7 @@ pub fn main() !void {
         LinkError.NotSameFileSystem => "Links are not on the same filesystem",
         else => "Unspecified error encountered"
         };
-        std.debug.print("{s}. Exiting\n", .{error_message});
+        print("{s}. Exiting\n", .{error_message});
         std.os.exit(1);
     };
 }

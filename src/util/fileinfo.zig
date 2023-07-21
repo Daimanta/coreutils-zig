@@ -11,6 +11,7 @@ const Allocator = std.mem.Allocator;
 pub const mode_t = linux.mode_t;
 
 const default_allocator = std.heap.page_allocator;
+const print = @import("print_tools.zig").print;
 
 pub const MakeFifoError = error {
     WritePermissionDenied,
@@ -143,7 +144,7 @@ pub fn makeFifo(path: []const u8, mode: mode_t) MakeFifoError!void{
             .OPNOTSUPP => MakeFifoError.NotSupported,
             .NOSYS => MakeFifoError.NotImplemented,
             else => blk: {
-                std.debug.print("Unknown error encountered: {d}\n", .{errno});
+                print("Unknown error encountered: {d}\n", .{errno});
                 break :blk MakeFifoError.Unknown;
             }
         };
@@ -174,7 +175,7 @@ pub fn chmodA(path: []const u8, mode: mode_t) ChmodError!void {
             .NAMETOOLONG => ChmodError.NameTooLong,
             .NOENT => ChmodError.FileDoesNotExist,
             else => blk: {
-                std.debug.print("Unknown error encountered: {d}\n", .{errno});
+                print("Unknown error encountered: {d}\n", .{errno});
                 break :blk ChmodError.OtherError;
             }
         };

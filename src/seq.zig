@@ -63,7 +63,7 @@ pub fn main() !void {
     var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag, .numbers_can_be_flags = false }, application_name, 1);
 
     if (args.flag("--help")) {
-        std.debug.print(help_message, .{});
+        print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);

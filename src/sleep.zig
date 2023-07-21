@@ -8,6 +8,7 @@ const version = @import("util/version.zig");
 const Allocator = std.mem.Allocator;
 
 const allocator = std.heap.page_allocator;
+const print = @import("util/print_tools.zig").print;
 
 const application_name = "sleep";
 const help_message =
@@ -43,7 +44,7 @@ pub fn main() !void {
     defer args.deinit();
 
     if (args.flag("--help")) {
-        std.debug.print(help_message, .{});
+        print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
@@ -53,7 +54,7 @@ pub fn main() !void {
     const arguments = try std.process.argsAlloc(allocator);
 
     if (arguments.len == 1) {
-        std.debug.print("{s}: missing operand\nTry 'sleep --help' for more information.\n", .{application_name});
+        print("{s}: missing operand\nTry 'sleep --help' for more information.\n", .{application_name});
     }
 
     var seconds: u64 = 0;
@@ -61,7 +62,7 @@ pub fn main() !void {
 
     for (arguments[1..]) |argument| {
         updateTimes(argument, &seconds, &nanos) catch {
-            std.debug.print("sleep: invalid time interval '{s}'\n", .{argument});
+            print("sleep: invalid time interval '{s}'\n", .{argument});
             std.os.exit(1);
         };
     }
@@ -86,7 +87,7 @@ fn updateTimes(string: []const u8, seconds: *u64, nanos: *u64) !void {
     var int: u64 = 0xffffffffffffffff;
     try parseString(string[0..i+1], &double, &int);
     const timeType = getTimeType(string[i+1..]) catch {
-        std.debug.print("sleep: invalid time interval '{s}'\n", .{string});
+        print("sleep: invalid time interval '{s}'\n", .{string});
         std.os.exit(1);
     };
     var add_seconds: u64 = undefined;

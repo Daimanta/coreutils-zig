@@ -11,6 +11,8 @@ const Allocator = std.mem.Allocator;
 const LinkError = os.LinkError;
 
 const default_allocator = std.heap.page_allocator;
+const print = @import("util/print_tools.zig").print;
+
 const application_name = "cksum";
 
 const help_message =
@@ -38,7 +40,7 @@ pub fn main() !void {
     defer args.deinit();
 
     if (args.flag("--help")) {
-        std.debug.print(help_message, .{});
+        print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
@@ -71,9 +73,9 @@ fn sumFile(file_path: []const u8) void {
 
     const file = fs.cwd().openFile(file_path, .{.mode = .read_only}) catch |err| {
         if (err == error.FileNotFound) {
-            std.debug.print("{s}: {s}: No such file or directory\n", .{application_name, file_path});
+            print("{s}: {s}: No such file or directory\n", .{application_name, file_path});
         } else {
-            std.debug.print("{s}: Unknown error encountered '{?}'\n", .{application_name, err});
+            print("{s}: Unknown error encountered '{?}'\n", .{application_name, err});
         }
         return;
     };
@@ -89,17 +91,17 @@ fn sumFile(file_path: []const u8) void {
         algorithm.update(buffer[0..segment_size]);
     }
     result = algorithm.final();
-    std.debug.print("{d:0>5} {d: >5} {s}\n", .{result, file_size, file_path});
+    print("{d:0>5} {d: >5} {s}\n", .{result, file_size, file_path});
 }
 
 fn sumStdin(print_dash: bool) void {
     const stdin = std.io.getStdIn().reader();
     const bytes = stdin.readAllAlloc(default_allocator, 1 << 30) catch {
-        std.debug.print("Reading stdin failed\n", .{});
+        print("Reading stdin failed\n", .{});
         return;
     };
     var result: u32 = std.hash.Crc32.hash(bytes);
     var dash = if (print_dash) "-" else "";
-    std.debug.print("{d:0>5} {d} {s}\n", .{result, bytes.len, dash});
+    print("{d:0>5} {d} {s}\n", .{result, bytes.len, dash});
     handled_stdin = true;
 }

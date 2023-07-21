@@ -4,6 +4,8 @@ const clap = @import("clap.zig");
 const version = @import("util/version.zig");
 const mem = std.mem;
 
+const print = @import("util/print_tools.zig").print;
+
 const help_message =
 \\Usage: dirname [OPTION] NAME...
 \\Output each NAME with its last non-slash component and trailing slashes
@@ -44,7 +46,7 @@ pub fn main() !void {
         } else if (mem.eql(u8, arg, version_arg)) {
             current_mode = Mode.version;
         } else if (arguments.len == 1) {
-            std.debug.print("dirname: missing operand\nTry 'dirname --help' for more information.\n", .{});
+            print("dirname: missing operand\nTry 'dirname --help' for more information.\n", .{});
             std.os.exit(1);
         } else {
             current_mode = Mode.main;
@@ -57,7 +59,7 @@ pub fn main() !void {
                 if (mem.eql(u8, arg, "-z") or mem.eql(u8, arg, "--zero")) {
                     use_null = true;
                 } else {
-                    std.debug.print("Unrecognized option '{s}'", .{arg});
+                    print("Unrecognized option '{s}'", .{arg});
                     std.os.exit(1);
                 }
             }
@@ -66,7 +68,7 @@ pub fn main() !void {
     }
 
     if (current_mode == Mode.help) {
-        std.debug.print("{s}", .{help_message});
+        print("{s}", .{help_message});
     } else if (current_mode == Mode.version) {
         version.printVersionInfo(application_name);
     } else if (current_mode == Mode.main) {
@@ -76,7 +78,7 @@ pub fn main() !void {
             }
         }
     } else {
-        std.debug.print("Inconsistent state detected! Exiting.", .{});
+        print("Inconsistent state detected! Exiting.", .{});
         std.os.exit(1);
     }
 
@@ -84,7 +86,7 @@ pub fn main() !void {
 
 fn processPath(path: []const u8, use_null: bool) void {
     if (path.len == 0) {
-        std.debug.print(".", .{});
+        print(".", .{});
     } else {
         var i: usize = path.len - 1;
         if (path[i] == '/' and i > 0) {
@@ -97,9 +99,9 @@ fn processPath(path: []const u8, use_null: bool) void {
 
         if (i == 0) {
             if (path[0] == '/') {
-                std.debug.print("/", .{});
+                print("/", .{});
             } else {
-                std.debug.print(".", .{});
+                print(".", .{});
             }
         } else {
             var j = i;
@@ -107,14 +109,14 @@ fn processPath(path: []const u8, use_null: bool) void {
                 j -= 1;
                 if (j != '/') break;
             }
-            std.debug.print("{s}", .{path[0..j+1]});
+            print("{s}", .{path[0..j+1]});
         }
     }
 
     if (use_null) {
-        std.debug.print("\x00", .{});
+        print("\x00", .{});
     } else {
-        std.debug.print("\n", .{});
+        print("\n", .{});
     }
 
 }

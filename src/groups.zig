@@ -12,6 +12,7 @@ const strings = @import("util/strings.zig");
 const Allocator = std.mem.Allocator;
 
 const allocator = std.heap.page_allocator;
+const print = @import("util/print_tools.zig").print;
 
 const application_name = "groups";
 
@@ -46,7 +47,7 @@ pub fn main() !void {
             current_mode = Mode.version;
         } else {
             if (arguments[1].len > 0 and arguments[1][0] == '-') {
-                std.debug.print("{s}: Unknown argument \"{s}\"\n", .{application_name, arguments[1]});
+                print("{s}: Unknown argument \"{s}\"\n", .{application_name, arguments[1]});
                 std.os.exit(1);
             } else {
                 current_mode = Mode.main;
@@ -57,7 +58,7 @@ pub fn main() !void {
     }
 
     if (current_mode == Mode.help) {
-        std.debug.print("{s}", .{help_message});
+        print("{s}", .{help_message});
         std.os.exit(0);
     } else if (current_mode == Mode.version) {
         version.printVersionInfo(application_name);
@@ -79,7 +80,7 @@ pub fn main() !void {
                     var user_null_pointer = try strings.toNullTerminatedPointer(argument, allocator);
                     defer allocator.free(user_null_pointer);
                     var user: ?*users.Passwd = users.getUserByName(user_null_pointer) catch blk: {
-                        std.debug.print("{s}: '{s}': no such user\n", .{application_name, argument});
+                        print("{s}: '{s}': no such user\n", .{application_name, argument});
                         break :blk null;
                     };
                     if (user != null) {
@@ -91,7 +92,7 @@ pub fn main() !void {
 
         std.os.exit(0);
     } else {
-        std.debug.print("{s}: inconsistent state\n", .{application_name});
+        print("{s}: inconsistent state\n", .{application_name});
         std.os.exit(1);
     }
 
@@ -112,11 +113,11 @@ fn displayGroup (user: *users.Passwd, print_name: bool) !void {
     _ = getgrouplist(user.pw_name, user_gid, groups, &group_count);
 
     if (print_name) {
-        std.debug.print("{s} : ", .{user.pw_name});
+        print("{s} : ", .{user.pw_name});
     }
     for (groups[0..@intCast(group_count)]) |group| {
         const grp = users.getgrgid(group);
-        std.debug.print("{s} ", .{grp.gr_name});
+        print("{s} ", .{grp.gr_name});
     }
-    std.debug.print("\n", .{});
+    print("\n", .{});
 }

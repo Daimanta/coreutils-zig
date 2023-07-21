@@ -8,6 +8,7 @@ const version = @import("util/version.zig");
 const Allocator = std.mem.Allocator;
 
 const allocator = std.heap.page_allocator;
+const print = @import("util/print_tools.zig").print;
 
 const application_name = "hostid";
 const help_message =
@@ -33,7 +34,7 @@ pub fn main() !void {
     defer args.deinit();
 
     if (args.flag("--help")) {
-        std.debug.print(help_message, .{});
+        print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
@@ -42,6 +43,6 @@ pub fn main() !void {
 
     const c_hostid = gethostid();
     const hostid: u32 = @intCast(c_hostid);
-    std.debug.print("{x:0>8}\n", .{hostid});
+    print("{x:0>8}\n", .{hostid});
 
 }

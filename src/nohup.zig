@@ -14,6 +14,7 @@ const ChildProcess = std.ChildProcess;
 const File = std.fs.File;
 
 const default_allocator = std.heap.page_allocator;
+const print = @import("util/print_tools.zig").print;
 
 const application_name = "nohup";
 
@@ -77,7 +78,7 @@ pub fn main() !void {
             target = string_builder.toSlice();
         }
         
-        std.debug.print("{s}: ignoring input and appending output to '{s}'\n", .{application_name, target});
+        print("{s}: ignoring input and appending output to '{s}'\n", .{application_name, target});
         output_file = try std.fs.cwd().createFile(target, .{.truncate = false});
     }
     

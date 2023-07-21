@@ -10,6 +10,7 @@ const Allocator = std.mem.Allocator;
 const UnlinkError = os.UnlinkError;
 
 const allocator = std.heap.page_allocator;
+const print = @import("util/print_tools.zig").print;
 
 const application_name = "unlink";
 
@@ -35,7 +36,7 @@ pub fn main() !void {
     defer args.deinit();
 
     if (args.flag("--help")) {
-        std.debug.print(help_message, .{});
+        print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
@@ -45,10 +46,10 @@ pub fn main() !void {
     const positionals = args.positionals();
 
     if (positionals.len > 2) {
-        std.debug.print("Too many arguments. Exiting\n", .{});
+        print("Too many arguments. Exiting\n", .{});
         std.os.exit(1);
     } else if (positionals.len == 0) {
-        std.debug.print("No file specified. Exiting\n", .{});
+        print("No file specified. Exiting\n", .{});
         std.os.exit(1);
     }
 
@@ -63,7 +64,7 @@ pub fn main() !void {
             UnlinkError.FileNotFound => "File not found",
             else => "Unknown error"
         };
-        std.debug.print("{s}\n", .{error_message});
+        print("{s}\n", .{error_message});
         std.os.exit(1);
     };
 }

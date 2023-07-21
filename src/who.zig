@@ -15,10 +15,11 @@ const utmp = @import("util/utmp.zig");
 
 
 const Allocator = std.mem.Allocator;
-const print = std.debug.print;
+const print = @import("util/print_tools.zig").print;
 const UtType = utmp.UtType;
 
 const default_allocator = std.heap.page_allocator;
+const print = @import("util/print_tools.zig").print;
 
 const application_name = "who";
 
@@ -86,7 +87,7 @@ pub fn main() !void {
     defer args.deinit();
 
     if (args.flag("--help")) {
-        std.debug.print(help_message, .{});
+        print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
@@ -122,7 +123,7 @@ pub fn main() !void {
     } else if (arguments.len == 2){
         
     } else {
-        std.debug.print("Zero, one or two arguments expected.\n", .{});
+        print("Zero, one or two arguments expected.\n", .{});
         std.os.exit(1);
     }
 }
@@ -180,7 +181,7 @@ fn printInformation(alloc: *std.mem.Allocator, file_name: []const u8, boot: bool
             for (login_info[0..insert_index]) |user, i| {
                 print("{s}", .{user});
                 if (i != login_info[0..insert_index].len - 1) {
-                    std.debug.print(" ", .{});
+                    print(" ", .{});
                 }
             }
             print("\n# users={d}\n", .{insert_index});

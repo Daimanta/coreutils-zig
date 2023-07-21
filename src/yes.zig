@@ -4,6 +4,8 @@ const clap = @import("clap.zig");
 const version = @import("util/version.zig");
 const strings = @import("util/strings.zig");
 
+const print = @import("util/print_tools.zig").print;
+
 const help_message =
             \\Usage: yes [STRING]...
             \\ or:  yes OPTION
@@ -29,7 +31,7 @@ pub fn main() !void {
         defer args.deinit();
 
         if (args.flag("--help")) {
-            std.debug.print(help_message, .{});
+            print(help_message, .{});
             std.os.exit(0);
         } else if (args.flag("--version")) {
             version.printVersionInfo(application_name);
@@ -43,7 +45,7 @@ pub fn main() !void {
                     outputted_text = arguments[1];
                 }
                 while (true) {
-                    std.debug.print("{s}\n", .{outputted_text});
+                    print("{s}\n", .{outputted_text});
                 }
             }
             var prepared_size = arguments.len - 2;
@@ -57,7 +59,7 @@ pub fn main() !void {
             strings.joinStrings(arguments, outputted_text);
 
             while(true) {
-                std.debug.print("{s}\n", .{outputted_text});
+                print("{s}\n", .{outputted_text});
             }
         }
 }

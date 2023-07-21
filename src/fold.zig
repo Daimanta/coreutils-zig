@@ -15,7 +15,7 @@ const time_t = time_info.time_t;
 const AccessError = os.AccessError;
 
 const default_allocator = std.heap.page_allocator;
-const print = std.debug.print;
+const print = @import("util/print_tools.zig").print;
 
 const application_name = "fold";
 
@@ -52,7 +52,7 @@ pub fn main() !void {
     defer args.deinit();
     
     if (args.flag("--help")) {
-        std.debug.print(help_message, .{});
+        print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
@@ -133,7 +133,7 @@ fn fold(path: []const u8, wrap_bytes: bool, break_only_at_spaces: bool, width: u
 fn handleStdin(break_only_at_spaces: bool, width: u32) !void {
     const stdin = std.io.getStdIn().reader();
     const bytes = stdin.readAllAlloc(default_allocator, 1 << 30) catch {
-        std.debug.print("Reading stdin failed\n", .{});
+        print("Reading stdin failed\n", .{});
         return;
     };
     var current_line_size: usize = 0;

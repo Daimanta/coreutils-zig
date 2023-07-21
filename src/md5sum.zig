@@ -77,7 +77,7 @@ pub fn main() !void {
     defer args.deinit();
 
     if (args.flag("--help")) {
-        std.debug.print(help_message, .{});
+        print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
@@ -126,7 +126,7 @@ fn checkVerificationFile(path: []const u8, ignore_missing: bool, quiet: bool, st
         if (!handled_stdin) {
             const stdin = std.io.getStdIn().reader();
             const bytes = stdin.readAllAlloc(default_allocator, 1 << 30) catch {
-                std.debug.print("Reading stdin failed\n", .{});
+                print("Reading stdin failed\n", .{});
                 return false;
             };
             defer default_allocator.free(bytes);            
@@ -263,7 +263,7 @@ fn hashFile(path: []const u8, bsd: bool, terminator: []const u8) bool {
         if (!handled_stdin) {
             const stdin = std.io.getStdIn().reader();
             const bytes = stdin.readAllAlloc(default_allocator, 1 << 30) catch {
-                std.debug.print("Reading stdin failed\n", .{});
+                print("Reading stdin failed\n", .{});
                 return false;
             };
             var hash_result: [HASH_BYTE_SIZE]u8 = undefined;

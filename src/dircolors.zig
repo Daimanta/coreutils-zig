@@ -13,7 +13,7 @@ const defaults = @embedFile("./data/dircolors.defaults");
 const Allocator = std.mem.Allocator;
 
 const default_allocator = std.heap.page_allocator;
-const print = std.debug.print;
+const print = @import("util/print_tools.zig").print;
 const startsWith = mem.startsWith;
 const eql = mem.eql;
 

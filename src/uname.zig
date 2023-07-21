@@ -12,7 +12,7 @@ const SetHostnameError = system.SetHostnameError;
 
 const default_allocator = std.heap.page_allocator;
 const HOST_NAME_MAX = os.linux.HOST_NAME_MAX;
-const print = std.debug.print;
+const print = @import("util/print_tools.zig").print;
 
 const application_name = "uname";
 
@@ -66,7 +66,7 @@ pub fn main() !void {
     const operating_system = args.flag("-o") or args.flag("-a");
         
     if (args.flag("--help")) {
-        std.debug.print(help_message, .{});
+        print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);

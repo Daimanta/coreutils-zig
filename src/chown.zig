@@ -12,7 +12,7 @@ const Allocator = std.mem.Allocator;
 
 const default_allocator = std.heap.page_allocator;
 const exit = std.os.exit;
-const print = std.debug.print;
+const print = @import("util/print_tools.zig").print;
 
 const application_name = "chown";
 const help_message =

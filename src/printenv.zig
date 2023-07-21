@@ -10,6 +10,7 @@ const strings = @import("util/strings.zig");
 const Allocator = std.mem.Allocator;
 
 const allocator = std.heap.page_allocator;
+const print = @import("util/print_tools.zig").print;
 
 const application_name = "printenv";
 
@@ -43,7 +44,7 @@ pub fn main() !void {
     var separator = "\n";
 
     if (args.flag("--help")) {
-        std.debug.print(help_message, .{});
+        print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
@@ -59,14 +60,14 @@ pub fn main() !void {
         for (vals) |arg| {
             const env = os.getenv(arg);
             if (env != null) {
-                std.debug.print("{s}{s}", .{env.?, separator});
+                print("{s}{s}", .{env.?, separator});
             }
         }
     } else {
         const environment = std.c.environ;
         var iterator: usize = 0;
         while (environment[iterator] != null): (iterator += 1) {
-            std.debug.print("{s}\n", .{environment[iterator].?});
+            print("{s}\n", .{environment[iterator].?});
         }
     }
 

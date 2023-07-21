@@ -14,6 +14,7 @@ const SpawnError = ChildProcess.SpawnError;
 const SetPriorityError = system.SetPriorityError;
 
 const allocator = std.heap.page_allocator;
+const print = @import("util/print_tools.zig").print;
 
 const DEFAULT_NICENESS = 10;
 const application_name = "nice";
@@ -53,7 +54,7 @@ pub fn main() !void {
 
 
     if (args.flag("--help")) {
-        std.debug.print(help_message, .{});
+        print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
@@ -64,14 +65,14 @@ pub fn main() !void {
     const adjustment_string = args.option("-n");
 
     if (arguments.len == 0 and adjustment_string == null) {
-        std.debug.print("{d}\n", .{getpriority(@intFromEnum(PriorityType.PRIO_PROCESS), 0)});
+        print("{d}\n", .{getpriority(@intFromEnum(PriorityType.PRIO_PROCESS), 0)});
         std.os.exit(0);
     }
 
     var adjustment: i32 = 0;
     if (adjustment_string != null) {
         adjustment = std.fmt.parseInt(i32, adjustment_string.?, 10) catch {
-            std.debug.print("{s}: invalid number: '{s}'\n", .{application_name, adjustment_string.?});
+            print("{s}: invalid number: '{s}'\n", .{application_name, adjustment_string.?});
             std.os.exit(1);
         };
     }
@@ -83,17 +84,17 @@ pub fn main() !void {
 
     system.setPriority(PriorityType.PRIO_PROCESS, @as(u32, @intCast(child.id)), @as(c_int, @intCast(effective_niceness))) catch |err| {
         if (err == SetPriorityError.NoRightsForNiceValue) {
-            std.debug.print("{s}: cannot set niceness: Permission denied\n", .{application_name});
+            print("{s}: cannot set niceness: Permission denied\n", .{application_name});
         } else {
-            std.debug.print("{s}: cannot set niceness: Unknown error occurred: '{?}'\n", .{application_name, err});
+            print("{s}: cannot set niceness: Unknown error occurred: '{?}'\n", .{application_name, err});
         }
     };
 
     _ = child.wait() catch |err| {
         if (err == SpawnError.FileNotFound) {
-            std.debug.print("{s}: '{s}': No such file or directory\n", .{application_name, arguments[0]});
+            print("{s}: '{s}': No such file or directory\n", .{application_name, arguments[0]});
         } else {
-            std.debug.print("{s}: '{s}': Unknown error occurred: '{?}'\n", .{application_name, arguments[0], err});
+            print("{s}: '{s}': Unknown error occurred: '{?}'\n", .{application_name, arguments[0], err});
         }
         std.os.exit(1);
     };

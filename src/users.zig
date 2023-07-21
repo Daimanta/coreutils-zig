@@ -15,6 +15,7 @@ const UtType = utmp.UtType;
 const time_t = time_info.time_t;
 
 const allocator = std.heap.page_allocator;
+const print = @import("util/print_tools.zig").print;
 
 const application_name = "users";
 
@@ -42,7 +43,7 @@ pub fn main() !void {
 
 
     if (args.flag("--help")) {
-        std.debug.print(help_message, .{});
+        print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
@@ -52,7 +53,7 @@ pub fn main() !void {
     var current_user_file: []const u8 = "/var/run/utmp";
 
     if (args.positionals().len > 1) {
-        std.debug.print("Only one file can be specified. Exiting.\n", .{});
+        print("Only one file can be specified. Exiting.\n", .{});
         std.os.exit(1);
     } else if (args.positionals().len == 1) {
         current_user_file = args.positionals()[0];
@@ -94,12 +95,12 @@ fn printUsers(alloc: std.mem.Allocator, file_name: []const u8) !void {
             }
         }
         for (users[0..insert_index], 0..) |user, i| {
-            std.debug.print("{s}", .{user});
+            print("{s}", .{user});
             if (i != users[0..insert_index].len - 1) {
-                std.debug.print(" ", .{});
+                print(" ", .{});
             }
         }
-        std.debug.print("\n", .{});
+        print("\n", .{});
     }
 }
 

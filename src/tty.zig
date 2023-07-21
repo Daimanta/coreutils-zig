@@ -9,6 +9,7 @@ const version = @import("util/version.zig");
 const Allocator = std.mem.Allocator;
 
 const allocator = std.heap.page_allocator;
+const print = @import("util/print_tools.zig").print;
 
 const application_name = "tty";
 
@@ -40,7 +41,7 @@ pub fn main() !void {
     var silent = false;
 
     if (args.flag("--help")) {
-        std.debug.print(help_message, .{});
+        print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
@@ -53,10 +54,10 @@ pub fn main() !void {
         const stdin = os.STDIN_FILENO;
         const check_tty = os.isatty(stdin);
         if (!check_tty) {
-            std.debug.print("not a tty. Exiting", .{});
+            print("not a tty. Exiting", .{});
             std.os.exit(1);
         }
-        std.debug.print("{s}\n", .{ttyname(stdin)});
+        print("{s}\n", .{ttyname(stdin)});
     }
 
 }

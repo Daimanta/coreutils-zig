@@ -10,6 +10,7 @@ const strings = @import("util/strings.zig");
 const Allocator = std.mem.Allocator;
 
 const allocator = std.heap.page_allocator;
+const print = @import("util/print_tools.zig").print;
 
 const application_name = "logname";
 
@@ -35,7 +36,7 @@ pub fn main() !void {
     defer args.deinit();
 
     if (args.flag("--help")) {
-        std.debug.print(help_message, .{});
+        print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
@@ -44,10 +45,10 @@ pub fn main() !void {
 
     const login = getLoginName();
     if (login == null) {
-        std.debug.print("{s}: no login name\n", .{application_name});
+        print("{s}: no login name\n", .{application_name});
         std.os.exit(1);
     } else {
-        std.debug.print("{s}\n", .{login.?});
+        print("{s}\n", .{login.?});
         std.os.exit(0);
     }
 

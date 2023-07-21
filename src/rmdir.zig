@@ -12,7 +12,7 @@ const mode_t = mode.mode_t;
 const DeleteDirError = os.DeleteDirError;
 
 const allocator = std.heap.page_allocator;
-const print = std.debug.print;
+const print = @import("util/print_tools.zig").print;
 const rmdir = os.rmdir;
 
 const application_name = "rmdir";
@@ -48,7 +48,7 @@ pub fn main() !void {
     defer args.deinit();
 
     if (args.flag("--help")) {
-        std.debug.print(help_message, .{});
+        print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);

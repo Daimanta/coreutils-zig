@@ -22,7 +22,7 @@ const exit = std.os.exit;
 const FollowSymlinkError = fileinfo.FollowSymlinkError;
 const KernelStat = linux.Stat;
 const mode_t = linux.mode_t;
-const print = std.debug.print;
+const print = @import("../util/print_tools.zig").print;
 
 const max_path_length = 1 << 12;
 
@@ -116,7 +116,7 @@ pub fn getOwnershipOptions(comptime params: []const clap.Param(clap.Help), compt
     var args = clap.parseAndHandleErrors(clap.Help, params, .{ .diagnostic = &diag }, application_name, 1);
 
     if (args.flag("--help")) {
-        std.debug.print(help_message, .{});
+        print(help_message, .{});
         exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);

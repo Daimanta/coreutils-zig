@@ -3,7 +3,7 @@
 const std = @import("std");
 const linking = @import("linking.zig");
 
-const print = std.debug.print;
+const print = @import("util/print_tools.zig").print;
 const OpenMode = linking.OpenMode;
 
 pub var selinux_lib: ?*c_void = null;

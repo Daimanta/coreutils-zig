@@ -10,6 +10,7 @@ const strings = @import("util/strings.zig");
 const Allocator = std.mem.Allocator;
 
 const allocator = std.heap.page_allocator;
+const print = @import("util/print_tools.zig").print;
 
 const application_name = "nproc";
 
@@ -44,7 +45,7 @@ pub fn main() !void {
     var all_processors = false;
 
     if (args.flag("--help")) {
-        std.debug.print(help_message, .{});
+        print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
@@ -57,7 +58,7 @@ pub fn main() !void {
 
     if (args.option("--ignore")) |count| {
         var temp = std.fmt.parseInt(u32, count, 10) catch {
-            std.debug.print("{s}: invalid number: '{s}'\n", .{application_name, count});
+            print("{s}: invalid number: '{s}'\n", .{application_name, count});
             std.os.exit(1);
         };
         ignore = temp;
@@ -74,5 +75,5 @@ pub fn main() !void {
         result = @max(1, result-ignore);
     }
 
-    std.debug.print("{d}\n", .{result});
+    print("{d}\n", .{result});
 }

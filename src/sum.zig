@@ -11,6 +11,7 @@ const Allocator = std.mem.Allocator;
 const LinkError = os.LinkError;
 
 const default_allocator = std.heap.page_allocator;
+const print = @import("util/print_tools.zig").print;
 const application_name = "sum";
 
 const help_message =
@@ -96,7 +97,7 @@ pub fn main() !void {
     defer args.deinit();
 
     if (args.flag("--help")) {
-        std.debug.print(help_message, .{});
+        print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
@@ -107,7 +108,7 @@ pub fn main() !void {
     const sysv = args.flag("-s");
     
     if (bsd and sysv) {
-        std.debug.print("-r and -s cannot be active at the same time\n", .{});
+        print("-r and -s cannot be active at the same time\n", .{});
         std.os.exit(1);
     }
     
@@ -138,9 +139,9 @@ fn sumFile(file_path: []const u8, algorithm: Algorithm, print_name: bool) void {
 
     const file = fs.cwd().openFile(file_path, .{.mode = .read_only}) catch |err| {
         if (err == error.FileNotFound) {
-            std.debug.print("{s}: {s}: No such file or directory\n", .{application_name, file_path});
+            print("{s}: {s}: No such file or directory\n", .{application_name, file_path});
         } else {
-            std.debug.print("{s}: Unknown error encountered '{?}'\n", .{application_name, err});
+            print("{s}: Unknown error encountered '{?}'\n", .{application_name, err});
         }
         return;
     };
@@ -175,19 +176,19 @@ fn sumFile(file_path: []const u8, algorithm: Algorithm, print_name: bool) void {
         }
         result = checksum.final();
     } else {
-        std.debug.print("ERROR: Unrecognized algorithm, this shouldn't have happened.\n", .{});
+        print("ERROR: Unrecognized algorithm, this shouldn't have happened.\n", .{});
     }
     
     
-    std.debug.print("{d:0>5} {d: >5}", .{result, segments});
-    if (print_name) std.debug.print(" {s}", .{file_path});
-    std.debug.print("\n", .{});
+    print("{d:0>5} {d: >5}", .{result, segments});
+    if (print_name) print(" {s}", .{file_path});
+    print("\n", .{});
 }
 
 fn sumStdin(algorithm: Algorithm) void {
     const stdin = std.io.getStdIn().reader();
     const bytes = stdin.readAllAlloc(default_allocator, 1 << 30) catch {
-        std.debug.print("Reading stdin failed\n", .{});
+        print("Reading stdin failed\n", .{});
         return;
     };
     
@@ -207,7 +208,7 @@ fn sumStdin(algorithm: Algorithm) void {
         segments = bytes.len / 512;
         if (bytes.len % 512 != 0) segments += 1;
     }
-    std.debug.print("{d:0>5} {d: >5} -\n", .{result, segments});
+    print("{d:0>5} {d: >5} -\n", .{result, segments});
     handled_stdin = true;
 }
 

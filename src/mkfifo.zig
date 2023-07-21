@@ -14,6 +14,7 @@ const mode_t = mode.mode_t;
 const MakeFifoError = fileinfo.MakeFifoError;
 
 const allocator = std.heap.page_allocator;
+const print = @import("util/print_tools.zig").print;
 
 const application_name = "mkfifo";
 
@@ -49,7 +50,7 @@ pub fn main() !void {
     defer args.deinit();
 
     if (args.flag("--help")) {
-        std.debug.print(help_message, .{});
+        print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
@@ -66,15 +67,15 @@ pub fn main() !void {
     const special_selinux_context = args.option("--context");
     
     if (default_selinux_context and special_selinux_context != null) {
-        std.debug.print("SELinux context cannot be both default and specific. Exiting.\n", .{});
+        print("SELinux context cannot be both default and specific. Exiting.\n", .{});
         std.os.exit(1);
     }   
     
     if (mode_string != null) {
         used_mode = mode.getModeFromStringAndZeroMode(mode_string.?) catch |err| {
             switch (err) {
-                mode.ModeError.InvalidModeString => std.debug.print("Invalid mode. Exiting.\n", .{}),
-                mode.ModeError.UnknownError => std.debug.print("Unknown mode error. Exiting.\n", .{}),
+                mode.ModeError.InvalidModeString => print("Invalid mode. Exiting.\n", .{}),
+                mode.ModeError.UnknownError => print("Unknown mode error. Exiting.\n", .{}),
             }
             std.os.exit(1);
         };
@@ -83,16 +84,16 @@ pub fn main() !void {
     for (arguments) |arg| {
         fileinfo.makeFifo(arg, used_mode) catch |err| {
             switch (err) {
-                MakeFifoError.WritePermissionDenied => std.debug.print("{s}: Write Permission Denied\n", .{application_name}),
-                MakeFifoError.FileAlreadyExists => std.debug.print("{s}: File Already exists\n", .{application_name}),
-                MakeFifoError.NameTooLong => std.debug.print("{s}: Name too long\n", .{application_name}),
-                MakeFifoError.IncorrectPath => std.debug.print("{s}: Incorrect path\n", .{application_name}),
-                MakeFifoError.ReadOnlyFileSystem => std.debug.print("{s}: Filesystem is read only\n", .{application_name}),
-                MakeFifoError.NotSupported => std.debug.print("{s}: Operation not supported\n", .{application_name}),
-                MakeFifoError.QuotaReached => std.debug.print("{s}: Quota reached\n", .{application_name}),
-                MakeFifoError.NoSpaceLeft => std.debug.print("{s}: No space left on device\n", .{application_name}),
-                MakeFifoError.NotImplemented => std.debug.print("{s}: Named pipes are not possible on file system\n", .{application_name}),
-                MakeFifoError.Unknown => std.debug.print("{s}: Unknown error encountered: '{?}'\n", .{application_name, err}),
+                MakeFifoError.WritePermissionDenied => print("{s}: Write Permission Denied\n", .{application_name}),
+                MakeFifoError.FileAlreadyExists => print("{s}: File Already exists\n", .{application_name}),
+                MakeFifoError.NameTooLong => print("{s}: Name too long\n", .{application_name}),
+                MakeFifoError.IncorrectPath => print("{s}: Incorrect path\n", .{application_name}),
+                MakeFifoError.ReadOnlyFileSystem => print("{s}: Filesystem is read only\n", .{application_name}),
+                MakeFifoError.NotSupported => print("{s}: Operation not supported\n", .{application_name}),
+                MakeFifoError.QuotaReached => print("{s}: Quota reached\n", .{application_name}),
+                MakeFifoError.NoSpaceLeft => print("{s}: No space left on device\n", .{application_name}),
+                MakeFifoError.NotImplemented => print("{s}: Named pipes are not possible on file system\n", .{application_name}),
+                MakeFifoError.Unknown => print("{s}: Unknown error encountered: '{?}'\n", .{application_name, err}),
             }
         };
         success = false;

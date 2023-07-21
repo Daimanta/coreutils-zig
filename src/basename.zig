@@ -13,6 +13,7 @@ const Allocator = std.mem.Allocator;
 
 const allocator = std.heap.page_allocator;
 const kernel_stat = linux.kernel_stat;
+const print = @import("util/print_tools.zig").print;
 
 const application_name = "basename";
 const help_message =
@@ -50,7 +51,7 @@ pub fn main() !void {
     var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
 
     if (args.flag("--help")) {
-        std.debug.print(help_message, .{});
+        print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
@@ -65,10 +66,10 @@ pub fn main() !void {
 
     const positionals = args.positionals();
     if (positionals.len == 0) {
-        std.debug.print("{s}: missing operand\n", .{application_name});
+        print("{s}: missing operand\n", .{application_name});
         std.os.exit(1);
     } else if (positionals.len > 2 and !multiple) {
-        std.debug.print("{s}: Only name and suffix expected\n", .{application_name});
+        print("{s}: Only name and suffix expected\n", .{application_name});
         std.os.exit(1);
     }
 
@@ -87,7 +88,7 @@ fn processFile(file: []const u8, suffix: ?[]const u8, newline: []const u8) void 
     if (file[file.len - 1] == '/') {
         var last_non_slash: ?usize = strings.lastNonIndexOf(file, '/');
         if (last_non_slash == null) {
-            std.debug.print("/{s}", .{newline});
+            print("/{s}", .{newline});
             return;
         } else {
             last_char = last_non_slash.?;
@@ -108,12 +109,12 @@ fn processFile(file: []const u8, suffix: ?[]const u8, newline: []const u8) void 
 
 fn stripSuffix(string: []const u8, suffix: ?[]const u8, newline: []const u8) void {
     if (suffix == null) {
-        std.debug.print("{s}{s}", .{string, newline});
+        print("{s}{s}", .{string, newline});
     } else {
         if (mem.endsWith(u8, string, suffix.?)) {
-            std.debug.print("{s}{s}", .{string[0..string.len-suffix.?.len], newline});
+            print("{s}{s}", .{string[0..string.len-suffix.?.len], newline});
         } else {
-            std.debug.print("{s}{s}", .{string, newline});
+            print("{s}{s}", .{string, newline});
         }
     }
 }

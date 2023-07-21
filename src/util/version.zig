@@ -4,8 +4,10 @@ pub const major: u16 = 0;
 pub const minor: u16 = 0;
 pub const patch: u16 = 1;
 
+const print = @import("print_tools.zig").print;
+
 pub fn printVersionInfo(name: []const u8) void {
-    std.debug.print("{s} (Zig coreutils) {d}.{d}.{d}\n{s}", .{name, major, minor, patch, license_info});
+    print("{s} (Zig coreutils) {d}.{d}.{d}\n{s}", .{name, major, minor, patch, license_info});
 }
 
 pub const license_info =

@@ -8,6 +8,7 @@ const version = @import("util/version.zig");
 const Allocator = std.mem.Allocator;
 
 const allocator = std.heap.page_allocator;
+const print = @import("util/print_tools.zig").print;
 
 const application_name = "pwd";
 const help_message =
@@ -43,13 +44,13 @@ pub fn main() !void {
     var resolve_symlink = false;
 
     if (args.flag("--help")) {
-        std.debug.print(help_message, .{});
+        print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
         std.os.exit(0);
     } else if (args.flag("-L") and args.flag("-P")) {
-        std.debug.print("Conflicting options -L and -P set. Exiting.", .{});
+        print("Conflicting options -L and -P set. Exiting.", .{});
         std.os.exit(1);
     } else if (args.flag("-L")) {
         resolve_symlink = false;
@@ -60,8 +61,8 @@ pub fn main() !void {
     if (resolve_symlink) {
         const result = fs.cwd();
         const path = try result.realpathAlloc(allocator, ".");
-        std.debug.print("{s}\n", .{path});
+        print("{s}\n", .{path});
     } else {
-        std.debug.print("{s}\n", .{os.getenv("PWD").?});
+        print("{s}\n", .{os.getenv("PWD").?});
     }
 }

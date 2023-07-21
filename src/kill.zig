@@ -11,6 +11,7 @@ const Allocator = std.mem.Allocator;
 const LinkError = os.LinkError;
 
 const default_allocator = std.heap.page_allocator;
+const print = @import("util/print_tools.zig").print;
 const application_name = "kill";
 
 const help_message =
@@ -47,7 +48,7 @@ pub fn main() !void {
     defer args.deinit();
 
     if (args.flag("--help")) {
-        std.debug.print(help_message, .{});
+        print(help_message, .{});
         std.os.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
