@@ -46,10 +46,10 @@ pub fn main() !void {
 
     if (args.flag("--help")) {
         print(help_message, .{});
-        std.os.exit(0);
+        std.posix.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
-        std.os.exit(0);
+        std.posix.exit(0);
     }
 
     if (args.flag("--all")) {
@@ -57,9 +57,9 @@ pub fn main() !void {
     }
 
     if (args.option("--ignore")) |count| {
-        var temp = std.fmt.parseInt(u32, count, 10) catch {
+        const temp = std.fmt.parseInt(u32, count, 10) catch {
             print("{s}: invalid number: '{s}'\n", .{application_name, count});
-            std.os.exit(1);
+            std.posix.exit(1);
         };
         ignore = temp;
     }

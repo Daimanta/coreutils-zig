@@ -48,7 +48,7 @@ pub fn main() !void {
         } else {
             if (arguments[1].len > 0 and arguments[1][0] == '-') {
                 print("{s}: Unknown argument \"{s}\"\n", .{application_name, arguments[1]});
-                std.os.exit(1);
+                std.posix.exit(1);
             } else {
                 current_mode = Mode.main;
             }
@@ -59,10 +59,10 @@ pub fn main() !void {
 
     if (current_mode == Mode.help) {
         print("{s}", .{help_message});
-        std.os.exit(0);
+        std.posix.exit(0);
     } else if (current_mode == Mode.version) {
         version.printVersionInfo(application_name);
-        std.os.exit(0);
+        std.posix.exit(0);
     } else if (current_mode == Mode.main) {
         var count: u32 = 0;
         for (arguments[1..]) |argument| {
@@ -77,9 +77,9 @@ pub fn main() !void {
         } else {
             for(arguments[1..]) |argument| {
                 if (argument.len > 0 and argument[0] != '-') {
-                    var user_null_pointer = try strings.toNullTerminatedPointer(argument, allocator);
+                    const user_null_pointer = try strings.toNullTerminatedPointer(argument, allocator);
                     defer allocator.free(user_null_pointer);
-                    var user: ?*users.Passwd = users.getUserByName(user_null_pointer) catch blk: {
+                    const user: ?*users.Passwd = users.getUserByName(user_null_pointer) catch blk: {
                         print("{s}: '{s}': no such user\n", .{application_name, argument});
                         break :blk null;
                     };
@@ -90,23 +90,23 @@ pub fn main() !void {
             }
         }
 
-        std.os.exit(0);
+        std.posix.exit(0);
     } else {
         print("{s}: inconsistent state\n", .{application_name});
-        std.os.exit(1);
+        std.posix.exit(1);
     }
 
 }
 
 fn displayGroup (user: *users.Passwd, print_name: bool) !void {
-    var user_gid: gid = user.pw_gid;
+    const user_gid: gid = user.pw_gid;
     var groups: [*]gid = undefined;
     var group_count: c_int = 0;
 
     // Size iteration
     _ = getgrouplist(user.pw_name, user_gid, groups, &group_count);
-    var group_count_usize: usize = @intCast(group_count);
-    var group_alloc = try allocator.alloc(gid, group_count_usize);
+    const group_count_usize: usize = @intCast(group_count);
+    const group_alloc = try allocator.alloc(gid, group_count_usize);
     groups = group_alloc.ptr;
     defer allocator.free(group_alloc);
     // Actually allocate the groups

@@ -39,24 +39,24 @@ pub fn main() !void {
 
     if (args.flag("--help")) {
         print(help_message, .{});
-        std.os.exit(0);
+        std.posix.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
-        std.os.exit(0);
+        std.posix.exit(0);
     }
 
     const positionals = args.positionals();
 
     if (positionals.len > 1) {
         print("Too many arguments. Exiting\n", .{});
-        std.os.exit(1);
+        std.posix.exit(1);
     }
 
     if (positionals.len == 0) {
         var name_buffer: [HOST_NAME_MAX]u8 = undefined;
-        const hostname = try os.gethostname(&name_buffer);
+        const hostname = try std.posix.gethostname(&name_buffer);
         print("{s}\n", .{hostname});
-        std.os.exit(0);
+        std.posix.exit(0);
     } else {
         system.setHostname(positionals[0]) catch |err| {
             const error_message = switch (err) {
@@ -65,9 +65,9 @@ pub fn main() !void {
                 else => unreachable
             };
             print("{s}\n", .{error_message});
-            std.os.exit(1);
+            std.posix.exit(1);
         };
-        std.os.exit(0);
+        std.posix.exit(0);
     }
 
 }

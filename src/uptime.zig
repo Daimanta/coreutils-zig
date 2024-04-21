@@ -43,17 +43,17 @@ pub fn main() !void {
 
     if (args.flag("--help")) {
         print(help_message, .{});
-        std.os.exit(0);
+        std.posix.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
-        std.os.exit(0);
+        std.posix.exit(0);
     }
 
     var current_user_file: []const u8 = "/var/run/utmp";
 
     if (args.positionals().len > 1) {
         print("Only one file can be specified. Exiting.\n", .{});
-        std.os.exit(1);
+        std.posix.exit(1);
     } else if (args.positionals().len == 1) {
         current_user_file = args.positionals()[0];
     }
@@ -75,7 +75,7 @@ fn getUptimeString(alloc: std.mem.Allocator) ![]const u8 {
     var contents: []u8 = undefined;
     contents = fs.cwd().readFile(read_file, buffer[0..]) catch "";
 
-    var space_index = strings.indexOf(contents, ' ');
+    const space_index = strings.indexOf(contents, ' ');
     var days: u32 = undefined;
     var hours: u32 = undefined;
     var minutes: u32 = undefined;
@@ -121,8 +121,8 @@ fn getUptimeString(alloc: std.mem.Allocator) ![]const u8 {
 }
 
 fn getUsersString(alloc: std.mem.Allocator, file_name: []const u8) ![]const u8 {
-    var backup: []u8 = &.{};
-    var file_contents = fs.cwd().readFileAlloc(alloc, file_name, 1 << 20) catch backup;
+    const backup: []u8 = &.{};
+    const file_contents = fs.cwd().readFileAlloc(alloc, file_name, 1 << 20) catch backup;
     const count = switch (file_contents.len > 0 and file_contents.len % @sizeOf(utmp.Utmp) == 0) {
         false => 0,
         true => utmp.countActiveUsers(utmp.convertBytesToUtmpRecords(file_contents))

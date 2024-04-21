@@ -9,13 +9,13 @@ const strings = @import("util/strings.zig");
 const version = @import("util/version.zig");
 
 const Allocator = std.mem.Allocator;
-const OpenError = os.OpenError;
+const OpenError = std.posix.OpenError;
 
-const fsync = os.fsync;
-const fdatasync = os.fdatasync;
+const fsync = std.posix.fsync;
+const fdatasync = std.posix.fdatasync;
 const print = @import("util/print_tools.zig").print;
-const sync = os.sync;
-const syncfs = os.syncfs;
+const sync = std.posix.sync;
+const syncfs = std.posix.syncfs;
 
 const default_allocator = std.heap.page_allocator;
 
@@ -57,10 +57,10 @@ pub fn main() !void {
 
     if (args.flag("--help")) {
         print(help_message, .{});
-        std.os.exit(0);
+        std.posix.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
-        std.os.exit(0);
+        std.posix.exit(0);
     }
     
     const only_filedata = args.flag("-d");
@@ -72,13 +72,13 @@ pub fn main() !void {
     
     if (only_filedata and sync_filesystem) {
         print("Filesystem and data-only sync cannot be done at the same time. Exiting.\n", .{});
-        std.os.exit(1);
+        std.posix.exit(1);
     }
     
     const arguments = args.positionals();
     if (sync_type != SyncType.FILE and arguments.len == 0) {
         print("The mode was set for syncing specific files but no files were provided. Exiting.\n", .{});
-        std.os.exit(1);
+        std.posix.exit(1);
     }
     
     synchronize(sync_type, arguments);
@@ -97,7 +97,7 @@ fn synchronize(sync_type: SyncType, targets: [] const []const u8) void{
 }
 
 fn synchronize_target(sync_type: SyncType, target: []const u8) bool {
-    const handle = os.open(target, os.O.RDONLY, 0) catch |err| {
+    const handle = std.posix.open(target, .{}, 0) catch |err| {
         switch (err) {
             OpenError.FileNotFound => print("{s}: File '{s}' not found.\n", .{application_name, target}),
             OpenError.IsDir => print("{s}: Target '{s}' is a directory.\n", .{application_name, target}),

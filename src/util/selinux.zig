@@ -23,10 +23,10 @@ pub fn initSelinux() void {
 pub fn selinuxActive() bool {
     if (selinux_present == null) initSelinux();
     if (!selinux_present.?) return false;
-    const func_pointer = linking.linkDynamicLibrarySymbol(selinux_lib.?, "is_selinux_enabled") catch |err| {
+    const func_pointer = linking.linkDynamicLibrarySymbol(selinux_lib.?, "is_selinux_enabled") catch {
         return false;
     };
-    const func = @ptrCast(fn()c_int, func_pointer);
+    const func: fn()c_int = @ptrCast(func_pointer);
     return func() == 1;
 }
 
@@ -37,7 +37,7 @@ pub fn selinuxOpen(backend: i32, options: ?[]selinux_opt) !void {
     }
         
     const func_pointer = try linking.linkDynamicLibrarySymbol(selinux_lib.?, "selabel_open");
-    const func = @ptrCast(fn(c_int, ?[*]selinux_opt, c_uint)*c_void, func_pointer);
+    const func: fn(c_int, ?[*]selinux_opt, c_uint)*c_void = @ptrCast(func_pointer);
     const length = if (options != null) options.?.len else 0;
     const pointer = if (options != null) options.?.ptr else null;
     const result = func(@as(c_int, backend), pointer, @intCast(c_uint, length));   

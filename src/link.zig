@@ -7,7 +7,7 @@ const clap = @import("clap.zig");
 const version = @import("util/version.zig");
 
 const Allocator = std.mem.Allocator;
-const LinkError = os.LinkError;
+const LinkError = std.posix.LinkError;
 
 const allocator = std.heap.page_allocator;
 const print = @import("util/print_tools.zig").print;
@@ -39,17 +39,17 @@ pub fn main() !void {
 
     if (args.flag("--help")) {
         print(help_message, .{});
-        std.os.exit(0);
+        std.posix.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
-        std.os.exit(0);
+        std.posix.exit(0);
     }
 
     const positionals = args.positionals();
 
     if (positionals.len != 2) {
         print("Exactly two files need to be specified. Exiting\n", .{});
-        std.os.exit(1);
+        std.posix.exit(1);
     }
 
     const file_target = positionals[0];
@@ -57,10 +57,10 @@ pub fn main() !void {
 
     if (file_source.len == 0 or file_target.len == 0) {
         print("{s}: cannot create link '{s}' to '{s}': No such file or directory\n", .{application_name, file_source, file_target});
-        std.os.exit(1);
+        std.posix.exit(1);
     }
 
-    os.link(file_target, file_source, AT_SYMLINK_FOLLOW) catch |err| {
+    std.posix.link(file_target, file_source, AT_SYMLINK_FOLLOW) catch |err| {
         const error_message = switch (err) {
         LinkError.AccessDenied => "Access denied",
         LinkError.DiskQuota => "Disk quota exceeded",
@@ -75,6 +75,6 @@ pub fn main() !void {
         else => "Unspecified error encountered"
         };
         print("{s}. Exiting\n", .{error_message});
-        std.os.exit(1);
+        std.posix.exit(1);
     };
 }

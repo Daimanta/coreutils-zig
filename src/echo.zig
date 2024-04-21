@@ -63,10 +63,10 @@ pub fn main() !void {
         if (options.len == 1) {
             if (mem.eql(u8, options, "--help")) {
                 print(help_message, .{});
-                std.os.exit(0);
+                std.posix.exit(0);
             } else if (mem.eql(u8, options, "--version")) {
                 version.printVersionInfo(application_name);
-                std.os.exit(0);
+                std.posix.exit(0);
             }
         }
         if (options[1] != '-') {
@@ -94,7 +94,7 @@ pub fn main() !void {
 
     if (flag_e and flag_E) {
         print("Cannot combine -e and -E. Exiting\n",.{});
-        std.os.exit(1);
+        std.posix.exit(1);
     }
 
     if (flag_e) {

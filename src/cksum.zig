@@ -41,10 +41,10 @@ pub fn main() !void {
 
     if (args.flag("--help")) {
         print(help_message, .{});
-        std.os.exit(0);
+        std.posix.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
-        std.os.exit(0);
+        std.posix.exit(0);
     }
     
     
@@ -100,8 +100,8 @@ fn sumStdin(print_dash: bool) void {
         print("Reading stdin failed\n", .{});
         return;
     };
-    var result: u32 = std.hash.Crc32.hash(bytes);
-    var dash = if (print_dash) "-" else "";
+    const result: u32 = std.hash.Crc32.hash(bytes);
+    const dash = if (print_dash) "-" else "";
     print("{d:0>5} {d} {s}\n", .{result, bytes.len, dash});
     handled_stdin = true;
 }

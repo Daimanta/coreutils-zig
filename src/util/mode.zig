@@ -77,7 +77,7 @@ pub const ModeError = error {
 
 
 pub fn applyModeChange(change: *const ModeChange, mode: *mode_t) void {
-    var used_source: AbsoluteChange = getAbsoluteChange(change, mode);
+    const used_source: AbsoluteChange = getAbsoluteChange(change, mode);
     if (change.owner) updateUserType(mode, UserType.USER, change.operation, used_source);
     if (change.group) updateUserType(mode, UserType.GROUP, change.operation, used_source);
     if (change.other) updateUserType(mode, UserType.OTHER, change.operation, used_source);

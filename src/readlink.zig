@@ -75,10 +75,10 @@ pub fn main() !void {
 
     if (args.flag("--help")) {
         print(help_message, .{});
-        std.os.exit(0);
+        std.posix.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
-        std.os.exit(0);
+        std.posix.exit(0);
     }
 
     const quiet = (args.flag("-q") or args.flag("--quiet"));
@@ -95,7 +95,7 @@ pub fn main() !void {
     const positionals = args.positionals();
     if (positionals.len == 0) {
         print("{s}: missing operand\n", .{application_name});
-        std.os.exit(1);
+        std.posix.exit(1);
     } else if (positionals.len > 2 and suppress_newline) {
         print("{s}: ignoring --no-newline with multiple arguments\n", .{application_name});
         suppress_newline = false;
@@ -124,38 +124,38 @@ pub fn main() !void {
         false => @as(u8, 1),
         true => 0
     };
-    std.os.exit(exit_code);
+    std.posix.exit(exit_code);
 }
 
 
 fn checkInconsistencies(quiet: bool, silent: bool, verbose: bool, zero: bool, suppress_newline: bool, find_all_but_last_link: bool, find_all_links: bool, accept_missing_links: bool) void {
     if (silent and verbose) {
         print("Silent and verbose flags cannot be active at the same time. Exiting.\n", .{});
-        std.os.exit(1);
+        std.posix.exit(1);
     }
 
     if (zero and suppress_newline) {
         print("Zero delimiter and no delimiter cannot be active at the same time. Exiting.\n", .{});
-        std.os.exit(1);
+        std.posix.exit(1);
     }
 
     if (find_all_but_last_link and find_all_links) {
         print("Canonicalize and canonicalize-existing cannot be active at the same time. Exiting.\n", .{});
-        std.os.exit(1);
+        std.posix.exit(1);
     }
     if (find_all_but_last_link and accept_missing_links) {
         print("Canonicalize and canonicalize-missing cannot be active at the same time. Exiting.\n", .{});
-        std.os.exit(1);
+        std.posix.exit(1);
     }
 
     if (find_all_links and accept_missing_links) {
         print("Canonicalize-existing and canonicalize-missing cannot be active at the same time. Exiting.\n", .{});
-        std.os.exit(1);
+        std.posix.exit(1);
     }
 
     if (quiet and verbose) {
         print("Quiet and verbose flags cannot be active at the same time. Exiting.\n", .{});
-        std.os.exit(1);
+        std.posix.exit(1);
     }
 
 }
@@ -194,7 +194,7 @@ fn process_link(link: []const u8, terminator: []const u8, read_mode: ReadMode, o
             return false;
         } else if (read_mode == ReadMode.ALLOW_MISSING) {
             if (output_mode != OutputMode.QUIET) {
-                print("{s}{s}", .{try std.os.realpath(link, &path_buffer), terminator});
+                print("{s}{s}", .{try std.posix.realpath(link, &path_buffer), terminator});
             }
             return true;
         } else {

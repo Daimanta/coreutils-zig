@@ -10,46 +10,48 @@ pub fn build(b: *Builder) void {
         std.os.exit(1);
     }
 
+    const target = b.standardTargetOptions(.{});
+
     // Standard release options allow the person running `zig build` to select
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
-    const basename = addExe(b, "basename");
-    const chgrp = addExe(b, "chgrp");
-    const chmod = addExe(b, "chmod");
-    const chown = addExe(b, "chown");
-    const cksum = addExe(b, "cksum");
-    const dircolors = addExe(b, "dircolors");
-    const dirname = addExe(b, "dirname");
-    const echo = addExe(b, "echo");
-    const false_app = addExe(b, "false");
-    const fold = addExe(b, "fold");
-    const groups = addExe(b, "groups");
-    const hostid = addExe(b, "hostid");
-    const hostname = addExe(b, "hostname");
-    const id = addExe(b, "id");
-    const link = addExe(b, "link");
-    const logname = addExe(b, "logname");
-    const md5sum = addExe(b, "md5sum");
-    const mkdir = addExe(b, "mkdir");
-    const mkfifo = addExe(b, "mkfifo");
-    const nice = addExe(b, "nice");
-    const nproc = addExe(b, "nproc");
-    const printenv = addExe(b, "printenv");
-    const pwd = addExe(b, "pwd");
-    const readlink = addExe(b, "readlink");
-    const realpath = addExe(b, "realpath");
-    const rmdir = addExe(b, "rmdir");
-    const sleep = addExe(b, "sleep");
-    const sum = addExe(b, "sum");
-    const sync = addExe(b, "sync");
-    const touch = addExe(b, "true");
-    const true_app = addExe(b, "true");
-    const tty = addExe(b, "tty");
-    const unlink = addExe(b, "unlink");
-    const uname = addExe(b, "uname");
-    const uptime = addExe(b, "uptime");
-    const users = addExe(b, "users");
-    const whoami = addExe(b, "whoami");
-    const yes = addExe(b, "yes");
+    const basename = addExe(b, target, "basename");
+    const chgrp = addExe(b, target,"chgrp");
+    const chmod = addExe(b,target, "chmod");
+    const chown = addExe(b, target,"chown");
+    const cksum = addExe(b,target, "cksum");
+    const dircolors = addExe(b,target, "dircolors");
+    const dirname = addExe(b,target, "dirname");
+    const echo = addExe(b,target, "echo");
+    const false_app = addExe(b,target, "false");
+    const fold = addExe(b, target,"fold");
+    const groups = addExe(b, target,"groups");
+    const hostid = addExe(b,target, "hostid");
+    const hostname = addExe(b, target,"hostname");
+    const id = addExe(b,target, "id");
+    const link = addExe(b, target,"link");
+    const logname = addExe(b, target,"logname");
+    const md5sum = addExe(b,target, "md5sum");
+    const mkdir = addExe(b, target,"mkdir");
+    const mkfifo = addExe(b, target,"mkfifo");
+    const nice = addExe(b,target, "nice");
+    const nproc = addExe(b, target,"nproc");
+    const printenv = addExe(b,target, "printenv");
+    const pwd = addExe(b,target, "pwd");
+    const readlink = addExe(b,target, "readlink");
+    const realpath = addExe(b, target,"realpath");
+    const rmdir = addExe(b,target, "rmdir");
+    const sleep = addExe(b,target, "sleep");
+    const sum = addExe(b, target,"sum");
+    const sync = addExe(b, target,"sync");
+    const touch = addExe(b,target, "true");
+    const true_app = addExe(b,target, "true");
+    const tty = addExe(b,target, "tty");
+    const unlink = addExe(b,target, "unlink");
+    const uname = addExe(b, target,"uname");
+    const uptime = addExe(b,target, "uptime");
+    const users = addExe(b, target,"users");
+    const whoami = addExe(b,target, "whoami");
+    const yes = addExe(b, target,"yes");
 
     _ = basename;
     _ = cksum;
@@ -94,8 +96,8 @@ pub fn build(b: *Builder) void {
     }
 }
 
-fn addExe(b: *Builder, comptime name: []const u8) *Builder.Step.Compile {
-    const exe = b.addExecutable(.{ .name = name, .root_source_file = .{ .path = "src/" ++ name ++ ".zig" }, .optimize = .ReleaseSafe, .version = .{ .major = version.major, .minor = version.minor, .patch = version.patch } });
+fn addExe(b: *Builder, target: std.Build.ResolvedTarget, comptime name: []const u8) *Builder.Step.Compile {
+    const exe = b.addExecutable(.{ .name = name, .target = target, .root_source_file = .{ .path = "src/" ++ name ++ ".zig" }, .optimize = .ReleaseSafe, .version = .{ .major = version.major, .minor = version.minor, .patch = version.patch } });
     b.default_step.dependOn(&exe.step);
     b.installArtifact(exe);
     return exe;

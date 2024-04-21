@@ -11,14 +11,14 @@ const users = @import("../util/users.zig");
 const version = @import("../util/version.zig");
 
 const Allocator = std.mem.Allocator;
-const ChownError = os.FChownError;
+const ChownError = std.posix.FChownError;
 const ChmodError = fileinfo.ChmodError;
-const FChmodError = os.FChmodError;
+const FChmodError = std.posix.FChmodError;
 const OpenError = fs.Dir.OpenError;
 const OpenFileError = fs.File.OpenError;
 
 const default_allocator = std.heap.page_allocator;
-const exit = std.os.exit;
+const exit = std.posix.exit;
 const FollowSymlinkError = fileinfo.FollowSymlinkError;
 const KernelStat = linux.Stat;
 const mode_t = linux.mode_t;
@@ -167,7 +167,7 @@ fn traverseDir(path: []const u8, change_params: ChangeParams, verbosity: Verbosi
     const current_user = stat.uid;
     const current_group = stat.gid;
 
-    var dir = fs.cwd().openIterableDir(path, .{}) catch |err| {
+    var dir = fs.cwd().openDir(path, .{}) catch |err| {
         if (verbosity != Verbosity.QUIET) {
             switch (err) {
                 OpenError.AccessDenied => print("{s}: Access Denied to '{s}'\n", .{ application_name, path }),
@@ -249,7 +249,7 @@ pub fn changeRights(path: []const u8, change_params: ChangeParams, recursive: bo
     const is_symlink = fileinfo.isSymlink(stat);
 
     if (is_dir) {
-        var dir = fs.cwd().openIterableDir(path, .{}) catch |err| {
+        var dir = fs.cwd().openDir(path, .{}) catch |err| {
             if (verbosity != Verbosity.QUIET) {
                 switch (err) {
                     OpenError.AccessDenied => print("{s}: Access Denied to '{s}'\n", .{ application_name, path }),
@@ -312,7 +312,7 @@ fn changeItem(path: []const u8, change_params: ChangeParams, verbosity: Verbosit
 }
 
 fn changePlainFile(path: []const u8, kernel_stat: ?KernelStat, change_params: ChangeParams, verbosity: Verbosity, application_name: []const u8) void {
-    var stat: KernelStat = if (kernel_stat != null) kernel_stat.? else fileinfo.getLstat(path) catch return;
+    const stat: KernelStat = if (kernel_stat != null) kernel_stat.? else fileinfo.getLstat(path) catch return;
 
     const current_user = stat.uid;
     const current_group = stat.gid;

@@ -65,10 +65,10 @@ pub fn main() !void {
 
     if (args.flag("--help")) {
         print(help_message, .{});
-        std.os.exit(0);
+        std.posix.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
-        std.os.exit(0);
+        std.posix.exit(0);
     }
     
     const security_context = args.flag("-Z");
@@ -82,17 +82,17 @@ pub fn main() !void {
     
     if ((name or real_id) and !(user_id or group_id or all_groups)) {
         print("{s}: cannot print only names or real IDs in default format\n", .{application_name});
-        os.exit(1);
+        std.posix.exit(1);
     }
     
     if (group_id and all_groups) {
         print("{s}: cannot print \"only\" of more than one choice\n", .{application_name});
-        os.exit(1);
+        std.posix.exit(1);
     }
     
     if (name and real_id) {
         print("{s}: cannot print \"only\" of more than one choice\n", .{application_name});
-        os.exit(1);
+        std.posix.exit(1);
     }
     
     var mode = Mode.DEFAULT;
@@ -102,7 +102,7 @@ pub fn main() !void {
     
     if (mode == Mode.DEFAULT and zero_terminator) {
         print("{s}: option --zero not permitted in default format\n", .{application_name});
-        os.exit(1);
+        std.posix.exit(1);
     }
     
     const user_list = args.positionals();

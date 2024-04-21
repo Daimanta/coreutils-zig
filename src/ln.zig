@@ -97,10 +97,10 @@ pub fn main() !void {
 
     if (args.flag("--help")) {
        print(help_message, .{});
-        std.os.exit(0);
+        std.posix.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
-        std.os.exit(0);
+        std.posix.exit(0);
     }
 
     const backup = args.option("--backup");
@@ -123,7 +123,7 @@ pub fn main() !void {
     
     if (positionals.len == 0) {
         print("{s}: No targets specified. Exiting.\n", .{application_name});
-        std.os.exit(1);
+        std.posix.exit(1);
     } else if (positionals.len == 1) {
     
     } else {
@@ -135,22 +135,22 @@ pub fn main() !void {
 fn checkInconsistencies(directory: bool, symbolic: bool, physical: bool, relative: bool, force: bool, interactive: bool, target_directory: bool, no_target_directory: bool, logical: bool, no_dereference: bool) void {
     if (target_directory and no_target_directory) {
         print("{s}: -t and -T cannot be active at the same time. Exiting.\n", .{application_name});
-        std.os.exit(1);
+        std.posix.exit(1);
     }
     
     if (force and interactive) {
         print("{s}: -f and -i cannot be active at the same time. Exiting.\n", .{application_name});
-        std.os.exit(1);
+        std.posix.exit(1);
     }
     
     if ((directory or physical) and (symbolic or relative)) {
         print("{s}: -f or -P cannot be combined with -s or -r. Exiting.\n", .{application_name});
-        std.os.exit(1);
+        std.posix.exit(1);
     }
     
     if (logical and no_dereference) {
         print("{s}: -L and -n cannot be active at the same time. Exiting.\n", .{application_name});
-        std.os.exit(1);
+        std.posix.exit(1);
     }
 
 }

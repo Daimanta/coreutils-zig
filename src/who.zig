@@ -88,10 +88,10 @@ pub fn main() !void {
 
     if (args.flag("--help")) {
         print(help_message, .{});
-        std.os.exit(0);
+        std.posix.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
-        std.os.exit(0);
+        std.posix.exit(0);
     }
     
     const all = args.flag("-a");
@@ -124,14 +124,16 @@ pub fn main() !void {
         
     } else {
         print("Zero, one or two arguments expected.\n", .{});
-        std.os.exit(1);
+        std.posix.exit(1);
     }
 }
 
 fn checkConflicts(boot: bool, dead: bool, heading: bool, ips: bool, login: bool, lookup: bool, stdin_users: bool, processes: bool, count_users: bool, runlevel: bool, short: bool, time: bool, message_status: bool, list_users: bool) void {
+    _ = lookup;
+    _ = lookup;
     if (count_users and (boot or dead or heading or ips or login or stdin_users or processes or runlevel or short or time or message_status or list_users)) {
         print("{s}: \"-q\" cannot be combined with other output flags", .{application_name});
-        std.os.exit(1);
+        std.posix.exit(1);
     }
 }
 
@@ -144,7 +146,15 @@ fn intOfBool(boolean: bool) u8 {
 }
 
 
+    _ = ips;
+    _ = lookup;
+    _ = short;
+    _ = time;
 fn printInformation(alloc: *std.mem.Allocator, file_name: []const u8, boot: bool, dead: bool, heading: bool, ips: bool, login: bool, lookup: bool, stdin_users: bool, processes: bool, count_users: bool, runlevel: bool, short: bool, time: bool, message_status: bool, list_users: bool) !void {
+    _ = ips;
+    _ = lookup;
+    _ = short;
+    _ = time;
     const file_contents = fs.cwd().readFileAlloc(alloc, file_name, 1 << 20) catch "";
     if (file_contents.len > 0 and file_contents.len % @sizeOf(utmp.Utmp) == 0) {
         const utmp_logs = utmp.convertBytesToUtmpRecords(file_contents);
@@ -178,7 +188,7 @@ fn printInformation(alloc: *std.mem.Allocator, file_name: []const u8, boot: bool
                     }
                 }
             }
-            for (login_info[0..insert_index]) |user, i| {
+            for (login_info[0..insert_index], 0..insert_index) |user, i| {
                 print("{s}", .{user});
                 if (i != login_info[0..insert_index].len - 1) {
                     print(" ", .{});
@@ -271,11 +281,13 @@ fn printInformation(alloc: *std.mem.Allocator, file_name: []const u8, boot: bool
             }
             
         }
+    _ = alloc;
         
     }
 }
 
 fn printConditionalDetails(alloc: *std.mem.Allocator, utmp_log: utmp.Utmp, login: bool, runlevel: bool, stdin_users: bool, processes: bool, boot: bool) !void {
+    _ = alloc;
     if (login or runlevel or stdin_users) {
         if (utmp_log.ut_type == UtType.USER_PROCESS) {
             print("   {s: <10}", .{"."});

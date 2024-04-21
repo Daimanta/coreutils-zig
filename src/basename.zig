@@ -52,10 +52,10 @@ pub fn main() !void {
 
     if (args.flag("--help")) {
         print(help_message, .{});
-        std.os.exit(0);
+        std.posix.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
-        std.os.exit(0);
+        std.posix.exit(0);
     }
 
     var multiple = (args.flag("-a") or args.flag("--multiple"));
@@ -67,10 +67,10 @@ pub fn main() !void {
     const positionals = args.positionals();
     if (positionals.len == 0) {
         print("{s}: missing operand\n", .{application_name});
-        std.os.exit(1);
+        std.posix.exit(1);
     } else if (positionals.len > 2 and !multiple) {
         print("{s}: Only name and suffix expected\n", .{application_name});
-        std.os.exit(1);
+        std.posix.exit(1);
     }
 
     if (positionals.len == 2 and !multiple) {
@@ -86,18 +86,18 @@ fn processFile(file: []const u8, suffix: ?[]const u8, newline: []const u8) void 
     var first_char: usize = undefined;
     var last_char: usize = undefined;
     if (file[file.len - 1] == '/') {
-        var last_non_slash: ?usize = strings.lastNonIndexOf(file, '/');
+        const last_non_slash: ?usize = strings.lastNonIndexOf(file, '/');
         if (last_non_slash == null) {
             print("/{s}", .{newline});
             return;
         } else {
             last_char = last_non_slash.?;
-            var next_slash = strings.lastIndexOf(file[0..last_char+1], '/');
+            const next_slash = strings.lastIndexOf(file[0..last_char+1], '/');
             if (next_slash == null) first_char = 0 else first_char = next_slash.? + 1;
             stripSuffix(file[first_char..last_char+1], suffix, newline);
         }
     } else {
-        var next_slash = strings.lastIndexOf(file[0..file.len], '/');
+        const next_slash = strings.lastIndexOf(file[0..file.len], '/');
         if (next_slash == null) {
             stripSuffix(file, suffix, newline);
         } else {

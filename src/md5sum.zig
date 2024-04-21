@@ -78,10 +78,10 @@ pub fn main() !void {
 
     if (args.flag("--help")) {
         print(help_message, .{});
-        std.os.exit(0);
+        std.posix.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
-        std.os.exit(0);
+        std.posix.exit(0);
     }
 
     const check = args.flag("-c");
@@ -97,12 +97,12 @@ pub fn main() !void {
 
     if (!check and (ignore_missing or quiet or status_only or strict or warn)) {
         print("When '--check' is not set, non-check flags may not be active.\n", .{});
-        std.os.exit(1);
+        std.posix.exit(1);
     }
     
     if (status_only and warn) {
         print("When '--status' is set, --warn may not be active.\n", .{});
-        std.os.exit(1);
+        std.posix.exit(1);
     }
 
     const positionals = args.positionals();
@@ -117,7 +117,7 @@ pub fn main() !void {
         }
     }
     if (!clean) {
-        std.os.exit(1);
+        std.posix.exit(1);
     }
 }
 
@@ -331,8 +331,8 @@ fn digest_to_hex_string(digest: *[HASH_BYTE_SIZE]u8, string: *[2 * HASH_BYTE_SIZ
     const range: [16]u8 = "0123456789abcdef".*;
     var i: usize = 0;
     while (i < digest.len) : (i += 1) {
-        var upper: u8 = digest[i] >> 4;
-        var lower: u8 = digest[i] & 15;
+        const upper: u8 = digest[i] >> 4;
+        const lower: u8 = digest[i] & 15;
 
         string[2 * i] = range[upper];
         string[(2 * i) + 1] = range[lower];

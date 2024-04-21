@@ -67,13 +67,13 @@ pub fn main() !void {
         
     if (args.flag("--help")) {
         print(help_message, .{});
-        std.os.exit(0);
+        std.posix.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
-        std.os.exit(0);
+        std.posix.exit(0);
     }
     
-    const uname_info = os.uname();
+    const uname_info = std.posix.uname();
     if (kernel_name) print("{s} ", .{uname_info.sysname});
     if (node_name) print("{s} ", .{uname_info.nodename});
     if (kernel_release) print("{s} ", .{uname_info.release});
@@ -90,7 +90,7 @@ pub fn main() !void {
 
 }
 
-fn printProcessor(uname_info: os.utsname) void {
+fn printProcessor(uname_info: std.posix.utsname) void {
     const file_contents = fs.cwd().readFileAlloc(default_allocator, "/proc/cpuinfo", 1 << 20) catch {
         print("{s} ", .{uname_info.machine});
         return;

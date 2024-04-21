@@ -91,7 +91,7 @@ pub fn joinStrings(input: [][]const u8, output: []u8) void {
 }
 
 pub fn insertStringAtIndex(dest: []u8, source: []const u8, start: *usize) void {
-    std.mem.copy(u8, dest[start.*..start.*+source.len], source);
+    std.mem.copyForwards(u8, dest[start.*..start.*+source.len], source);
     start.* += source.len;
 }
 
@@ -118,8 +118,8 @@ pub const StringBuilder = struct {
     }
 
     pub fn toOwnedSlice(self: *Self, allocator: std.mem.Allocator) ![]u8 {
-        var result = try allocator.alloc(u8, self.insertion_index);
-        std.mem.copy(u8, result, self.buffer[0..self.insertion_index]);
+        const result = try allocator.alloc(u8, self.insertion_index);
+        std.mem.copyForwards(u8, result, self.buffer[0..self.insertion_index]);
         return result;
     }
     

@@ -1,5 +1,5 @@
 const std = @import("std");
 
 pub fn main() !void {
-    std.os.exit(0);
+    std.posix.exit(0);
 }

@@ -72,7 +72,7 @@ pub fn getAbsolutePath(allocator: Allocator, path: []const u8, relative_to: ?[]c
         defer allocator.free(absolute_path_without_slash);
         var result = try allocator.alloc(u8, absolute_path_without_slash.len + 1);
         result[0] = '/';
-        std.mem.copy(u8, result[1..], absolute_path_without_slash[0..]);
+        std.mem.copyForwards(u8, result[1..], absolute_path_without_slash[0..]);
         return result;
     } else {
         return try std.fs.path.relative(allocator, relative_to.?, path);
@@ -94,8 +94,8 @@ pub fn followSymlink(allocator: Allocator, link: []const u8, target_must_exist: 
         if (next.len > 0 and next[0] != '/') {
             const lastSlash = strings.lastIndexOf(link_iterator, '/');
             if (lastSlash != null) {
-                std.mem.copy(u8, next_buffer[0..], link_iterator[0..lastSlash.?+1]);
-                std.mem.copy(u8, next_buffer[lastSlash.?+1..], next);
+                std.mem.copyForwards(u8, next_buffer[0..], link_iterator[0..lastSlash.?+1]);
+                std.mem.copyForwards(u8, next_buffer[lastSlash.?+1..], next);
                 next = next_buffer[0..lastSlash.?+next.len+1];
             }
         }
@@ -132,7 +132,7 @@ pub fn makeFifo(path: []const u8, mode: mode_t) MakeFifoError!void{
     const result = mkfifo(null_string, mode);
     default_allocator.free(null_string);
     if (result != 0) {
-        const errno = std.c.getErrno(result);
+        const errno = std.posix.errno(result);
         return switch (errno) {
             .ACCES => MakeFifoError.WritePermissionDenied,
             .DQUOT => MakeFifoError.QuotaReached,
@@ -166,7 +166,7 @@ pub fn chmodA(path: []const u8, mode: mode_t) ChmodError!void {
     const chmod_result = chmod(np_path, mode);
     default_allocator.free(np_path);
     if (chmod_result != 0) {
-        const errno = std.c.getErrno(chmod_result);
+        const errno = std.posix.errno(chmod_result);
         return switch (errno) {
             .ACCES, .PERM => ChmodError.AccessDenied,
             .FAULT => ChmodError.InvalidPath,

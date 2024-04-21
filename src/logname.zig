@@ -37,19 +37,19 @@ pub fn main() !void {
 
     if (args.flag("--help")) {
         print(help_message, .{});
-        std.os.exit(0);
+        std.posix.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
-        std.os.exit(0);
+        std.posix.exit(0);
     }
 
     const login = getLoginName();
     if (login == null) {
         print("{s}: no login name\n", .{application_name});
-        std.os.exit(1);
+        std.posix.exit(1);
     } else {
         print("{s}\n", .{login.?});
-        std.os.exit(0);
+        std.posix.exit(0);
     }
 
 }

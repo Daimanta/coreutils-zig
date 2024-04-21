@@ -42,20 +42,20 @@ pub fn main() !void {
 
     if (args.flag("--help")) {
         print(help_message, .{});
-        std.os.exit(0);
+        std.posix.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
-        std.os.exit(0);
+        std.posix.exit(0);
     } else if (args.flag("--silent") or args.flag("--quiet") or args.flag("-s")) {
         silent = true;
     }
 
     if (!silent) {
-        const stdin = os.STDIN_FILENO;
-        const check_tty = os.isatty(stdin);
+        const stdin = std.posix.STDIN_FILENO;
+        const check_tty = std.posix.isatty(stdin);
         if (!check_tty) {
             print("not a tty. Exiting", .{});
-            std.os.exit(1);
+            std.posix.exit(1);
         }
         print("{s}\n", .{ttyname(stdin)});
     }

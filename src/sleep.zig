@@ -45,10 +45,10 @@ pub fn main() !void {
 
     if (args.flag("--help")) {
         print(help_message, .{});
-        std.os.exit(0);
+        std.posix.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
-        std.os.exit(0);
+        std.posix.exit(0);
     }
 
     const arguments = try std.process.argsAlloc(allocator);
@@ -63,11 +63,11 @@ pub fn main() !void {
     for (arguments[1..]) |argument| {
         updateTimes(argument, &seconds, &nanos) catch {
             print("sleep: invalid time interval '{s}'\n", .{argument});
-            std.os.exit(1);
+            std.posix.exit(1);
         };
     }
 
-    os.nanosleep(seconds, nanos);
+    std.posix.nanosleep(seconds, nanos);
 }
 
 fn updateTimes(string: []const u8, seconds: *u64, nanos: *u64) !void {
@@ -88,7 +88,7 @@ fn updateTimes(string: []const u8, seconds: *u64, nanos: *u64) !void {
     try parseString(string[0..i+1], &double, &int);
     const timeType = getTimeType(string[i+1..]) catch {
         print("sleep: invalid time interval '{s}'\n", .{string});
-        std.os.exit(1);
+        std.posix.exit(1);
     };
     var add_seconds: u64 = undefined;
     var add_nanos: u64 = undefined;
@@ -117,8 +117,8 @@ fn getTimesFromDoubleAndTimeType(double: f64, time_type: TimeType, seconds: *u64
         multiplied_value = double * 60 * 60 * 24;
     }
 
-    var int_part: u64 = @intFromFloat(multiplied_value);
-    var nanos_part: u64 = @intFromFloat((multiplied_value-@as(f64, @floatFromInt(int_part))) * 1_000_000_000);
+    const int_part: u64 = @intFromFloat(multiplied_value);
+    const nanos_part: u64 = @intFromFloat((multiplied_value-@as(f64, @floatFromInt(int_part))) * 1_000_000_000);
     seconds.* = int_part;
     nanos.* = nanos_part;
 }

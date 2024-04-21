@@ -38,7 +38,7 @@ pub fn main() !void {
     var use_null = false;
 
     if (arguments.len == 2) {
-        var arg: []const u8 = arguments[1];
+        const arg: []const u8 = arguments[1];
         const help_arg: []const u8 = "--help";
         const version_arg: []const u8 = "--version";
         if (mem.eql(u8, arg, help_arg)) {
@@ -47,7 +47,7 @@ pub fn main() !void {
             current_mode = Mode.version;
         } else if (arguments.len == 1) {
             print("dirname: missing operand\nTry 'dirname --help' for more information.\n", .{});
-            std.os.exit(1);
+            std.posix.exit(1);
         } else {
             current_mode = Mode.main;
         }
@@ -60,7 +60,7 @@ pub fn main() !void {
                     use_null = true;
                 } else {
                     print("Unrecognized option '{s}'", .{arg});
-                    std.os.exit(1);
+                    std.posix.exit(1);
                 }
             }
         }
@@ -79,7 +79,7 @@ pub fn main() !void {
         }
     } else {
         print("Inconsistent state detected! Exiting.", .{});
-        std.os.exit(1);
+        std.posix.exit(1);
     }
 
 }

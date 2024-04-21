@@ -56,10 +56,10 @@ pub fn main() !void {
 
     if (args.flag("--help")) {
         print(help_message, .{});
-        std.os.exit(0);
+        std.posix.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
-        std.os.exit(0);
+        std.posix.exit(0);
     }
     
     const bourne = args.flag("-b") or args.flag("--bourne-shell");
@@ -69,20 +69,20 @@ pub fn main() !void {
     const flag_count = @intFromBool(bourne) + @intFromBool(csh) + @intFromBool(print_database);
     if (flag_count > 1) {
         print("A maximum of one of -b, -c, and -p is allowed. Exiting.\n", .{});
-        os.exit(1);
+        std.posix.exit(1);
     }
     
     const arguments = args.positionals();
     
     if (arguments.len > 1) {
         print("Either no argument, or one file needs to be specified. Exiting.\n", .{});
-        os.exit(1);
+        std.posix.exit(1);
     }
     
     if (arguments.len == 1) {
         try parseDircolorsFile(arguments[0], csh);
     } else {
-        const env = os.getenv(env_name);
+        const env = std.posix.getenv(env_name);
         if (env != null) {
             if (print_database) {
                 print("{s}", .{defaults});

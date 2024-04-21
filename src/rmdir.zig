@@ -9,11 +9,11 @@ const strings = @import("util/strings.zig");
 
 const Allocator = std.mem.Allocator;
 const mode_t = mode.mode_t;
-const DeleteDirError = os.DeleteDirError;
+const DeleteDirError = std.posix.DeleteDirError;
 
 const allocator = std.heap.page_allocator;
 const print = @import("util/print_tools.zig").print;
-const rmdir = os.rmdir;
+const rmdir = std.posix.rmdir;
 
 const application_name = "rmdir";
 
@@ -49,10 +49,10 @@ pub fn main() !void {
 
     if (args.flag("--help")) {
         print(help_message, .{});
-        std.os.exit(0);
+        std.posix.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
-        std.os.exit(0);
+        std.posix.exit(0);
     }
 
     const arguments = args.positionals();
@@ -68,7 +68,7 @@ pub fn main() !void {
     }
     
     if (!success) {
-        std.os.exit(1);
+        std.posix.exit(1);
     }
 }
 

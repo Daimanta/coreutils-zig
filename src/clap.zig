@@ -372,16 +372,16 @@ pub fn parseAndHandleErrors(
     exit_code: u8
     ) Args(Id, params) {
     return parse(Id, params, opt) catch {
-        const diag = opt.diagnostic orelse std.os.exit(exit_code);
+        const diag = opt.diagnostic orelse std.posix.exit(exit_code);
         if (diag.name.short == null and diag.name.long == null) {
             print("Non-option argument supplied which was not expected. Exiting.\n", .{});
-            std.os.exit(exit_code);
+            std.posix.exit(exit_code);
         } else if (diag.name.short != null) {
             print("{s}: unrecognized option '-{c}'\n", .{application_name, diag.name.short.?});
-            std.os.exit(exit_code);
+            std.posix.exit(exit_code);
         } else {
             print("{s}: unrecognized option '--{s}'\n", .{application_name, diag.name.long.?});
-            std.os.exit(exit_code);
+            std.posix.exit(exit_code);
         }
         unreachable;
     };

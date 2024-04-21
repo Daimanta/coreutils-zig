@@ -18,21 +18,21 @@ pub const OpenMode = enum(u8) {
 };
 
 
-pub fn openDynamicLibrary(path: []const u8, openMode: OpenMode) !*c_void {
+pub fn openDynamicLibrary(path: []const u8, openMode: OpenMode) !anyopaque {
     const pathN = try strings.toNullTerminatedPointer(path, default_allocator);
     defer default_allocator.free(pathN);
-    const result = dlopen(pathN, @enumToInt(openMode));
+    const result = dlopen(pathN, @intFromEnum(openMode));
     return result orelse error.LinkingFailed;
 }
 
-pub fn closeDynamicLibrary(handle: *c_void) !void {
+pub fn closeDynamicLibrary(handle: anyopaque) !void {
     const returned = dlclose(handle);
     if (returned != null) {
         return error.ClosingLinkFailed;
     }
 }
 
-pub fn linkDynamicLibrarySymbol(handle: *c_void, name: []const u8) !*c_void {
+pub fn linkDynamicLibrarySymbol(handle: anyopaque, name: []const u8) !anyopaque {
     const nameN = try strings.toNullTerminatedPointer(name, default_allocator);
     defer default_allocator.free(nameN);
     return dlsym(handle, nameN) orelse error.NameNotFound;

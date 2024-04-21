@@ -12,7 +12,7 @@ const users = @import("util/users.zig");
 const Allocator = std.mem.Allocator;
 
 const default_allocator = std.heap.page_allocator;
-const exit = std.os.exit;
+const exit = std.posix.exit;
 const print = @import("util/print_tools.zig").print;
 
 const application_name = "chmod";

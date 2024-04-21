@@ -55,10 +55,10 @@ pub fn main() !void {
 
     if (args.flag("--help")) {
         print(help_message, .{});
-        std.os.exit(0);
+        std.posix.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
-        std.os.exit(0);
+        std.posix.exit(0);
     }
 
     const arguments = args.positionals();
@@ -66,14 +66,14 @@ pub fn main() !void {
 
     if (arguments.len == 0 and adjustment_string == null) {
         print("{d}\n", .{getpriority(@intFromEnum(PriorityType.PRIO_PROCESS), 0)});
-        std.os.exit(0);
+        std.posix.exit(0);
     }
 
     var adjustment: i32 = 0;
     if (adjustment_string != null) {
         adjustment = std.fmt.parseInt(i32, adjustment_string.?, 10) catch {
             print("{s}: invalid number: '{s}'\n", .{application_name, adjustment_string.?});
-            std.os.exit(1);
+            std.posix.exit(1);
         };
     }
 
@@ -96,7 +96,7 @@ pub fn main() !void {
         } else {
             print("{s}: '{s}': Unknown error occurred: '{?}'\n", .{application_name, arguments[0], err});
         }
-        std.os.exit(1);
+        std.posix.exit(1);
     };
     _ = try child.kill();
 }

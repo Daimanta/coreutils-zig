@@ -45,10 +45,10 @@ pub fn main() !void {
 
     if (args.flag("--help")) {
         print(help_message, .{});
-        std.os.exit(0);
+        std.posix.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
-        std.os.exit(0);
+        std.posix.exit(0);
     }
 
     if (args.flag("-0") or args.flag("--null")) {
@@ -58,7 +58,7 @@ pub fn main() !void {
     const vals = args.positionals();
     if (vals.len > 0) {
         for (vals) |arg| {
-            const env = os.getenv(arg);
+            const env = std.posix.getenv(arg);
             if (env != null) {
                 print("{s}{s}", .{env.?, separator});
             }

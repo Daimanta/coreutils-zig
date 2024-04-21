@@ -32,7 +32,7 @@ pub fn main() !void {
 
         if (args.flag("--help")) {
             print(help_message, .{});
-            std.os.exit(0);
+            std.posix.exit(0);
         } else if (args.flag("--version")) {
             version.printVersionInfo(application_name);
         } else {
@@ -55,7 +55,7 @@ pub fn main() !void {
                 i += 1;
             }
 
-            var outputted_text = try allocator.alloc(u8, prepared_size);
+            const outputted_text = try allocator.alloc(u8, prepared_size);
             strings.joinStrings(arguments, outputted_text);
 
             while(true) {

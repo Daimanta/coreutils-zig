@@ -34,7 +34,7 @@ pub const PriorityType = enum(u8) {
 pub fn setHostname(name: []const u8) SetHostnameError!void {
     const result = linux.syscall2(set_hostname_syscall, @intFromPtr(&name[0]), name.len);
     if (result != 0) {
-        const errno = linux.getErrno(result);
+        const errno = std.posix.errno(result);
         return switch (errno) {
             .PERM => SetHostnameError.AccessDenied,
             .FAULT => SetHostnameError.InvalidAddress,

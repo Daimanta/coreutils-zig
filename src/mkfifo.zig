@@ -51,10 +51,10 @@ pub fn main() !void {
 
     if (args.flag("--help")) {
         print(help_message, .{});
-        std.os.exit(0);
+        std.posix.exit(0);
     } else if (args.flag("--version")) {
         version.printVersionInfo(application_name);
-        std.os.exit(0);
+        std.posix.exit(0);
     }
 
     const arguments = args.positionals();
@@ -68,7 +68,7 @@ pub fn main() !void {
     
     if (default_selinux_context and special_selinux_context != null) {
         print("SELinux context cannot be both default and specific. Exiting.\n", .{});
-        std.os.exit(1);
+        std.posix.exit(1);
     }   
     
     if (mode_string != null) {
@@ -77,7 +77,7 @@ pub fn main() !void {
                 mode.ModeError.InvalidModeString => print("Invalid mode. Exiting.\n", .{}),
                 mode.ModeError.UnknownError => print("Unknown mode error. Exiting.\n", .{}),
             }
-            std.os.exit(1);
+            std.posix.exit(1);
         };
     }
 
@@ -100,7 +100,7 @@ pub fn main() !void {
     }
     
     if (!success) {
-        std.os.exit(1);
+        std.posix.exit(1);
     }
 }
 
