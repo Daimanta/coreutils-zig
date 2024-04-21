@@ -35,10 +35,12 @@ pub fn ComptimeClap(
         }};
     }
 
+    const SingleOptionsType = std.PackedIntArray(u1, single_options);
+
     return struct {
         multi_options: [multi_options][]const []const u8,
         single_options: [single_options][]const u8,
-        single_options_is_set: std.PackedIntArray(u1, single_options),
+        single_options_is_set: SingleOptionsType,
         flags: std.PackedIntArray(u1, flags),
         pos: []const []const u8,
         allocator: mem.Allocator,
@@ -54,13 +56,14 @@ pub fn ComptimeClap(
             var res = @This(){
                 .multi_options = .{undefined} ** multi_options,
                 .single_options = .{undefined} ** single_options,
-                .single_options_is_set = std.PackedIntArray(u1, single_options).init(
-                    .{0} ** single_options,
-                ),
-                .flags = std.PackedIntArray(u1, flags).init(.{0} ** flags),
+                .single_options_is_set = .{.bytes = undefined},
+                .flags = std.PackedIntArray(u1, flags).initAllTo(0),
                 .pos = undefined,
                 .allocator = allocator,
             };
+
+            res.single_options_is_set = SingleOptionsType.initAllTo(0);
+
             var stream = clap.StreamingClap(usize, @typeInfo(@TypeOf(iter)).Pointer.child){
                 .params = converted_params,
                 .iter = iter,

@@ -77,7 +77,7 @@ pub fn main() !void {
         };
     }
 
-    var effective_niceness: i32 = std.math.clamp(adjustment, system.MAXIMAL_NICENESS, system.MINIMAL_NICENESS);
+    const effective_niceness: i32 = std.math.clamp(adjustment, system.MAXIMAL_NICENESS, system.MINIMAL_NICENESS);
 
     var child = ChildProcess.init(arguments[0..], allocator);
     try child.spawn();

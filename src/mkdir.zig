@@ -9,11 +9,11 @@ const strings = @import("util/strings.zig");
 
 const Allocator = std.mem.Allocator;
 const mode_t = mode.mode_t;
-const MakeDirError = os.MakeDirError;
+const MakeDirError = std.posix.MakeDirError;
 const OpenError = fs.Dir.OpenError;
 
 const allocator = std.heap.page_allocator;
-const mkdir = os.mkdir;
+const mkdir = std.posix.mkdir;
 const print = @import("util/print_tools.zig").print;
 
 const application_name = "mkdir";

@@ -81,7 +81,7 @@ pub fn main() !void {
     const separator = if (zero) "\x00" else "\n";
     
     const errors = checkInconsistencies(must_exist, may_exist, physical, strip, relative_to, relative_base);
-    if (errors) os.exit(1);
+    if (errors) std.posix.exit(1);
     
     const positionals = args.positionals();
     

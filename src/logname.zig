@@ -11,6 +11,7 @@ const Allocator = std.mem.Allocator;
 
 const allocator = std.heap.page_allocator;
 const print = @import("util/print_tools.zig").print;
+const exit = std.posix.exit;
 
 const application_name = "logname";
 
@@ -24,6 +25,7 @@ const help_message =
 ;
 
 pub extern fn getlogin() callconv(.C) [*:0]u8;
+pub extern fn getlogin_r(buf: [*:0]u8, bufsize: usize) callconv(.C) c_int;
 
 pub fn main() !void {
     const params = comptime [_]clap.Param(clap.Help){
@@ -43,17 +45,17 @@ pub fn main() !void {
         std.posix.exit(0);
     }
 
-    const login = getLoginName();
-    if (login == null) {
-        print("{s}: no login name\n", .{application_name});
-        std.posix.exit(1);
-    } else {
-        print("{s}\n", .{login.?});
-        std.posix.exit(0);
-    }
-
+    printLoginNameMessage();
 }
 
-fn getLoginName() ?[]u8 {
-    return strings.convertOptionalSentinelString(getlogin());
+fn printLoginNameMessage() void {
+    const stringPointer: [*:0]u8 = undefined;
+    const err: c_int = getlogin_r(stringPointer, 1 << 8);
+    if (err != 0) {
+        std.debug.print("{s}\n", .{"logname: no login name"});
+        exit(1);
+    } else {
+        print("{s}\n", .{strings.convertOptionalSentinelString(stringPointer).?});
+        exit(0);
+    }
 }
