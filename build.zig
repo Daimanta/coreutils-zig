@@ -5,8 +5,8 @@ const Builder = std.Build;
 
 pub fn build(b: *Builder) void {
     const current_zig_version = @import("builtin").zig_version;
-    if (current_zig_version.major != 0 or current_zig_version.minor < 12) {
-        std.debug.print("This project does not compile with a Zig version <0.12.x. Exiting.", .{});
+    if (current_zig_version.major != 0 or current_zig_version.minor < 13) {
+        std.debug.print("This project does not compile with a Zig version <0.13.x. Exiting.", .{});
         std.os.exit(1);
     }
 
@@ -97,7 +97,7 @@ pub fn build(b: *Builder) void {
 }
 
 fn addExe(b: *Builder, target: std.Build.ResolvedTarget, comptime name: []const u8) *Builder.Step.Compile {
-    const exe = b.addExecutable(.{ .name = name, .target = target, .root_source_file = .{ .path = "src/" ++ name ++ ".zig" }, .optimize = .ReleaseSafe, .version = .{ .major = version.major, .minor = version.minor, .patch = version.patch } });
+    const exe = b.addExecutable(.{ .name = name, .target = target, .root_source_file = b.path("src/" ++ name ++ ".zig"), .optimize = .ReleaseSafe, .version = .{ .major = version.major, .minor = version.minor, .patch = version.patch } });
     b.default_step.dependOn(&exe.step);
     b.installArtifact(exe);
     return exe;

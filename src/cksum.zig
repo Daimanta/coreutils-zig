@@ -80,7 +80,7 @@ fn sumFile(file_path: []const u8) void {
         return;
     };
     const file_size = file.getEndPos() catch unreachable;
-    var algorithm = std.hash.crc.Crc32WithPoly(@as(std.hash.crc.Polynomial, @enumFromInt(0x04C11DB7))).init();
+    var algorithm = std.hash.crc.Crc32Cksum.init();
     const buffer_size: usize = 1 << 20;
     var buffer: [buffer_size]u8 = undefined;
     segments = file_size / buffer_size;

@@ -7,7 +7,7 @@ const clap = @import("clap.zig");
 const version = @import("util/version.zig");
 const system = @import("util/system.zig");
 
-const ChildProcess = std.ChildProcess;
+const ChildProcess = std.process.Child;
 const Allocator = std.mem.Allocator;
 const PriorityType = system.PriorityType;
 const SpawnError = ChildProcess.SpawnError;
