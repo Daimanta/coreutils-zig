@@ -7,12 +7,13 @@ pub const patch: u16 = 1;
 const print = @import("print_tools.zig").print;
 
 pub fn printVersionInfo(name: []const u8) void {
-    print("{s} (Zig coreutils) {d}.{d}.{d}\n{s}", .{name, major, minor, patch, license_info});
+    print("{s} (Zig coreutils) {d}.{d}.{d}\n{s}\n", .{name, major, minor, patch, license_info});
 }
 
 pub const license_info =
-\\Copyright (C) 2021 Léon van der Kaap
+\\Copyright (C) 2024 Léon van der Kaap
 \\License GPLv3: GNU GPL version 3 <https://gnu.org/licenses/gpl.html>.
 \\This is free software: you are free to change and redistribute it.
 \\There is NO WARRANTY, to the extent permitted by law.
+
 ;

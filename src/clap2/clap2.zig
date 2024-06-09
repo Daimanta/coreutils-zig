@@ -1,0 +1,247 @@
+const std = @import("std");
+
+pub const ValueType = enum {
+    none,
+    one,
+    many,
+};
+
+pub const Argument = struct {
+    shorts: ?[]const u8 = null,
+    longs: ?[]const []const u8 = null,
+    type: ValueType = .none,
+    allow_none: bool = false
+};
+
+pub const ArgValue = struct {
+    matched: bool = false,
+    singleValue: ?[]const u8 = null,
+    multiValue: ?[][]const u8 = null
+};
+
+pub const ValuePair = struct {
+    argument: Argument,
+    value: ArgValue
+};
+
+pub const Parser = struct {
+    allocator: std.heap.ArenaAllocator,
+    internal_allocator: std.mem.Allocator,
+    pairs: []ValuePair,
+    positionals: [][]const u8,
+
+    const Self = @This();
+    pub fn init(arguments: []const Argument) Self{
+        var result = Self{.allocator = std.heap.ArenaAllocator.init(std.heap.page_allocator), .internal_allocator = undefined, .pairs = undefined, .positionals = undefined};
+        result.internal_allocator = result.allocator.allocator();
+        result.pairs = result.internal_allocator.alloc(ValuePair, arguments.len) catch {
+            std.debug.print("Error!'\n", .{});
+            std.posix.exit(1);
+        };
+        for (0..arguments.len) |i| {
+            result.pairs[i] = .{.argument = arguments[i], .value = .{}};
+        }
+        construct_values(&result) catch {
+            std.debug.print("Error!'\n", .{});
+            std.posix.exit(1);
+        };
+        return result;
+    }
+
+    pub fn flag(self: *const Self, reference: []const u8) bool {
+        const matched = self.match(reference);
+        if (matched != null) {
+            return matched.?.value.matched;
+        } else {
+            std.debug.print("{s}: Argument not found!\n", .{reference});
+            std.posix.exit(1);
+        }
+        return false;
+    }
+
+    pub fn option(self: *const Self, reference: []const u8) ?[][]const u8 {
+        const matched = self.match(reference);
+        if (matched != null) {
+            const singleValue = matched.?.value.singleValue;
+            if (singleValue != null) {
+                const result = self.internal_allocator.alloc([]const u8, 1) catch unreachable;
+                result[0] = singleValue.?;
+                return result;
+            } else if (matched.?.argument.allow_none) {
+                return self.internal_allocator.alloc([]const u8, 0) catch unreachable;
+            } else {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    pub fn options(self: *const Self, reference: []const u8) ?[][]const u8 {
+        const matched = self.match(reference);
+        if (matched != null) {
+            return matched.?.value.multiValue;
+        }
+        return null;
+    }
+
+    fn match(self: *const Self, reference: []const u8) ?*ValuePair {
+        if (reference.len == 0) {
+            std.debug.print("Error!'\n", .{});
+            std.posix.exit(1);
+        } else {
+            for (self.pairs) |*pair| {
+                var matched = reference.len == 1 and pair.argument.shorts != null and std.mem.indexOfScalar(u8, pair.argument.shorts.?, reference[0]) != null;
+                if (!matched and reference.len > 1 and pair.argument.longs != null) {
+                    for (pair.argument.longs.?) |str| {
+                        if (std.mem.eql(u8, str, reference)) {
+                            matched = true;
+                            break;
+                        }
+                    }
+                }
+                if (matched) {
+                    return pair;
+                }
+            }
+            return null;
+        }
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.allocator.deinit();
+    }
+
+    fn construct_values(self: *Self) !void {
+        const arguments = try std.process.argsAlloc(self.allocator.allocator());
+        if (arguments.len == 1) {
+            self.positionals = try self.allocator.allocator().alloc([]const u8, 0);
+            return;
+        }
+
+        var positionalsArrayList = std.ArrayList([]const u8).init(std.heap.page_allocator);
+        defer positionalsArrayList.deinit();
+
+        var i: usize = 1;
+        while (i < arguments.len): (i += 1) {
+            const arg = arguments[i];
+            if (std.mem.startsWith(u8, arg, "--")) {
+                if (arg.len == 2) {
+                    std.debug.print("Empty argument '--' found.\n", .{});
+                    std.posix.exit(1);
+                }
+                var matched = self.match(arg[2..]);
+                if (matched == null) {
+                    std.debug.print("Unrecognized flag '{s}'\n", .{arg});
+                    std.posix.exit(1);
+                } else {
+                    const allowNone = matched.?.argument.allow_none;
+                    if (matched.?.argument.type == .none) {
+                        matched.?.value.matched = true;
+                    } else if (matched.?.argument.type == .one) {
+                        const next = getNextAsPositional(arguments, i);
+                        if (!allowNone and next == null) {
+                            std.debug.print("Expected an option for '{s}' but received none.\n", .{arg});
+                            std.posix.exit(1);
+                        } else if (next != null) {
+                            matched.?.value.singleValue = next;
+                        }
+                    } else if (matched.?.argument.type == .many) {
+                        var next = getNextAsPositional(arguments, i);
+                        if (!allowNone and next == null) {
+                            std.debug.print("Expected an option for '{s}' but received none.\n", .{arg});
+                            std.posix.exit(1);
+                        } else if (next != null) {
+                            var multiList = std.ArrayList([]const u8).init(std.heap.page_allocator);
+                            defer multiList.deinit();
+                            while (next != null) {
+                                try multiList.append(next.?);
+                                i += 1;
+                                next = getNextAsPositional(arguments, i);
+                            }
+                            matched.?.value.multiValue = try multiList.toOwnedSlice();
+                        }
+                    }
+                }
+            } else if (std.mem.startsWith(u8, arg, "-") and arg.len > 1) {
+                if (arg.len > 2) {
+                    var j: usize = 1;
+                    while (j < arg.len - 1): (j += 1) {
+                        var matched = self.match(arg[j..j+1]);
+                        if (matched == null) {
+                            std.debug.print("Unrecognized flag '{s}'\n", .{arg[j..j+1]});
+                            std.posix.exit(1);
+                        }
+                        const allowNone = matched.?.argument.allow_none;
+                        if (matched.?.argument.type == .none) {
+                            matched.?.value.matched = true;
+                        } else if (!allowNone){
+                            std.debug.print("Expected an option for '{s}' but received none.\n", .{arg[j..j+1]});
+                            std.posix.exit(1);
+                        }
+                    }
+                }
+                const last_arg = arg[arg.len-1..];
+                var matched = self.match(last_arg);
+                if (matched == null) {
+                    std.debug.print("Unrecognized flag '{s}'\n", .{arg});
+                    std.posix.exit(1);
+                } else {
+                    const allowNone = matched.?.argument.allow_none;
+                    if (matched.?.argument.type == .none) {
+                        matched.?.value.matched = true;
+                    } else if (matched.?.argument.type == .one) {
+                        const next = getNextAsPositional(arguments, i);
+                        if (!allowNone and next == null) {
+                            std.debug.print("Expected an option for '{s}' but received none.\n", .{arg});
+                            std.posix.exit(1);
+                        } else if (next != null) {
+                            matched.?.value.singleValue = next;
+                        }
+                    } else if (matched.?.argument.type == .many) {
+                        var next = getNextAsPositional(arguments, i);
+                        if (!allowNone and next == null) {
+                            std.debug.print("Expected an option for '{s}' but received none.\n", .{arg});
+                            std.posix.exit(1);
+                        } else if (next != null) {
+                            var multiList = std.ArrayList([]const u8).init(std.heap.page_allocator);
+                            defer multiList.deinit();
+                            while (next != null) {
+                                try multiList.append(next.?);
+                                i += 1;
+                                next = getNextAsPositional(arguments, i);
+                            }
+                            matched.?.value.multiValue = try multiList.toOwnedSlice();
+                        }
+                    }
+                }
+            } else {
+                try positionalsArrayList.append(arg);
+            }
+        }
+        self.positionals = try positionalsArrayList.toOwnedSlice();
+    }
+
+    fn getNextAsPositional(arguments: [][]const u8, index: usize) ?[]const u8 {
+        if (index >= arguments.len - 1) {
+            return null;
+        }
+        if (isPositional(arguments[index + 1])) {
+            return arguments[index + 1];
+        } else {
+            return null;
+        }
+    }
+
+    fn isPositional(str: []const u8) bool {
+        return str.len == 1 or !std.mem.startsWith(u8, str, "-");
+    }
+};
+
+
+
+test "a" {
+    const args: []const Argument = &[_]Argument{.{.shorts = "abc", .longs = &[_][]const u8{"foo", "bar"}, .type = .none}};
+    const parser = Parser.init(args);
+    _ = parser;
+}
+
