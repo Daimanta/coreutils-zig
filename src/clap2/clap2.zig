@@ -149,25 +149,18 @@ pub const Parser = struct {
                     std.debug.print("Unrecognized flag '{s}'\n", .{arg});
                     std.posix.exit(1);
                 } else {
-                    try self.handleMatch(matched.?, arguments, &i);
+                    try self.handleMatch(matched.?, arguments, &i, true);
                 }
             } else if (std.mem.startsWith(u8, arg, "-") and arg.len > 1) {
                 if (arg.len > 2) {
                     var j: usize = 1;
                     while (j < arg.len - 1): (j += 1) {
-                        var matched = self.match(arg[j..j+1]);
+                        const matched = self.match(arg[j..j+1]);
                         if (matched == null) {
                             std.debug.print("Unrecognized flag '{s}'\n", .{arg[j..j+1]});
                             std.posix.exit(1);
                         }
-                        matched.?.value.matched = true;
-                        const allowNone = matched.?.argument.allow_none;
-                        if (matched.?.argument.type == .none) {
-                            matched.?.value.matched = true;
-                        } else if (!allowNone){
-                            std.debug.print("Expected an option for '{s}' but received none.\n", .{arg[j..j+1]});
-                            std.posix.exit(1);
-                        }
+                        try self.handleMatch(matched.?, arguments, &i, false);
                     }
                 }
                 const last_arg = arg[arg.len-1..];
@@ -176,7 +169,7 @@ pub const Parser = struct {
                     std.debug.print("Unrecognized flag '{s}'\n", .{arg});
                     std.posix.exit(1);
                 } else {
-                    try self.handleMatch(matched.?, arguments, &i);
+                    try self.handleMatch(matched.?, arguments, &i, true);
                 }
             } else {
                 try positionalsArrayList.append(arg);
@@ -200,20 +193,36 @@ pub const Parser = struct {
         return str.len == 1 or !std.mem.startsWith(u8, str, "-");
     }
 
-    fn handleMatch(self: *Self, matched: *ValuePair, arguments: [][]const u8, i: *usize) !void {
+    fn handleMatch(self: *Self, matched: *ValuePair, arguments: [][]const u8, i: *usize, look_forward: bool) !void {
         const arg = arguments[i.*];
         matched.value.matched = true;
         const allowNone = matched.argument.allow_none;
         if (matched.argument.type == .one) {
             const next = getNextAsPositional(arguments, i.*);
+            if (!look_forward and !allowNone) {
+                std.debug.print("Expected an option for '{s}' but received none.\n", .{arg});
+                std.posix.exit(1);
+            }
+            if (!look_forward) {
+                return;
+            }
             if (!allowNone and next == null) {
                 std.debug.print("Expected an option for '{s}' but received none.\n", .{arg});
                 std.posix.exit(1);
             } else if (next != null) {
                 matched.value.singleValue = next;
+                i.* += 1;
             }
         } else if (matched.argument.type == .many) {
             var next = getNextAsPositional(arguments, i.*);
+            if (!look_forward and !allowNone) {
+                std.debug.print("Expected an option for '{s}' but received none.\n", .{arg});
+                std.posix.exit(1);
+            }
+            if (!look_forward) {
+                matched.value.multiValue = try self.allocator.allocator().alloc([]const u8, 0);
+                return;
+            }
             if (!allowNone and next == null) {
                 std.debug.print("Expected an option for '{s}' but received none.\n", .{arg});
                 std.posix.exit(1);

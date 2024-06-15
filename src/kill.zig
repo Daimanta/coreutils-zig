@@ -12,7 +12,11 @@ const Allocator = std.mem.Allocator;
 const LinkError = os.LinkError;
 
 const default_allocator = std.heap.page_allocator;
+const exit = std.posix.exit;
 const print = @import("util/print_tools.zig").print;
+const println = @import("util/print_tools.zig").println;
+const pprint = @import("util/print_tools.zig").pprint;
+const pprintln = @import("util/print_tools.zig").pprintln;
 const application_name = "kill";
 
 const help_message =
@@ -52,10 +56,10 @@ pub fn main() !void {
 
     if (parser.flag("help")) {
         print(help_message, .{});
-        std.posix.exit(0);
+        exit(0);
     } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
-        std.posix.exit(0);
+        exit(0);
     }
 
     const list = parser.options("l");
@@ -64,14 +68,19 @@ pub fn main() !void {
 
     if (list != null and signal_opt != null) {
         print("-l and -s cannot be combined.\n", .{});
-        std.posix.exit(1);
+        exit(1);
     }
 
     if (list != null) {
         list_signals(list.?, table);
     } else {
         const processes: []const u32 = &[1]u32{2};
-        send_signal(signal_opt.?[0], processes);
+        var signal = "SIGTERM";
+        signal = signal;
+        if (signal_opt != null) {
+
+        }
+        send_signal(signal, processes);
     }
 
 }
@@ -90,7 +99,7 @@ fn list_signals(list: [][]const u8, table: bool) void {
             var i: usize = 0;
             while (i < SIGNALS.len): (i += 1) {
                 const signal = SIGNALS[i];
-                print("{d}) {s}", .{i, signal});
+                print("{d}) {s}", .{i+1, signal});
                 var used_length = 1 + 2 + signal.len;
                 if (i >= 10) {
                     used_length += 1;
@@ -118,7 +127,44 @@ fn list_signals(list: [][]const u8, table: bool) void {
 }
 
 fn print_signal(signal: []const u8) void {
-    _ = signal;
+    var temp: u32 = 0;
+    var is_number: bool = false;
+    if (std.fmt.parseInt(u32, signal, 10)) |num| {
+        temp = num;
+        is_number = true;
+    } else |_| {}
+    if (is_number) {
+        const matched_signal = SIGNALS[@as(usize, temp - 1)];
+        println("{s}", .{matched_signal[3..]});
+    } else {
+        const uppercased = std.ascii.allocUpperString(default_allocator, signal) catch {
+            pprintln("Error while converting signal");
+            exit(1);
+        };
+        defer default_allocator.free(uppercased);
+
+        var matched: usize = 255;
+        if (std.mem.startsWith(u8, uppercased, "SIG")) {
+            for (SIGNALS, 0..) |std_sig, i| {
+                if (std.mem.eql(u8, std_sig, signal)) {
+                    matched = i;
+                    break;
+                }
+            }
+        } else {
+            for (SIGNALS, 0..) |std_sig, i| {
+                if (std.mem.eql(u8, std_sig[3..], signal)) {
+                    matched = i;
+                    break;
+                }
+            }
+        }
+        if (matched == 255) {
+            println("Invalid signal '{s}'", .{signal});
+            exit(1);
+        }
+        println("{d}", .{matched + 1});
+    }
 }
 
 fn send_signal(signal: []const u8, processes:[]const u32) void {
