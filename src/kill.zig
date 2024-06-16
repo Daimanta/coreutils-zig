@@ -13,6 +13,7 @@ const LinkError = os.LinkError;
 
 const default_allocator = std.heap.page_allocator;
 const exit = std.posix.exit;
+const getErrnoValue = @import("util/system.zig").getErrnoValue;
 const print = @import("util/print_tools.zig").print;
 const println = @import("util/print_tools.zig").println;
 const pprint = @import("util/print_tools.zig").pprint;
@@ -176,10 +177,9 @@ fn send_signal(signal: []const u8, processes:[][]const u8) void {
     for (processes) |process| {
         if (std.fmt.parseInt(i32, process, 10)) |num| {
             const result = std.os.linux.kill(num, signal_number.?);
-            const signed: isize = @bitCast(result);
             if (result != 0) {
-                const enm: std.posix.E = @enumFromInt(signed * -1);
-                switch (enm) {
+                const errno = getErrnoValue(result);
+                switch (errno) {
                     .INVAL => {
                         println("Invalid signal '{d}'", .{signal_number.?});
                     },

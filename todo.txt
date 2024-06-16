@@ -2,7 +2,6 @@
     263 runcon.c
     278 tee.c
     280 mknod.c
-    314 kill.c
     325 unexpand.c
     350 mktemp.c
     373 rm.c

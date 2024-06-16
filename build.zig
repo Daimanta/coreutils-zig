@@ -28,6 +28,7 @@ pub fn build(b: *Builder) void {
     const hostid = addExe(b,target, "hostid");
     const hostname = addExe(b, target,"hostname");
     const id = addExe(b,target, "id");
+    const kill = addExe(b,target, "kill");
     const link = addExe(b, target,"link");
     const logname = addExe(b, target,"logname");
     const md5sum = addExe(b,target, "md5sum");
@@ -61,6 +62,7 @@ pub fn build(b: *Builder) void {
     _ = false_app;
     _ = fold;
     _ = hostname;
+    _ = kill;
     _ = link;
     _ = md5sum;
     _ = pwd;

@@ -7,3 +7,4 @@
 /testfiles
 zig-cache
 *.bak
+/*.o

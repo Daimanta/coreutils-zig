@@ -60,3 +60,8 @@ pub fn setPriority(which: PriorityType, who: id_t, prio: c_int) SetPriorityError
     }
     return;
 }
+
+pub fn getErrnoValue(input: usize) std.posix.E {
+    const signed: isize = @bitCast(input);
+    return @enumFromInt(signed * -1);
+}
