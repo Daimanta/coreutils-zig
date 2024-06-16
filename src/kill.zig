@@ -43,6 +43,8 @@ const SIGNALS = [_][]const u8{"SIGHUP", "SIGINT", "SIGQUIT", "SIGILL", "SIGTRAP"
     "SIGSTOP", "SIGTSTP", "SIGTTIN", "SIGTTOU", "SIGURG", "SIGXCPU", "SIGXFSZ", "SIGVTALRM", "SIGPROF", "SIGWINCH",
     "SIGIO", "SIGPWR", "SIGSYS"};
 
+const STANDARD_SIGNAL: []const u8 = "15"; //SIGTERM
+
 pub fn main() !void {
     const args: []const clap2.Argument = &[_]clap2.Argument{
         .{.shorts = null, .longs = &[_][]const u8{"help"}, .type = .none},
@@ -65,6 +67,7 @@ pub fn main() !void {
     const list = parser.options("l");
     const table = parser.flag("t");
     const signal_opt = parser.option("s");
+    const processes = parser.positionals;
 
     if (list != null and signal_opt != null) {
         print("-l and -s cannot be combined.\n", .{});
@@ -74,15 +77,12 @@ pub fn main() !void {
     if (list != null) {
         list_signals(list.?, table);
     } else {
-        const processes: []const u32 = &[1]u32{2};
-        var signal = "SIGTERM";
-        signal = signal;
+        var used_signal = STANDARD_SIGNAL;
         if (signal_opt != null) {
-
+            used_signal = signal_opt.?[0];
         }
-        send_signal(signal, processes);
+        send_signal(used_signal, processes);
     }
-
 }
 
 fn list_signals(list: [][]const u8, table: bool) void {
@@ -167,6 +167,75 @@ fn print_signal(signal: []const u8) void {
     }
 }
 
-fn send_signal(signal: []const u8, processes:[]const u32) void {
-    _ = signal; _ = processes;
+fn send_signal(signal: []const u8, processes:[][]const u8) void {
+    const signal_number = signal_from_string(signal);
+    if (signal_number == null) {
+        println("Invalid signal '{s}'", .{signal});
+    }
+
+    for (processes) |process| {
+        if (std.fmt.parseInt(i32, process, 10)) |num| {
+            const result = std.os.linux.kill(num, signal_number.?);
+            const signed: isize = @bitCast(result);
+            if (result != 0) {
+                const enm: std.posix.E = @enumFromInt(signed * -1);
+                switch (enm) {
+                    .INVAL => {
+                        println("Invalid signal '{d}'", .{signal_number.?});
+                    },
+                    .PERM => {
+                        println("Access denied to send signal to '{d}'", .{num});
+                    },
+                    .SRCH => {
+                        println("Process '{d}' not found", .{num});
+                    },
+                    else => {
+                        pprintln("Unknown error detected");
+                    }
+                }
+                exit(1);
+            }
+        } else |_| {
+            println("Invalid process '{s}'", .{process});
+        }
+    }
+}
+
+fn signal_from_string(signal: []const u8) ?i32 {
+    var temp: u32 = 0;
+    var is_number: bool = false;
+    if (std.fmt.parseInt(u32, signal, 10)) |num| {
+        temp = num;
+        is_number = true;
+    } else |_| {}
+    if (is_number) {
+        if (temp < 1 or temp > SIGNALS.len) {
+            return null;
+        }
+        return @intCast(temp);
+    } else {
+        const uppercased = std.ascii.allocUpperString(default_allocator, signal) catch {
+            pprintln("Error while converting signal");
+            exit(1);
+        };
+        defer default_allocator.free(uppercased);
+
+        var matched: usize = 255;
+        if (std.mem.startsWith(u8, uppercased, "SIG")) {
+            for (SIGNALS, 0..) |std_sig, i| {
+                if (std.mem.eql(u8, std_sig, signal)) {
+                    matched = i;
+                    return @intCast(matched + 1);
+                }
+            }
+        } else {
+            for (SIGNALS, 0..) |std_sig, i| {
+                if (std.mem.eql(u8, std_sig[3..], signal)) {
+                    matched = i;
+                    return @intCast(matched + 1);
+                }
+            }
+        }
+        return null;
+    }
 }
