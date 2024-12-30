@@ -4,6 +4,7 @@ const os = std.os;
 const linux = os.linux;
 
 const clap = @import("../clap.zig");
+const clap2 = @import("../clap2/clap2.zig");
 const fileinfo = @import("../util/fileinfo.zig");
 const mode_import = @import("../util/mode.zig");
 const strings = @import("../util/strings.zig");
@@ -30,7 +31,7 @@ const Verbosity = enum { QUIET, STANDARD, CHANGED, VERBOSE };
 
 const SymlinkTraversal = enum { NO, MAIN, ALL };
 
-const OwnershipOptions = struct { verbosity: Verbosity, dereference_main: bool, recursive: bool, symlink_traversal: SymlinkTraversal, preserve_root: bool, rfile_group: ?[]const u8, only_if_matching: ?[]const u8 };
+const OwnershipOptions = struct { verbosity: Verbosity, dereference_main: bool, recursive: bool, symlink_traversal: SymlinkTraversal, preserve_root: bool, rfile_group: ?[]const u8, only_if_matching: ?[]const u8, parser: clap2.Parser };
 
 pub const Program = enum { CHGRP, CHOWN, CHMOD };
 
@@ -52,90 +53,69 @@ const ChangeParams = struct {
     }
 };
 
-pub fn getParams(comptime program: Program) []const clap.Param(clap.Help) {
-    const result = switch (program) {
-        Program.CHGRP => [_]clap.Param(clap.Help){
-            clap.parseParam("--help") catch unreachable,
-            clap.parseParam("--version") catch unreachable,
-            clap.parseParam("-c, --changes") catch unreachable,
-            clap.parseParam("-f, --silent") catch unreachable,
-            clap.parseParam("--quiet") catch unreachable,
-            clap.parseParam("-v, --verbose") catch unreachable,
-            clap.parseParam("--dereference") catch unreachable,
-            clap.parseParam("-h, --no-redereference") catch unreachable,
-            clap.parseParam("--no-preserve-root") catch unreachable,
-            clap.parseParam("--preserve-root") catch unreachable,
-            clap.parseParam("--reference <STR>") catch unreachable,
-            clap.parseParam("-R, --recursive") catch unreachable,
-            clap.parseParam("-H") catch unreachable,
-            clap.parseParam("-L") catch unreachable,
-            clap.parseParam("-P") catch unreachable,
-            clap.parseParam("<STRING>") catch unreachable,
-        },
-        Program.CHOWN => [_]clap.Param(clap.Help){
-            clap.parseParam("--help") catch unreachable,
-            clap.parseParam("--version") catch unreachable,
-            clap.parseParam("-c, --changes") catch unreachable,
-            clap.parseParam("-f, --silent") catch unreachable,
-            clap.parseParam("--quiet") catch unreachable,
-            clap.parseParam("-v, --verbose") catch unreachable,
-            clap.parseParam("--dereference") catch unreachable,
-            clap.parseParam("-h, --no-redereference") catch unreachable,
-            clap.parseParam("--no-preserve-root") catch unreachable,
-            clap.parseParam("--preserve-root") catch unreachable,
-            clap.parseParam("--reference <STR>") catch unreachable,
-            clap.parseParam("--from <STR>") catch unreachable,
-            clap.parseParam("-R, --recursive") catch unreachable,
-            clap.parseParam("-H") catch unreachable,
-            clap.parseParam("-L") catch unreachable,
-            clap.parseParam("-P") catch unreachable,
-            clap.parseParam("<STRING>") catch unreachable,
-        },
-        Program.CHMOD => [_]clap.Param(clap.Help){
-            clap.parseParam("--help") catch unreachable,
-            clap.parseParam("--version") catch unreachable,
-            clap.parseParam("-c, --changes") catch unreachable,
-            clap.parseParam("-f, --silent") catch unreachable,
-            clap.parseParam("--quiet") catch unreachable,
-            clap.parseParam("-v, --verbose") catch unreachable,
-            clap.parseParam("--dereference") catch unreachable,
-            clap.parseParam("-h, --no-redereference") catch unreachable,
-            clap.parseParam("--no-preserve-root") catch unreachable,
-            clap.parseParam("--preserve-root") catch unreachable,
-            clap.parseParam("--reference <STR>") catch unreachable,
-            clap.parseParam("-R, --recursive") catch unreachable,
-            clap.parseParam("<STRING>") catch unreachable,
-        },
+pub fn getParams(comptime program: Program) []const clap2.Argument{
+    const baseArgs = [_]clap2.Argument{
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
+        clap2.Argument.FlagArgument("c", &[_][]const u8{"changes"}),
+        clap2.Argument.FlagArgument("f", &[_][]const u8{"silent"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"quiet"}),
+        clap2.Argument.FlagArgument("v", &[_][]const u8{"verbose"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"derefence"}),
+        clap2.Argument.FlagArgument("h", &[_][]const u8{"no-redereference"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"no-preserve-root"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"preserve-root"}),
+        clap2.Argument.FlagArgument("R", &[_][]const u8{"recursive"}),
+        clap2.Argument.OptionArgument(null, &[_][]const u8{"reference"}, false)
     };
-
-    return result[0..];
+    switch (program) {
+        Program.CHGRP => {
+            return baseArgs ++ &[_]clap2.Argument{
+                clap2.Argument.FlagArgument("H", null),
+                clap2.Argument.FlagArgument("L", null),
+                clap2.Argument.FlagArgument("P", null),
+            };
+        },
+        Program.CHOWN => {
+            return baseArgs ++ &[_]clap2.Argument{
+                clap2.Argument.FlagArgument("H", null),
+                clap2.Argument.FlagArgument("L", null),
+                clap2.Argument.FlagArgument("P", null),
+                clap2.Argument.OptionArgument(null, &[_][]const u8{"from"}, false),
+            };
+        },
+        Program.CHMOD => {
+            return baseArgs ++ &[_]clap2.Argument{};
+        }
+    }
+    unreachable;
 }
 
-pub fn getOwnershipOptions(comptime params: []const clap.Param(clap.Help), comptime application_name: []const u8, comptime help_message: []const u8, comptime program: Program) OwnershipOptions {
-    var diag = clap.Diagnostic{};
-    var args = clap.parseAndHandleErrors(clap.Help, params, .{ .diagnostic = &diag }, application_name, 1);
+pub fn getOwnershipOptions(comptime args: []const clap2.Argument, comptime application_name: []const u8, comptime help_message: []const u8, comptime program: Program) OwnershipOptions {
+    var parser = clap2.Parser.init(args);
+    defer parser.deinit();
 
-    if (args.flag("--help")) {
+    if (parser.flag("help")) {
         print(help_message, .{});
         exit(0);
-    } else if (args.flag("--version")) {
+    } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
         exit(0);
     }
 
-    const changed = args.flag("-c");
-    const quiet = args.flag("--quiet") or args.flag("-f");
-    const verbose = args.flag("-v");
-    const dereference = args.flag("--dereference");
-    const no_dereference = args.flag("-h");
-    const no_preserve_root = args.flag("--no-preserve-root");
-    const preserve_root = args.flag("--preserve-root");
-    const rfile_group = args.option("--reference");
-    const recursive = args.flag("-R");
-    const traverse_main_symlink = (program != Program.CHMOD) and args.flag("-H");
-    const traverse_all_symlinks = (program != Program.CHMOD) and args.flag("-L");
-    const no_traverse = (program != Program.CHMOD) and args.flag("-P");
-    const only_if_matching = if (program == Program.CHOWN) args.option("--from") else null;
+    const changed = parser.flag("c");
+    const quiet = parser.flag("quiet") or parser.flag("f");
+    const verbose = parser.flag("v");
+    const dereference = parser.flag("dereference");
+    const no_dereference = parser.flag("h");
+    const no_preserve_root = parser.flag("no-preserve-root");
+    const preserve_root = parser.flag("preserve-root");
+    const rfile_group = parser.option("reference");
+    const recursive = parser.flag("R");
+    const traverse_main_symlink = (program != Program.CHMOD) and parser.flag("H");
+    const traverse_all_symlinks = (program != Program.CHMOD) and parser.flag("L");
+    const no_traverse = (program != Program.CHMOD) and parser.flag("P");
+    const only_if_matching = if (program == Program.CHOWN) parser.option("from") else clap2.OptionValue{};
 
     checkInconsistencies(changed, quiet, verbose, dereference, no_dereference, no_preserve_root, preserve_root, traverse_main_symlink, traverse_all_symlinks, no_traverse);
 
@@ -152,7 +132,7 @@ pub fn getOwnershipOptions(comptime params: []const clap.Param(clap.Help), compt
     // Explict override possibility as both can be specified
     if (traverse_all_symlinks) symlink_traversal = SymlinkTraversal.ALL;
 
-    return OwnershipOptions{ .verbosity = verbosity, .dereference_main = dereference_main, .recursive = recursive, .symlink_traversal = symlink_traversal, .preserve_root = preserve_root, .rfile_group = rfile_group, .only_if_matching = only_if_matching };
+    return OwnershipOptions{ .verbosity = verbosity, .dereference_main = dereference_main, .recursive = recursive, .symlink_traversal = symlink_traversal, .preserve_root = preserve_root, .rfile_group = rfile_group.value, .only_if_matching = only_if_matching.value, .parser = parser };
 }
 
 fn traverseDir(path: []const u8, change_params: ChangeParams, verbosity: Verbosity, symlink_traversal: SymlinkTraversal, also_process_dir: bool, application_name: []const u8) void {

@@ -7,6 +7,7 @@ const testing = std.testing;
 const hash = std.crypto.hash;
 
 const clap = @import("clap.zig");
+const clap2 = @import("clap2/clap2.zig");
 const fileinfo = @import("util/fileinfo.zig");
 const version = @import("util/version.zig");
 

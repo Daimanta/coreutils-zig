@@ -4,6 +4,7 @@ const os = std.os;
 const io = std.io;
 
 const clap = @import("clap.zig");
+const clap2 = @import("clap2/clap2.zig");
 const version = @import("util/version.zig");
 const strings = @import("util/strings.zig");
 

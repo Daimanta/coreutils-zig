@@ -3,6 +3,7 @@ const fs = std.fs;
 const os = std.os;
 
 const clap = @import("clap.zig");
+const clap2 = @import("clap2/clap2.zig");
 const mode = @import("util/mode.zig");
 const version = @import("util/version.zig");
 const strings = @import("util/strings.zig");

@@ -5,6 +5,7 @@ const mem = std.mem;
 const users = @import("util/users.zig");
 
 const print = @import("util/print_tools.zig").print;
+const clap2 = @import("clap2/clap2.zig");
 
 const application_name = "whoami";
 

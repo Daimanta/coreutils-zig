@@ -4,6 +4,7 @@ const os = std.os;
 const linux = os.linux;
 
 const clap = @import("clap.zig");
+const clap2 = @import("clap2/clap2.zig");
 const fileinfo = @import("util/fileinfo.zig");
 const print_tools = @import("util/print_tools.zig");
 const printf = @import("util/printf.zig");

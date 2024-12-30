@@ -5,6 +5,7 @@ const io = std.io;
 const time = std.time;
 
 const clap = @import("clap.zig");
+const clap2 = @import("clap2/clap2.zig");
 const date_time = @import("util/datetime.zig");
 const fileinfo = @import("util/fileinfo.zig");
 const mode = @import("util/mode.zig");

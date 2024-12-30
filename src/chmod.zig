@@ -3,7 +3,6 @@ const fs = std.fs;
 const os = std.os;
 const linux = os.linux;
 
-const clap = @import("clap.zig");
 const file_ownership = @import("shared/file_ownership.zig");
 const mode = @import("util/mode.zig");
 const strings = @import("util/strings.zig");
@@ -42,12 +41,10 @@ const consider_group = false;
 const consider_mode = true;
 
 pub fn main() !void {
-    const params = comptime file_ownership.getParams(file_ownership.Program.CHMOD);
-    const ownership_options = file_ownership.getOwnershipOptions(params, application_name, help_message, file_ownership.Program.CHMOD);
+    const params = comptime file_ownership.getParams2(file_ownership.Program.CHMOD);
+    const ownership_options = file_ownership.getOwnershipOptions2(params, application_name, help_message, file_ownership.Program.CHMOD);
     var change_params = file_ownership.getChangeParams(ownership_options, application_name, consider_user, consider_group, consider_mode);
-    var diag = clap.Diagnostic{};
-    var args = clap.parseAndHandleErrors(clap.Help, params, .{ .diagnostic = &diag }, application_name, 1);
-    const positionals = args.positionals();
+    const positionals = ownership_options.parser.positionals();
     var start: usize = 1;
 
     if (positionals.len == 0) {

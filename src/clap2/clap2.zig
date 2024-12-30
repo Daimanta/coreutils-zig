@@ -10,7 +10,25 @@ pub const Argument = struct {
     shorts: ?[]const u8 = null,
     longs: ?[]const []const u8 = null,
     type: ValueType = .none,
-    allow_none: bool = false
+    allow_none: bool = false,
+
+    pub fn FlagArgument(shorts: ?[]const u8, longs: ?[]const []const u8) Argument {
+        return Argument{
+            .shorts = shorts,
+            .longs = longs,
+            .type = .none,
+            .allow_none = false
+        };
+    }
+
+    pub fn OptionArgument(shorts: ?[]const u8, longs: ?[]const []const u8, allow_none: bool) Argument {
+        return Argument{
+            .shorts = shorts,
+            .longs = longs,
+            .type = .one,
+            .allow_none = allow_none
+        };
+    }
 };
 
 pub const ArgValue = struct {
@@ -25,9 +43,9 @@ pub const ValuePair = struct {
 };
 
 pub const OptionValue = struct {
-    found: bool,
-    hasArgument: bool,
-    value: ?[]const u8
+    found: bool = false,
+    hasArgument: bool = false,
+    value: ?[]const u8 = null
 };
 
 pub const Parser = struct {

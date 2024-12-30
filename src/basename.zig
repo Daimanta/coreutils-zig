@@ -39,11 +39,11 @@ const help_message =
 
 pub fn main() !void {
     const args: []const clap2.Argument = &[_]clap2.Argument{
-        .{.shorts = null, .longs = &[_][]const u8{"help"}, .type = .none},
-        .{.shorts = null, .longs = &[_][]const u8{"version"}, .type = .none},
-        .{.shorts = "a", .longs = &[_][]const u8{"multiple"}, .type = .none},
-        .{.shorts = "s", .longs = &[_][]const u8{"suffix"}, .type = .one, .allow_none = false},
-        .{.shorts = "z", .longs = &[_][]const u8{"zero"}, .type = .none},
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
+        clap2.Argument.FlagArgument("a", &[_][]const u8{"multiple"}),
+        clap2.Argument.OptionArgument("s", &[_][]const u8{"suffix"}, false),
+        clap2.Argument.FlagArgument("z", &[_][]const u8{"zero"}),
     };
 
     var parser = clap2.Parser.init(args);

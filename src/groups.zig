@@ -5,6 +5,7 @@ const mem = std.mem;
 const uid = linux.uid_t;
 const gid = linux.gid_t;
 
+const clap2 = @import("clap2/clap2.zig");
 const version = @import("util/version.zig");
 const users = @import("util/users.zig");
 const strings = @import("util/strings.zig");

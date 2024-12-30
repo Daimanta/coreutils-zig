@@ -5,6 +5,7 @@ const io = std.io;
 const time = std.time;
 
 const clap = @import("clap.zig");
+const clap2 = @import("clap2/clap2.zig");
 const date_time = @import("util/datetime.zig");
 const fileinfo = @import("util/fileinfo.zig");
 const mode = @import("util/mode.zig");
@@ -127,8 +128,8 @@ pub fn main() !void {
         exit(1);
     }
 
-    var change_access_time = !change_only_modification_time;
-    var change_modification_time = !change_only_access_time;
+    const change_access_time = !change_only_modification_time;
+    const change_modification_time = !change_only_access_time;
 
     var reference_time_access: i128 = time.nanoTimestamp();
     var reference_time_mod: i128 = reference_time_access;
@@ -192,10 +193,10 @@ fn parseTimestamp(timestamp_string: []const u8) !date_time.LocalDatetime {
     }
 
     if (prepart.len > 12) return error.IncorrectFormat;
-    var month: u32 = parseInt(u32, prepart[prepart.len - 8.. prepart.len - 6], 10) catch return error.IncorrectFormat;
-    var day: u32 = parseInt(u32, prepart[prepart.len - 6.. prepart.len - 4], 10) catch return error.IncorrectFormat;
-    var hours: u32 = parseInt(u32, prepart[prepart.len - 4.. prepart.len - 2], 10) catch return error.IncorrectFormat;
-    var minutes: u32 = parseInt(u32, prepart[prepart.len - 2..], 10) catch return error.IncorrectFormat;
+    const month: u32 = parseInt(u32, prepart[prepart.len - 8.. prepart.len - 6], 10) catch return error.IncorrectFormat;
+    const day: u32 = parseInt(u32, prepart[prepart.len - 6.. prepart.len - 4], 10) catch return error.IncorrectFormat;
+    const hours: u32 = parseInt(u32, prepart[prepart.len - 4.. prepart.len - 2], 10) catch return error.IncorrectFormat;
+    const minutes: u32 = parseInt(u32, prepart[prepart.len - 2..], 10) catch return error.IncorrectFormat;
 
     if (prepart.len >= 10) {
         if (prepart.len == 12) {

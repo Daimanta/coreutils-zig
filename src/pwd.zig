@@ -3,6 +3,7 @@ const fs = std.fs;
 const os = std.os;
 
 const clap = @import("clap.zig");
+const clap2 = @import("clap2/clap2.zig");
 const version = @import("util/version.zig");
 
 const Allocator = std.mem.Allocator;
