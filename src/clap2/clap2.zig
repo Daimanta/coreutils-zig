@@ -27,11 +27,11 @@ pub const ValuePair = struct {
 pub const Parser = struct {
     allocator: std.heap.ArenaAllocator,
     pairs: []ValuePair,
-    positionals: [][]const u8,
+    _positionals: [][]const u8,
 
     const Self = @This();
     pub fn init(arguments: []const Argument) Self{
-        var result = Self{.allocator = std.heap.ArenaAllocator.init(std.heap.page_allocator), .pairs = undefined, .positionals = undefined};
+        var result = Self{.allocator = std.heap.ArenaAllocator.init(std.heap.page_allocator), .pairs = undefined, ._positionals = undefined};
         result.pairs = result.allocator.allocator().alloc(ValuePair, arguments.len) catch {
             std.debug.print("Error!'\n", .{});
             std.posix.exit(1);
@@ -62,19 +62,22 @@ pub const Parser = struct {
     }
 
     pub fn option(self: *Self, reference: []const u8) ?[][]const u8 {
-        const matched = self.match(reference);
-        if (matched != null) {
-            if (matched.?.argument.type != .one) {
+        const foundArgument = self.match(reference);
+        if (foundArgument != null) {
+            if (foundArgument.?.argument.type != .one) {
                 std.debug.print("{s}: 'option' can only be called on an argument with a single parameter.\n", .{reference});
                 std.posix.exit(1);
             }
 
-            const singleValue = matched.?.value.singleValue;
-            if (singleValue != null) {
+            const singleValue = foundArgument.?.value.singleValue;
+
+            if (!foundArgument.?.value.matched) {
+                return null;
+            } else if (singleValue != null) {
                 var result = self.allocator.allocator().alloc([]const u8, 1) catch unreachable;
                 result[0] = singleValue.?;
                 return result;
-            } else if (matched.?.argument.allow_none) {
+            } else if (foundArgument.?.argument.allow_none) {
                 return self.allocator.allocator().alloc([]const u8, 0) catch unreachable;
             } else {
                 return null;
@@ -96,6 +99,10 @@ pub const Parser = struct {
             return matched.?.value.multiValue;
         }
         return null;
+    }
+
+    pub fn positionals(self: *const Self) [][]const u8{
+        return self._positionals;
     }
 
     fn match(self: *const Self, reference: []const u8) ?*ValuePair {
@@ -129,7 +136,7 @@ pub const Parser = struct {
     fn construct_values(self: *Self) !void {
         const arguments = try std.process.argsAlloc(self.allocator.allocator());
         if (arguments.len == 1) {
-            self.positionals = try self.allocator.allocator().alloc([]const u8, 0);
+            self._positionals = try self.allocator.allocator().alloc([]const u8, 0);
             return;
         }
 
@@ -175,7 +182,7 @@ pub const Parser = struct {
                 try positionalsArrayList.append(arg);
             }
         }
-        self.positionals = try positionalsArrayList.toOwnedSlice();
+        self._positionals = try positionalsArrayList.toOwnedSlice();
     }
 
     fn getNextAsPositional(arguments: [][]const u8, index: usize) ?[]const u8 {
