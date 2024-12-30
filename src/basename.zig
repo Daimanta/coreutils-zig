@@ -4,7 +4,7 @@ const os = std.os;
 const linux = os.linux;
 const mem = std.mem;
 
-const clap = @import("clap.zig");
+const clap2 = @import("clap2/clap2.zig");
 const fileinfo = @import("util/fileinfo.zig");
 const strings = @import("util/strings.zig");
 const version = @import("util/version.zig");
@@ -38,33 +38,32 @@ const help_message =
 ;
 
 pub fn main() !void {
-    const params = comptime [_]clap.Param(clap.Help){
-        clap.parseParam("--help") catch unreachable,
-        clap.parseParam("--version") catch unreachable,
-        clap.parseParam("-a, --multiple") catch unreachable,
-        clap.parseParam("-s, --suffix <SUFF>") catch unreachable,
-        clap.parseParam("-z, --zero") catch unreachable,
-        clap.parseParam("<STRING>") catch unreachable,
+    const args: []const clap2.Argument = &[_]clap2.Argument{
+        .{.shorts = null, .longs = &[_][]const u8{"help"}, .type = .none},
+        .{.shorts = null, .longs = &[_][]const u8{"version"}, .type = .none},
+        .{.shorts = "a", .longs = &[_][]const u8{"multiple"}, .type = .none},
+        .{.shorts = "s", .longs = &[_][]const u8{"suffix"}, .type = .one, .allow_none = false},
+        .{.shorts = "z", .longs = &[_][]const u8{"zero"}, .type = .none},
     };
 
-    var diag = clap.Diagnostic{};
-    var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
+    var parser = clap2.Parser.init(args);
+    defer parser.deinit();
 
-    if (args.flag("--help")) {
+    if (parser.flag("help")) {
         print(help_message, .{});
         std.posix.exit(0);
-    } else if (args.flag("--version")) {
+    } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
         std.posix.exit(0);
     }
 
-    var multiple = (args.flag("-a") or args.flag("--multiple"));
-    const suffix = args.option("-s");
-    if (suffix != null) multiple = true;
-    const zero = (args.flag("-z") or args.flag("--zero"));
+    var multiple = (parser.flag("a") or parser.flag("multiple"));
+    const suffix = parser.option("s");
+    if (suffix.found) multiple = true;
+    const zero = (parser.flag("z") or parser.flag("zero"));
     const newline = if (zero) "\x00" else "\n";
 
-    const positionals = args.positionals();
+    const positionals = parser.positionals();
     if (positionals.len == 0) {
         print("{s}: missing operand\n", .{application_name});
         std.posix.exit(1);
@@ -77,7 +76,7 @@ pub fn main() !void {
         processFile(positionals[0], positionals[1], newline);
     } else {
         for (positionals) |pos| {
-            processFile(pos, suffix, newline);
+            processFile(pos, suffix.value, newline);
         }
     }
 }

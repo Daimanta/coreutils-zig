@@ -24,6 +24,12 @@ pub const ValuePair = struct {
     value: ArgValue
 };
 
+pub const OptionValue = struct {
+    found: bool,
+    hasArgument: bool,
+    value: ?[]const u8
+};
+
 pub const Parser = struct {
     allocator: std.heap.ArenaAllocator,
     pairs: []ValuePair,
@@ -50,7 +56,7 @@ pub const Parser = struct {
         const matched = self.match(reference);
         if (matched != null) {
             if (matched.?.argument.type != .none) {
-                std.debug.print("{s}: 'option' can only be called on an argument without parameters.\n", .{reference});
+                std.debug.print("{s}: 'flag' can only be called on an argument without parameters.\n", .{reference});
                 std.posix.exit(1);
             }
             return matched.?.value.matched;
@@ -61,8 +67,13 @@ pub const Parser = struct {
         return false;
     }
 
-    pub fn option(self: *Self, reference: []const u8) ?[][]const u8 {
+    pub fn option(self: *Self, reference: []const u8) OptionValue {
         const foundArgument = self.match(reference);
+        var result = OptionValue{
+            .found = false,
+            .hasArgument = false,
+            .value = null
+        };
         if (foundArgument != null) {
             if (foundArgument.?.argument.type != .one) {
                 std.debug.print("{s}: 'option' can only be called on an argument with a single parameter.\n", .{reference});
@@ -70,23 +81,20 @@ pub const Parser = struct {
             }
 
             const singleValue = foundArgument.?.value.singleValue;
-
-            if (!foundArgument.?.value.matched) {
-                return null;
-            } else if (singleValue != null) {
-                var result = self.allocator.allocator().alloc([]const u8, 1) catch unreachable;
-                result[0] = singleValue.?;
-                return result;
-            } else if (foundArgument.?.argument.allow_none) {
-                return self.allocator.allocator().alloc([]const u8, 0) catch unreachable;
-            } else {
-                return null;
+            result.value = singleValue;
+            result.found = foundArgument.?.value.matched;
+            if (result.found) {
+                if (singleValue != null) {
+                    result.hasArgument = true;
+                }
             }
+
+            return result;
         } else {
             std.debug.print("{s}: Argument not found!\n", .{reference});
             std.posix.exit(1);
         }
-        return null;
+        return result;
     }
 
     pub fn options(self: *const Self, reference: []const u8) ?[][]const u8 {

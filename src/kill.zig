@@ -67,9 +67,9 @@ pub fn main() !void {
     const list = parser.options("l");
     const table = parser.flag("t");
     const signal_opt = parser.option("s");
-    const processes = parser.positionals;
+    const processes = parser.positionals();
 
-    if (list != null and signal_opt != null) {
+    if (list != null and signal_opt.found) {
         print("-l and -s cannot be combined.\n", .{});
         exit(1);
     }
@@ -78,8 +78,8 @@ pub fn main() !void {
         list_signals(list.?, table);
     } else {
         var used_signal = STANDARD_SIGNAL;
-        if (signal_opt != null) {
-            used_signal = signal_opt.?[0];
+        if (signal_opt.found) {
+            used_signal = signal_opt.value.?;
         }
         send_signal(used_signal, processes);
     }
