@@ -41,43 +41,30 @@ const help_message =
 const env_name: []const u8 = "LS_COLORS";
 
 pub fn main() !void {
-    const params = comptime [_]clap.Param(clap.Help){
-        clap.parseParam("--help") catch unreachable,
-        clap.parseParam("--version") catch unreachable,
-        clap.parseParam("-b, --sh") catch unreachable,
-        clap.parseParam("--bourne-shell") catch unreachable,
-        clap.parseParam("-c, --csh") catch unreachable,
-        clap.parseParam("-p, --print-database") catch unreachable,
-        clap.parseParam("<STRING>") catch unreachable,
-    };
-
     const args: []const clap2.Argument = &[_]clap2.Argument{
         clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
         clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
         clap2.Argument.FlagArgument("b", &[_][]const u8{"sh"}),
         clap2.Argument.FlagArgument(null, &[_][]const u8{"bourne-shell"}),
-        clap2.Argument.OptionArgument("s", &[_][]const u8{"suffix"}, false),
+        clap2.Argument.FlagArgument("c", &[_][]const u8{"csh"}),
+        clap2.Argument.FlagArgument("p", &[_][]const u8{"print-database"}),
         clap2.Argument.FlagArgument("z", &[_][]const u8{"zero"}),
     };
 
     var parser = clap2.Parser.init(args);
     defer parser.deinit();
 
-    var diag = clap.Diagnostic{};
-    var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
-    defer args.deinit();
-
-    if (args.flag("--help")) {
+    if (parser.flag("help")) {
         print(help_message, .{});
         std.posix.exit(0);
-    } else if (args.flag("--version")) {
+    } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
         std.posix.exit(0);
     }
     
-    const bourne = args.flag("-b") or args.flag("--bourne-shell");
-    const csh = args.flag("-c");
-    const print_database = args.flag("-p");
+    const bourne = parser.flag("b") or parser.flag("bourne-shell");
+    const csh = parser.flag("c");
+    const print_database = parser.flag("p");
     
     const flag_count = @intFromBool(bourne) + @intFromBool(csh) + @intFromBool(print_database);
     if (flag_count > 1) {
@@ -85,7 +72,7 @@ pub fn main() !void {
         std.posix.exit(1);
     }
     
-    const arguments = args.positionals();
+    const arguments = parser.positionals();
     
     if (arguments.len > 1) {
         print("Either no argument, or one file needs to be specified. Exiting.\n", .{});

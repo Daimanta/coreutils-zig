@@ -48,78 +48,41 @@ const help_message =
 ;
 
 pub fn main() !void {
-    const arguments = try std.process.argsAlloc(default_allocator);
+    const args: []const clap2.Argument = &[_]clap2.Argument{
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
+        clap2.Argument.FlagArgument("n", null),
+        clap2.Argument.FlagArgument("e", null),
+        clap2.Argument.FlagArgument("E", null),
+    };
 
-    if (arguments.len == 1) {
-        return;
+    var parser = clap2.Parser.init(args);
+    defer parser.deinit();
+
+    if (parser.flag("help")) {
+        print(help_message, .{});
+        std.posix.exit(0);
+    } else if (parser.flag("version")) {
+        version.printVersionInfo(application_name);
+        std.posix.exit(0);
     }
 
-    const options = arguments[1];
-    var print_newline = true;
-    var flag_e = false;
-    var flag_E = false;
-    var ignore_first_argument = true;
+    const print_newline = !parser.flag("n");
+    const escape_characters = parser.flag("e");
+    const disable_escape_characters = parser.flag("E");
+    const positionals = parser.positionals();
+    const positionals_string = try std.mem.join(default_allocator, " ", positionals);
 
-    if (options[0] == '-' and options.len > 1) {
-        if (options.len == 1) {
-            if (mem.eql(u8, options, "--help")) {
-                print(help_message, .{});
-                std.posix.exit(0);
-            } else if (mem.eql(u8, options, "--version")) {
-                version.printVersionInfo(application_name);
-                std.posix.exit(0);
-            }
-        }
-        if (options[1] != '-') {
-            var i: usize = 1;
-            while (i < options.len): (i += 1) {
-                const byte = options[i];
-                if (byte != 'e' and byte != 'E' and byte != 'n') {
-                    ignore_first_argument = false;
-                }
-            }
-            if (ignore_first_argument) {
-                i = 1;
-                while (i < options.len): (i += 1) {
-                    const byte = options[i];
-                    switch (byte) {
-                        'e' => flag_e = true,
-                        'E' => flag_E = true,
-                        'n' => print_newline = false,
-                        else => unreachable
-                    }
-                }
-            }
-        }
-    }
-
-    if (flag_e and flag_E) {
+    if (escape_characters and disable_escape_characters) {
         print("Cannot combine -e and -E. Exiting\n",.{});
         std.posix.exit(1);
     }
 
-    if (flag_e) {
-        var i: usize = 1;
-        if (ignore_first_argument) i += 1;
-        while (i < arguments.len - 1): (i += 1) {
-            const result = printEscapedString(arguments[i], true);
-            if (result) return;
-        }
-
-        if (arguments.len > 1) {
-            const result = printEscapedString(arguments[arguments.len - 1], false);
-            if (result) return;
-        }
+    if (escape_characters) {
+        const result = printEscapedString(positionals_string, true);
+        if (result) return;
     } else {
-        var i: usize = 1;
-        if (ignore_first_argument) i += 1;
-        while (i < arguments.len - 1): (i += 1) {
-            print("{s} ", .{arguments[i]});
-        }
-
-        if (arguments.len > 1) {
-            print("{s}", .{arguments[arguments.len - 1]});
-        }
+        print("{s} ", .{positionals_string});
     }
     if (print_newline) print("\n", .{});
 }

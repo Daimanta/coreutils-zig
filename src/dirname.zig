@@ -1,6 +1,7 @@
 const std = @import("std");
 const process = std.process;
 const clap = @import("clap.zig");
+const clap2 = @import("clap2/clap2.zig");
 const version = @import("util/version.zig");
 const mem = std.mem;
 
@@ -25,63 +26,32 @@ const help_message =
 const application_name = "dirname";
 
 pub fn main() !void {
-    const allocator = std.heap.page_allocator;
-    const arguments = try std.process.argsAlloc(allocator);
-
-    const Mode = enum {
-        help,
-        version,
-        main
+    const args: []const clap2.Argument = &[_]clap2.Argument{
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
+        clap2.Argument.FlagArgument("z", &[_][]const u8{"zero"}),
     };
 
-    var current_mode: ?Mode = null;
-    var use_null = false;
+    var parser = clap2.Parser.init(args);
+    defer parser.deinit();
 
-    if (arguments.len == 2) {
-        const arg: []const u8 = arguments[1];
-        const help_arg: []const u8 = "--help";
-        const version_arg: []const u8 = "--version";
-        if (mem.eql(u8, arg, help_arg)) {
-            current_mode = Mode.help;
-        } else if (mem.eql(u8, arg, version_arg)) {
-            current_mode = Mode.version;
-        } else if (arguments.len == 1) {
-            print("dirname: missing operand\nTry 'dirname --help' for more information.\n", .{});
-            std.posix.exit(1);
-        } else {
-            current_mode = Mode.main;
-        }
-    } else if (arguments.len == 1) {
-        current_mode = Mode.main;
-    } else {
-        for (arguments[1..]) |arg| {
-            if (arg[0] == '-') {
-                if (mem.eql(u8, arg, "-z") or mem.eql(u8, arg, "--zero")) {
-                    use_null = true;
-                } else {
-                    print("Unrecognized option '{s}'", .{arg});
-                    std.posix.exit(1);
-                }
-            }
-        }
-        current_mode = Mode.main;
-    }
-
-    if (current_mode == Mode.help) {
-        print("{s}", .{help_message});
-    } else if (current_mode == Mode.version) {
+    if (parser.flag("help")) {
+        print(help_message, .{});
+        std.posix.exit(0);
+    } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
-    } else if (current_mode == Mode.main) {
-        for (arguments[1..]) |elem| {
-            if (elem.len == 0 or elem[0] != '-') {
-                processPath(elem, use_null);
-            }
-        }
-    } else {
-        print("Inconsistent state detected! Exiting.", .{});
-        std.posix.exit(1);
+        std.posix.exit(0);
     }
 
+    const use_null = parser.flag("z");
+    const positionals = parser.positionals();
+
+    for (positionals[0..]) |elem| {
+        if (elem.len == 0 or elem[0] != '-') {
+            processPath(elem, use_null);
+        }
+    }
+    std.posix.exit(0);
 }
 
 fn processPath(path: []const u8, use_null: bool) void {

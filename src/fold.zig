@@ -3,7 +3,6 @@ const fs = std.fs;
 const os = std.os;
 const io = std.io;
 
-const clap = @import("clap.zig");
 const clap2 = @import("clap2/clap2.zig");
 const fileinfo = @import("util/fileinfo.zig");
 const version = @import("util/version.zig");
@@ -39,43 +38,40 @@ const help_message =
 var handled_stdin = false;
 
 pub fn main() !void {
-    const params = comptime [_]clap.Param(clap.Help){
-        clap.parseParam("-b, --bytes") catch unreachable,
-        clap.parseParam("-s, --spaces") catch unreachable,
-        clap.parseParam("-w, --width <INT>") catch unreachable,
-        clap.parseParam("--help") catch unreachable,
-        clap.parseParam("--version") catch unreachable,
-        clap.parseParam("<STRING>") catch unreachable,
+    const args: []const clap2.Argument = &[_]clap2.Argument{
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
+        clap2.Argument.FlagArgument("b", &[_][]const u8{"bytes"}),
+        clap2.Argument.FlagArgument("s", &[_][]const u8{"spaces"}),
+        clap2.Argument.OptionArgument("w", &[_][]const u8{"width"}, false),
     };
 
-    var diag = clap.Diagnostic{};
-    var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
-    defer args.deinit();
-    
-    if (args.flag("--help")) {
+    var parser = clap2.Parser.init(args);
+    defer parser.deinit();
+
+    if (parser.flag("help")) {
         print(help_message, .{});
         std.posix.exit(0);
-    } else if (args.flag("--version")) {
+    } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
         std.posix.exit(0);
     }
     
-    const wrap_bytes = args.flag("-b");
-    const break_only_at_spaces = args.flag("-s");
-    const width_string = args.option("-w");
+    const wrap_bytes = parser.flag("b");
+    const break_only_at_spaces = parser.flag("s");
+    const width_string = parser.option("w");
+    const positionals = parser.positionals();
     
     var width: u32 = 80;
-    if (width_string != null) {
-        if (std.fmt.parseInt(u32, width_string.?[0..], 10)) |num| {
+    if (width_string.found) {
+        if (std.fmt.parseInt(u32, width_string.value.?[0..], 10)) |num| {
             width = num;
         } else |_| {
             print("Width is not a valid number\n", .{});
             return;
         }
     }
-    
-    const positionals = args.positionals();
-    
+
     if (positionals.len == 0) {
         print("{s}: No arguments supplied. Exiting.\n", .{application_name});
         return;

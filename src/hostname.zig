@@ -3,7 +3,6 @@ const fs = std.fs;
 const os = std.os;
 const io = std.io;
 
-const clap = @import("clap.zig");
 const clap2 = @import("clap2/clap2.zig");
 const system = @import("util/system.zig");
 const version = @import("util/version.zig");
@@ -28,25 +27,23 @@ const help_message =
 ;
 
 pub fn main() !void {
-    const params = comptime [_]clap.Param(clap.Help){
-        clap.parseParam("--help") catch unreachable,
-        clap.parseParam("--version") catch unreachable,
-        clap.parseParam("<STRING>") catch unreachable,
+    const args: []const clap2.Argument = &[_]clap2.Argument{
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
     };
 
-    var diag = clap.Diagnostic{};
-    var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
-    defer args.deinit();
+    var parser = clap2.Parser.init(args);
+    defer parser.deinit();
 
-    if (args.flag("--help")) {
+    if (parser.flag("help")) {
         print(help_message, .{});
         std.posix.exit(0);
-    } else if (args.flag("--version")) {
+    } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
         std.posix.exit(0);
     }
 
-    const positionals = args.positionals();
+    const positionals = parser.positionals();
 
     if (positionals.len > 1) {
         print("Too many arguments. Exiting\n", .{});

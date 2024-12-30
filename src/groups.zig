@@ -29,72 +29,42 @@ const help_message =
 extern fn getgrouplist(user: [*:0]const u8, group: gid, groups: [*]gid, ngroups: *c_int) callconv(.C) c_int;
 
 pub fn main() !void {
-
-    const arguments = try std.process.argsAlloc(allocator);
-
-    const Mode = enum {
-        help,
-        version,
-        main
+    const args: []const clap2.Argument = &[_]clap2.Argument{
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
     };
 
-    var current_mode: ?Mode = null;
-    if (arguments.len > 2) {
-        current_mode = Mode.main;
-    } else if (arguments.len == 2) {
-        if (mem.eql(u8, "--help", arguments[1])) {
-            current_mode = Mode.help;
-        } else if (mem.eql(u8, "--version", arguments[1])) {
-            current_mode = Mode.version;
-        } else {
-            if (arguments[1].len > 0 and arguments[1][0] == '-') {
-                print("{s}: Unknown argument \"{s}\"\n", .{application_name, arguments[1]});
-                std.posix.exit(1);
-            } else {
-                current_mode = Mode.main;
-            }
-        }
-    } else {
-        current_mode = Mode.main;
-    }
+    var parser = clap2.Parser.init(args);
+    defer parser.deinit();
 
-    if (current_mode == Mode.help) {
-        print("{s}", .{help_message});
+    if (parser.flag("help")) {
+        print(help_message, .{});
         std.posix.exit(0);
-    } else if (current_mode == Mode.version) {
+    } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
         std.posix.exit(0);
-    } else if (current_mode == Mode.main) {
-        var count: u32 = 0;
-        for (arguments[1..]) |argument| {
+    }
+
+    const positionals = parser.positionals();
+
+    if (positionals.len == 0) {
+        const my_uid = linux.geteuid();
+        const pw: *users.Passwd = users.getpwuid(my_uid);
+        try displayGroup(pw, false);
+    } else {
+        for(positionals) |argument| {
             if (argument.len > 0 and argument[0] != '-') {
-                count +=1;
-            }
-        }
-        if (count == 0) {
-            const my_uid = linux.geteuid();
-            const pw: *users.Passwd = users.getpwuid(my_uid);
-            try displayGroup(pw, false);
-        } else {
-            for(arguments[1..]) |argument| {
-                if (argument.len > 0 and argument[0] != '-') {
-                    const user_null_pointer = try strings.toNullTerminatedPointer(argument, allocator);
-                    defer allocator.free(user_null_pointer);
-                    const user: ?*users.Passwd = users.getUserByName(user_null_pointer) catch blk: {
-                        print("{s}: '{s}': no such user\n", .{application_name, argument});
-                        break :blk null;
-                    };
-                    if (user != null) {
-                        try displayGroup(user.?, true);
-                    }
+                const user_null_pointer = try strings.toNullTerminatedPointer(argument, allocator);
+                defer allocator.free(user_null_pointer);
+                const user: ?*users.Passwd = users.getUserByName(user_null_pointer) catch blk: {
+                    print("{s}: '{s}': no such user\n", .{application_name, argument});
+                    break :blk null;
+                };
+                if (user != null) {
+                    try displayGroup(user.?, true);
                 }
             }
         }
-
-        std.posix.exit(0);
-    } else {
-        print("{s}: inconsistent state\n", .{application_name});
-        std.posix.exit(1);
     }
 
 }
