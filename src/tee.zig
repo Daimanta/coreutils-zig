@@ -4,7 +4,6 @@ const os = std.os;
 const io = std.io;
 const time = std.time;
 
-const clap = @import("clap.zig");
 const clap2 = @import("clap2/clap2.zig");
 const date_time = @import("util/datetime.zig");
 const fileinfo = @import("util/fileinfo.zig");
@@ -60,35 +59,34 @@ const output_error = enum {
 
 
 pub fn main() !void {
-    const params = comptime [_]clap.Param(clap.Help){
-        clap.parseParam("--help") catch unreachable,
-        clap.parseParam("--version") catch unreachable,
-        clap.parseParam("-a, --append") catch unreachable,
-        clap.parseParam("-i, --ignore-interrupts") catch unreachable,
-        clap.parseParam("--output-error <STR>") catch unreachable,
-        clap.parseParam("<STRING>") catch unreachable,
+    const args: []const clap2.Argument = &[_]clap2.Argument{
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
+        clap2.Argument.FlagArgument("a", &[_][]const u8{"append"}),
+        clap2.Argument.FlagArgument("i", &[_][]const u8{"ignore-interrupts"}),
+        clap2.Argument.OptionArgument(null, &[_][]const u8{"output-error"}, false)
     };
 
-    var diag = clap.Diagnostic{};
-    var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
-    defer args.deinit();
+    var parser = clap2.Parser.init(args);
+    defer parser.deinit();
 
-    if (args.flag("--help")) {
+    if (parser.flag("help")) {
         print(help_message, .{});
         std.posix.exit(0);
-    } else if (args.flag("--version")) {
+    } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
         std.posix.exit(0);
     }
 
-    const arguments = args.positionals();
+    const arguments = parser.positionals();
 
-    var append_files = args.flag("-a");
-    const ignore_interrupts = args.flag("-i");
-    const my_output_error = args.option("--output-error");
+    const append_files = parser.flag("-a");
+    const ignore_interrupts = parser.flag("-i");
+    const my_output_error = parser.option("--output-error");
+    _ = ignore_interrupts; _ = my_output_error;
 
     const stdin = std.io.getStdIn().reader();
-    const bytes = stdin.readAllAlloc(default_allocator, 1 << 30) catch {
+    const bytes = stdin.readAllAlloc(allocator, 1 << 30) catch {
         print("Reading stdin failed. Exiting.\n", .{});
         std.posix.exit(1);
     };
@@ -110,19 +108,20 @@ pub fn main() !void {
     }
 
     for (arguments) |path| {
-        write_to_file(path, bytes, append);
+        write_to_file(path, bytes, append_files);
     }
 }
 
 
 fn write_to_file(path: []const u8, bytes: []const u8, append: bool) void {
+    _ = bytes; _ = append;
     const stat = fileinfo.getLstat(path) catch |err| {
         print("{?}\n", .{err});
         return;
     };
 
     if (!fileinfo.fileExists(stat)) {
-        if (!create_if_not_exists) return;
+        //if (!create_if_not_exists) return;
         const file = fs.cwd().createFile(path, .{}) catch |err| {
             switch (err) {
                 OpenError.AccessDenied => print("Access denied to '{s}'\n", .{path}),
@@ -138,7 +137,7 @@ fn write_to_file(path: []const u8, bytes: []const u8, append: bool) void {
 
 fn touch_file(path: []const u8, create_if_not_exists: bool, affect_symlink: bool, change_access_time: bool, change_mod_time: bool, reference_time_access: i128, reference_time_mod: i128) void {
     //TODO: Affect symlink
-    _ = affect_symlink;
+    _ = affect_symlink; _ = change_access_time; _ = change_mod_time; _ = reference_time_access; _ = reference_time_mod;
     const stat = fileinfo.getLstat(path) catch |err| {
         print("{?}\n", .{err});
         return;
@@ -154,10 +153,10 @@ fn touch_file(path: []const u8, create_if_not_exists: bool, affect_symlink: bool
             return;
         };
         defer file.close();
-        update_times(file, change_access_time, change_mod_time, reference_time_access, reference_time_mod) catch |err| {
-            print("{?}\n", .{err});
-            return;
-        };
+        // update_times(file, change_access_time, change_mod_time, reference_time_access, reference_time_mod) catch |err| {
+        //     print("{?}\n", .{err});
+        //     return;
+        // };
     } else {
         const file = fs.cwd().openFile(path, .{}) catch |err| {
             switch (err) {
@@ -168,10 +167,10 @@ fn touch_file(path: []const u8, create_if_not_exists: bool, affect_symlink: bool
             return;
         };
         defer file.close();
-        update_times(file, change_access_time, change_mod_time, reference_time_access, reference_time_mod) catch |err| {
-            print("{?}\n", .{err});
-            return;
-        };
+        // update_times(file, change_access_time, change_mod_time, reference_time_access, reference_time_mod) catch |err| {
+        //     print("{?}\n", .{err});
+        //     return;
+        // };
     }
 }
 

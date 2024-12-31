@@ -4,7 +4,6 @@ const os = std.os;
 
 const mem = std.mem;
 
-const clap = @import("clap.zig");
 const clap2 = @import("clap2/clap2.zig");
 const strings = @import("util/strings.zig");
 const version = @import("util/version.zig");
@@ -43,29 +42,36 @@ const SyncType = enum {
 };
 
 pub fn main() !void {
-
-    const params = comptime [_]clap.Param(clap.Help){
-        clap.parseParam("--help") catch unreachable,
-        clap.parseParam("--version") catch unreachable,
-        clap.parseParam("-d, --data") catch unreachable,
-        clap.parseParam("-f, --file-system") catch unreachable,
-        clap.parseParam("<STRING>") catch unreachable,
+    const args: []const clap2.Argument = &[_]clap2.Argument{
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
+        clap2.Argument.FlagArgument("d", &[_][]const u8{"date"}),
+        clap2.Argument.FlagArgument("f", &[_][]const u8{"file-system"}),
     };
 
-    var diag = clap.Diagnostic{};
-    var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
-    defer args.deinit();
+    var parser = clap2.Parser.init(args);
+    defer parser.deinit();
 
-    if (args.flag("--help")) {
+    if (parser.flag("help")) {
         print(help_message, .{});
         std.posix.exit(0);
-    } else if (args.flag("--version")) {
+    } else if (parser.flag("version")) {
+        version.printVersionInfo(application_name);
+        std.posix.exit(0);
+    }
+
+    const arguments = parser.positionals();
+
+    if (parser.flag("--help")) {
+        print(help_message, .{});
+        std.posix.exit(0);
+    } else if (parser.flag("--version")) {
         version.printVersionInfo(application_name);
         std.posix.exit(0);
     }
     
-    const only_filedata = args.flag("-d");
-    const sync_filesystem = args.flag("-f");
+    const only_filedata = parser.flag("-d");
+    const sync_filesystem = parser.flag("-f");
     
     var sync_type = SyncType.FILE;
     if (only_filedata) sync_type = SyncType.DATA;
@@ -76,7 +82,6 @@ pub fn main() !void {
         std.posix.exit(1);
     }
     
-    const arguments = args.positionals();
     if (sync_type != SyncType.FILE and arguments.len == 0) {
         print("The mode was set for syncing specific files but no files were provided. Exiting.\n", .{});
         std.posix.exit(1);

@@ -18,7 +18,7 @@ const mode_t = mode.mode_t;
 const MakeFifoError = fileinfo.MakeFifoError;
 const print = @import("util/print_tools.zig").print;
 const pprint = @import("util/print_tools.zig").pprint;
-const exit = os.exit;
+const exit = std.posix.exit;
 const OpenError = fs.File.OpenError;
 const parseInt = std.fmt.parseInt;
 const eql = std.mem.eql;
@@ -60,47 +60,45 @@ const help_message =
 var success = true;
 
 pub fn main() !void {
-    const params = comptime [_]clap.Param(clap.Help){
-        clap.parseParam("--help") catch unreachable,
-        clap.parseParam("--version") catch unreachable,
-        clap.parseParam("-a") catch unreachable,
-        clap.parseParam("-c, --no-create") catch unreachable,
-        clap.parseParam("-d, --date <STR>") catch unreachable,
-        clap.parseParam("-h, --no-dereference") catch unreachable,
-        clap.parseParam("-m") catch unreachable,
-        clap.parseParam("-r, --reference <STR>") catch unreachable,
-        clap.parseParam("-t <STR>") catch unreachable,
-        clap.parseParam("--time <STR>") catch unreachable,
-        clap.parseParam("<STRING>") catch unreachable,
+    const args: []const clap2.Argument = &[_]clap2.Argument{
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
+        clap2.Argument.FlagArgument("a", null),
+        clap2.Argument.FlagArgument("c", &[_][]const u8{"no-create"}),
+        clap2.Argument.OptionArgument("d", &[_][]const u8{"date"}, false),
+        clap2.Argument.FlagArgument("h", &[_][]const u8{"no-dererence"}),
+        clap2.Argument.FlagArgument("m", null),
+        clap2.Argument.OptionArgument("r", &[_][]const u8{"reference"}, false),
+        clap2.Argument.OptionArgument("t", null, false),
+        clap2.Argument.OptionArgument(null, &[_][]const u8{"time"}, false),
     };
 
-    var diag = clap.Diagnostic{};
-    var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
-    defer args.deinit();
+    var parser = clap2.Parser.init(args);
+    defer parser.deinit();
 
-    if (args.flag("--help")) {
+    if (parser.flag("help")) {
         print(help_message, .{});
         std.posix.exit(0);
-    } else if (args.flag("--version")) {
+    } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
         std.posix.exit(0);
     }
 
-    const arguments = args.positionals();
+    const arguments = parser.positionals();
 
-    var change_only_access_time = args.flag("-a");
-    const create_if_not_exists = !args.flag("-c");
-    const date_string = args.option("-d");
-    const affect_symlink = args.flag("-h");
-    var change_only_modification_time = args.flag("-m");
-    const use_reference_file_time = args.option("-r");
-    const use_timestamp = args.option("-t");
-    const change_specified_attribute = args.option("--time");
+    var change_only_access_time = parser.flag("-a");
+    const create_if_not_exists = !parser.flag("-c");
+    const date_string = parser.option("-d");
+    const affect_symlink = parser.flag("-h");
+    var change_only_modification_time = parser.flag("-m");
+    const use_reference_file_time = parser.option("-r");
+    const use_timestamp = parser.option("-t");
+    const change_specified_attribute = parser.option("--time");
 
-    if (change_specified_attribute != null) {
-        if (eql(u8, change_specified_attribute.?, "access") or eql(u8, change_specified_attribute.?, "atime") or eql(u8, change_specified_attribute.?, "use")) {
+    if (change_specified_attribute.found) {
+        if (eql(u8, change_specified_attribute.value.?, "access") or eql(u8, change_specified_attribute.value.?, "atime") or eql(u8, change_specified_attribute.value.?, "use")) {
             change_only_access_time = true;
-        } else if (eql(u8, change_specified_attribute.?, "modify") or eql(u8, change_specified_attribute.?, "mtime")) {
+        } else if (eql(u8, change_specified_attribute.value.?, "modify") or eql(u8, change_specified_attribute.value.?, "mtime")) {
             change_only_modification_time = true;
         } else {
             pprint("Could not match the specified attribute. Exiting.\n");
@@ -119,9 +117,9 @@ pub fn main() !void {
     }
 
     var count_daterefs: u8 = 0;
-    if (date_string != null) count_daterefs += 1;
-    if (use_timestamp != null) count_daterefs += 1;
-    if (use_reference_file_time != null) count_daterefs += 1;
+    if (date_string.found) count_daterefs += 1;
+    if (use_timestamp.found) count_daterefs += 1;
+    if (use_reference_file_time.found) count_daterefs += 1;
 
     if (count_daterefs > 1) {
         pprint("Only one of date string, timestamp string, reference file allowed as a time basis. Exiting.\n");
@@ -134,17 +132,17 @@ pub fn main() !void {
     var reference_time_access: i128 = time.nanoTimestamp();
     var reference_time_mod: i128 = reference_time_access;
 
-    if (date_string != null) {
+    if (date_string.found) {
         // TODO: Add functionality to parse all kinds of date/time strings
-        const retrieved_date = date_time.Date.parseIso(date_string.?) catch {
+        const retrieved_date = date_time.Date.parseIso(date_string.value.?) catch {
             pprint("Incorrect date format supplied. Exiting.\n");
             exit(1);
         };
         // This timestamp is in milliseconds, so we multiply by 10^6
         reference_time_access = retrieved_date.toTimestamp() * 1_000_000;
         reference_time_mod = reference_time_access;
-    } else if (use_timestamp != null) {
-        const retrieved_timestamp = parseTimestamp(use_timestamp.?) catch {
+    } else if (use_timestamp.found) {
+        const retrieved_timestamp = parseTimestamp(use_timestamp.value.?) catch {
               pprint("Incorrect timestamp format supplied. Exiting.\n");
               exit(1);
         };
@@ -156,8 +154,8 @@ pub fn main() !void {
 
         reference_time_access = second_timestamp * 1_000_000_000;
         reference_time_mod = reference_time_access;
-    } else if (use_reference_file_time != null) {
-        const reference_file = fs.cwd().openFile(use_reference_file_time.?, .{.mode = .read_only}) catch |err| {
+    } else if (use_reference_file_time.found) {
+        const reference_file = fs.cwd().openFile(use_reference_file_time.value.?, .{.mode = .read_only}) catch |err| {
             switch (err) {
                 OpenError.FileNotFound => pprint("Reference file not found. Exiting.\n"),
                 OpenError.AccessDenied => pprint("Access denied to reference file. Exiting.\n"),

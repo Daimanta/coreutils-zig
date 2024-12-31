@@ -3,7 +3,6 @@ const fs = std.fs;
 const os = std.os;
 const io = std.io;
 
-const clap = @import("clap.zig");
 const clap2 = @import("clap2/clap2.zig");
 const version = @import("util/version.zig");
 
@@ -27,29 +26,24 @@ const help_message =
 pub extern fn ttyname(fd: c_int) callconv(.C) [*:0]u8;
 
 pub fn main() !void {
-    const params = comptime [_]clap.Param(clap.Help){
-        clap.parseParam("--help") catch unreachable,
-        clap.parseParam("--version") catch unreachable,
-        clap.parseParam("--silent") catch unreachable,
-        clap.parseParam("-s") catch unreachable,
-        clap.parseParam("--quiet") catch unreachable,
+    const args: []const clap2.Argument = &[_]clap2.Argument{
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
+        clap2.Argument.FlagArgument("s", &[_][]const u8{"quiet", "silent"}),
     };
 
-    var diag = clap.Diagnostic{};
-    var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
-    defer args.deinit();
+    var parser = clap2.Parser.init(args);
+    defer parser.deinit();
 
-    var silent = false;
-
-    if (args.flag("--help")) {
+    if (parser.flag("help")) {
         print(help_message, .{});
         std.posix.exit(0);
-    } else if (args.flag("--version")) {
+    } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
         std.posix.exit(0);
-    } else if (args.flag("--silent") or args.flag("--quiet") or args.flag("-s")) {
-        silent = true;
     }
+
+    const silent = parser.flag("s");
 
     if (!silent) {
         const stdin = std.posix.STDIN_FILENO;

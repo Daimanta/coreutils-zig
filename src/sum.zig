@@ -85,6 +85,8 @@ pub const Algorithm = enum {
 };
 
 pub fn main() !void {
+
+
     const params = comptime [_]clap.Param(clap.Help){
         clap.parseParam("--help") catch unreachable,
         clap.parseParam("--version") catch unreachable,

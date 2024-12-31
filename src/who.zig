@@ -20,7 +20,6 @@ const print = @import("util/print_tools.zig").print;
 const UtType = utmp.UtType;
 
 const default_allocator = std.heap.page_allocator;
-const print = @import("util/print_tools.zig").print;
 
 const application_name = "who";
 
@@ -58,67 +57,61 @@ const help_message =
 extern fn getgrouplist(user: [*:0]const u8, group: gid, groups: [*]gid, ngroups: *c_int) callconv(.C) c_int;
 
 pub fn main() !void {
-
-    const params = comptime [_]clap.Param(clap.Help){
-        clap.parseParam("--help") catch unreachable,
-        clap.parseParam("--version") catch unreachable,
-        clap.parseParam("-a, --all") catch unreachable,
-        clap.parseParam("-b, --boot") catch unreachable,
-        clap.parseParam("-d, --dead") catch unreachable,
-        clap.parseParam("-H, --heading") catch unreachable,
-        clap.parseParam("--ips") catch unreachable,
-        clap.parseParam("-l, --login") catch unreachable,
-        clap.parseParam("--lookup") catch unreachable,
-        clap.parseParam("-m") catch unreachable,
-        clap.parseParam("-p, --process") catch unreachable,
-        clap.parseParam("-q, --count") catch unreachable,
-        clap.parseParam("-r, --runlevel") catch unreachable,
-        clap.parseParam("-s, --short") catch unreachable,
-        clap.parseParam("-t, --time") catch unreachable,
-        clap.parseParam("-T -w, --mesg") catch unreachable,
-        clap.parseParam("-u, --users") catch unreachable,
-        clap.parseParam("--message") catch unreachable,
-        clap.parseParam("--writable") catch unreachable,
-        clap.parseParam("-v, --verbose") catch unreachable,
-        clap.parseParam("<STRING>") catch unreachable,
+    const args: []const clap2.Argument = &[_]clap2.Argument{
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
+        clap2.Argument.FlagArgument("a", &[_][]const u8{"all"}),
+        clap2.Argument.FlagArgument("b", &[_][]const u8{"boot"}),
+        clap2.Argument.FlagArgument("d", &[_][]const u8{"dead"}),
+        clap2.Argument.FlagArgument("H", &[_][]const u8{"heading"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"ips"}),
+        clap2.Argument.FlagArgument("l", &[_][]const u8{"login"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"lookup"}),
+        clap2.Argument.FlagArgument("m", null),
+        clap2.Argument.FlagArgument("p", &[_][]const u8{"process"}),
+        clap2.Argument.FlagArgument("q", &[_][]const u8{"count"}),
+        clap2.Argument.FlagArgument("r", &[_][]const u8{"runlevel"}),
+        clap2.Argument.FlagArgument("s", &[_][]const u8{"short"}),
+        clap2.Argument.FlagArgument("tw", &[_][]const u8{"mesg"}),
+        clap2.Argument.FlagArgument("u", &[_][]const u8{"users"}),
+        clap2.Argument.FlagArgument("v", &[_][]const u8{"verbose"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"message"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"writable"}),
     };
 
-    var diag = clap.Diagnostic{};
-    var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
-    defer args.deinit();
+    var parser = clap2.Parser.init(args);
+    defer parser.deinit();
 
-    if (args.flag("--help")) {
+    if (parser.flag("help")) {
         print(help_message, .{});
         std.posix.exit(0);
-    } else if (args.flag("--version")) {
+    } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
         std.posix.exit(0);
     }
-    
-    const all = args.flag("-a");
-    const boot = args.flag("-b") or all;
-    const dead = args.flag("-d") or all;
-    const heading = args.flag("-H");
-    const ips = args.flag("--ips");
-    const login = args.flag("-l") or all;
-    const lookup = args.flag("--lookup");
-    const stdin_users = args.flag("-m");
-    const processes = args.flag("-p") or all;
-    const count = args.flag("-q");
-    const runlevel = args.flag("-r") or all;
-    const short = args.flag("-s");
-    const time = args.flag("-t") or all;
-    const message_status = args.flag("-T") or args.flag("--message") or args.flag("--writable") or all;
-    const list_users = args.flag("-u") or all;
+
+    const all = parser.flag("-a");
+    const boot = parser.flag("-b") or all;
+    const dead = parser.flag("-d") or all;
+    const heading = parser.flag("-H");
+    const ips = parser.flag("--ips");
+    const login = parser.flag("-l") or all;
+    const lookup = parser.flag("--lookup");
+    const stdin_users = parser.flag("-m");
+    const processes = parser.flag("-p") or all;
+    const count = parser.flag("-q");
+    const runlevel = parser.flag("-r") or all;
+    const short = parser.flag("-s");
+    const time = parser.flag("-t") or all;
+    const message_status = parser.flag("-T") or parser.flag("--message") or parser.flag("--writable") or all;
+    const list_users = parser.flag("-u") or all;
   
     checkConflicts(boot, dead, heading, ips, login, lookup, stdin_users, processes, count, runlevel, short, time, message_status, list_users);
 
-
-    const arguments = args.positionals();
-    
+    const arguments = parser.positionals();
 
     if (arguments.len == 0) {
-        try printInformation(default_allocator, utmp.determine_utmp_file(), boot, dead, heading, ips, login, lookup, stdin_users, processes, count, runlevel, short, time, message_status, list_users);   
+        try printInformation(default_allocator, utmp.determine_utmp_file(), boot, dead, heading, ips, login, lookup, stdin_users, processes, count, runlevel, short, time, message_status, list_users);
     } else if (arguments.len == 1) {
         try printInformation(default_allocator, arguments[0], boot, dead, heading, ips, login, lookup, stdin_users, processes, count, runlevel, short, time, message_status, list_users);   
     } else if (arguments.len == 2){
@@ -147,11 +140,7 @@ fn intOfBool(boolean: bool) u8 {
 }
 
 
-    _ = ips;
-    _ = lookup;
-    _ = short;
-    _ = time;
-fn printInformation(alloc: *std.mem.Allocator, file_name: []const u8, boot: bool, dead: bool, heading: bool, ips: bool, login: bool, lookup: bool, stdin_users: bool, processes: bool, count_users: bool, runlevel: bool, short: bool, time: bool, message_status: bool, list_users: bool) !void {
+fn printInformation(alloc: std.mem.Allocator, file_name: []const u8, boot: bool, dead: bool, heading: bool, ips: bool, login: bool, lookup: bool, stdin_users: bool, processes: bool, count_users: bool, runlevel: bool, short: bool, time: bool, message_status: bool, list_users: bool) !void {
     _ = ips;
     _ = lookup;
     _ = short;
@@ -174,7 +163,7 @@ fn printInformation(alloc: *std.mem.Allocator, file_name: []const u8, boot: bool
                     var null_index = strings.indexOf(log.ut_user[0..], 0);
                     if (null_index == null) null_index = 32;
                     const copy = try alloc.alloc(u8, null_index.?);
-                    std.mem.copy(u8, copy, log.ut_user[0..null_index.?]);
+                    std.mem.copyForwards(u8, copy, log.ut_user[0..null_index.?]);
                     var check_index: usize = 0;
                     var insert = true;
                     while (check_index < insert_index) {
@@ -282,12 +271,10 @@ fn printInformation(alloc: *std.mem.Allocator, file_name: []const u8, boot: bool
             }
             
         }
-    _ = alloc;
-        
     }
 }
 
-fn printConditionalDetails(alloc: *std.mem.Allocator, utmp_log: utmp.Utmp, login: bool, runlevel: bool, stdin_users: bool, processes: bool, boot: bool) !void {
+fn printConditionalDetails(alloc: std.mem.Allocator, utmp_log: utmp.Utmp, login: bool, runlevel: bool, stdin_users: bool, processes: bool, boot: bool) !void {
     _ = alloc;
     if (login or runlevel or stdin_users) {
         if (utmp_log.ut_type == UtType.USER_PROCESS) {
@@ -300,7 +287,7 @@ fn printConditionalDetails(alloc: *std.mem.Allocator, utmp_log: utmp.Utmp, login
         var pid: []const u8 = "";
         if (utmp_log.ut_pid != 0 and utmp_log.ut_type != UtType.RUN_LVL) {
             var buffer: [10]u8 = undefined;
-            pid = std.fmt.bufPrintIntToSlice(buffer[0..], utmp_log.ut_pid, 10, false, std.fmt.FormatOptions{});
+            pid = std.fmt.bufPrintIntToSlice(buffer[0..], utmp_log.ut_pid, 10, .lower, std.fmt.FormatOptions{});
         }
         print("{s: >5}", .{pid});
     }

@@ -2,7 +2,6 @@ const std = @import("std");
 const os = std.os;
 const mem = std.mem;
 
-const clap = @import("clap.zig");
 const clap2 = @import("clap2/clap2.zig");
 const version = @import("util/version.zig");
 
@@ -34,34 +33,33 @@ const TimeType = enum {
 };
 
 pub fn main() !void {
-    const params = comptime [_]clap.Param(clap.Help){
-        clap.parseParam("--help") catch unreachable,
-        clap.parseParam("--version") catch unreachable,
-        clap.parseParam("<STRING>") catch unreachable,
+    const args: []const clap2.Argument = &[_]clap2.Argument{
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
     };
 
-    var diag = clap.Diagnostic{};
-    var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
-    defer args.deinit();
+    var parser = clap2.Parser.init(args);
+    defer parser.deinit();
 
-    if (args.flag("--help")) {
+    if (parser.flag("help")) {
         print(help_message, .{});
         std.posix.exit(0);
-    } else if (args.flag("--version")) {
+    } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
         std.posix.exit(0);
     }
 
-    const arguments = try std.process.argsAlloc(allocator);
 
-    if (arguments.len == 1) {
+    const arguments = parser.positionals();
+
+    if (arguments.len == 0) {
         print("{s}: missing operand\nTry 'sleep --help' for more information.\n", .{application_name});
     }
 
     var seconds: u64 = 0;
     var nanos: u64 = 0;
 
-    for (arguments[1..]) |argument| {
+    for (arguments) |argument| {
         updateTimes(argument, &seconds, &nanos) catch {
             print("sleep: invalid time interval '{s}'\n", .{argument});
             std.posix.exit(1);

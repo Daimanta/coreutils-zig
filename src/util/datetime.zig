@@ -11,7 +11,7 @@ const math = std.math;
 const ascii = std.ascii;
 const Allocator = std.mem.Allocator;
 const Order = std.math.Order;
-const Transition = std.meta.Child(std.meta.fieldInfo(std.Tz, .transitions).field_type);
+const Transition = std.tz.Transition;
 
 const testing = std.testing;
 const assert = std.debug.assert;
@@ -47,7 +47,7 @@ pub const Month = enum(u4) {
         if (month.len == 3) {
             inline for (std.meta.fields(Month)) |f| {
                 if (ascii.eqlIgnoreCase(f.name[0..3], month)) {
-                    return @intToEnum(Month, f.value);
+                    return @enumFromInt(f.value);
                 }
             }
         }
@@ -57,7 +57,7 @@ pub const Month = enum(u4) {
     pub fn parseName(month: []const u8) !Month {
         inline for (std.meta.fields(Month)) |f| {
             if (ascii.eqlIgnoreCase(f.name, month)) {
-                return @intToEnum(Month, f.value);
+                return @enumFromInt(f.value);
             }
         }
         return error.InvalidFormat;
@@ -104,7 +104,7 @@ test "leapyear" {
 
 // Number of days before Jan 1st of year
 pub fn daysBeforeYear(year: u32) u32 {
-    var y: u32 = year - 1;
+    const y: u32 = year - 1;
     return y * 365 + @divFloor(y, 4) - @divFloor(y, 100) + @divFloor(y, 400);
 }
 
@@ -187,7 +187,7 @@ test "iso-first-monday" {
     // Created using python
     const years = [20]u16{ 1816, 1823, 1839, 1849, 1849, 1870, 1879, 1882, 1909, 1910, 1917, 1934, 1948, 1965, 1989, 2008, 2064, 2072, 2091, 2096 };
     const output = [20]u32{ 662915, 665470, 671315, 674969, 674969, 682641, 685924, 687023, 696886, 697250, 699805, 706014, 711124, 717340, 726104, 733041, 753495, 756421, 763358, 765185 };
-    for (years) |year, i| {
+    for (years, 0..) |year, i| {
         try testing.expectEqual(daysBeforeFirstMonday(year), output[i]);
     }
 }
@@ -215,9 +215,9 @@ pub const Date = struct {
         if (day < 1 or day > daysInMonth(year, month)) return error.InvalidDate;
         // Since we just validated the ranges we can now savely cast
         return Date{
-            .year = @intCast(u16, year),
-            .month = @intCast(u4, month),
-            .day = @intCast(u8, day),
+            .year = @intCast(year),
+            .month = @intCast(month),
+            .day = @intCast(day),
         };
     }
 
@@ -284,7 +284,7 @@ pub const Date = struct {
 
         // Now the year is correct, and n is the offset from January 1.  We find
         // the month via an estimate that's either exact or one too large.
-        var leapyear = (n1 == 3) and (n4 != 24 or n100 == 3);
+        const leapyear = (n1 == 3) and (n4 != 24 or n100 == 3);
         assert(leapyear == isLeapYear(year));
         var month = (n + 50) >> 5;
         if (month == 0) month = 12; // Loop around
@@ -318,30 +318,30 @@ pub const Date = struct {
     // Create a date from the number of seconds since 1 Jan 1970
     pub fn fromSeconds(seconds: f64) Date {
         const r = math.modf(seconds);
-        const timestamp = @floatToInt(i64, r.ipart); // Seconds
+        const timestamp: i64 = @intFromFloat(r.ipart); // Seconds
         const days = @divFloor(timestamp, time.s_per_day) + @as(i64, EPOCH);
         assert(days >= 0 and days <= MAX_ORDINAL);
-        return Date.fromOrdinal(@intCast(u32, days));
+        return Date.fromOrdinal(@intCast(days));
     }
 
     // Return the number of seconds since 1 Jan 1970
     pub fn toSeconds(self: Date) f64 {
-        const days = @intCast(i64, self.toOrdinal()) - @as(i64, EPOCH);
-        return @intToFloat(f64, days * time.s_per_day);
+        const days: i64 = @as(i64, @intCast(self.toOrdinal())) - @as(i64, EPOCH);
+        return @floatFromInt(days * time.s_per_day);
     }
 
     // Create a date from a UTC timestamp in milliseconds relative to Jan 1st 1970
     pub fn fromTimestamp(timestamp: i64) Date {
         const days = @divFloor(timestamp, time.ms_per_day) + @as(i64, EPOCH);
         assert(days >= 0 and days <= MAX_ORDINAL);
-        return Date.fromOrdinal(@intCast(u32, days));
+        return Date.fromOrdinal(@intCast(days));
     }
 
     // Create a UTC timestamp in milliseconds relative to Jan 1st 1970
     pub fn toTimestamp(self: Date) i64 {
-        const d = @intCast(i64, daysBeforeYear(self.year));
-        const days = d - @as(i64, EPOCH) + @intCast(i64, self.dayOfYear());
-        return @intCast(i64, days) * time.ms_per_day;
+        const d: i64 = @intCast(daysBeforeYear(self.year));
+        const days = d - @as(i64, EPOCH) + @as(i64, @intCast(self.dayOfYear()));
+        return @as(i64, @intCast(days)) * time.ms_per_day;
     }
 
     // Convert to an ISOCalendar date containing the year, week number, and
@@ -357,14 +357,14 @@ pub const Date = struct {
         }
         const days_between = today - first_monday;
         var week = @divFloor(days_between, 7);
-        var day = @mod(days_between, 7);
+        const day = @mod(days_between, 7);
         if (week >= 52 and today >= daysBeforeFirstMonday(y + 1)) {
             y += 1;
             week = 0;
         }
         assert(week >= 0 and week < 53);
         assert(day >= 0 and day < 8);
-        return ISOCalendar{ .year = y, .week = @intCast(u6, week + 1), .weekday = @intCast(u3, day + 1) };
+        return ISOCalendar{ .year = y, .week = @intCast(week + 1), .weekday = @intCast(day + 1) };
     }
 
     // ------------------------------------------------------------------------
@@ -442,15 +442,15 @@ pub const Date = struct {
 
     // Return day of year starting with 1
     pub fn dayOfYear(self: Date) u16 {
-        var d = self.toOrdinal() - daysBeforeYear(self.year);
+        const d = self.toOrdinal() - daysBeforeYear(self.year);
         assert(d >= 1 and d <= 366);
-        return @intCast(u16, d);
+        return @intCast(d);
     }
 
     // Return day of week starting with Monday = 1 and Sunday = 7
     pub fn dayOfWeek(self: Date) Weekday {
-        const dow = @intCast(u3, self.toOrdinal() % 7);
-        return @intToEnum(Weekday, if (dow == 0) 7 else dow);
+        const dow: u3 = @intCast(self.toOrdinal() % 7);
+        return @enumFromInt(if (dow == 0) 7 else dow);
     }
 
     // Return the ISO calendar based week of year. With 1 being the first week.
@@ -460,7 +460,7 @@ pub const Date = struct {
 
     // Return day of week starting with Monday = 0 and Sunday = 6
     pub fn weekday(self: Date) u4 {
-        return @enumToInt(self.dayOfWeek()) - 1;
+        return @intFromEnum(self.dayOfWeek()) - 1;
     }
 
     // Return whether the date is a weekend (Saturday or Sunday)
@@ -476,7 +476,7 @@ pub const Date = struct {
     // Return the name of the day of the month, eg "January"
     pub fn monthName(self: Date) []const u8 {
         assert(self.month >= 1 and self.month <= 12);
-        return @tagName(@intToEnum(Month, self.month));
+        return @tagName(@as(Month, @enumFromInt(self.month)));
     }
 
     // ------------------------------------------------------------------------
@@ -502,9 +502,9 @@ pub const Date = struct {
         // Shift year
         var year = self.year;
         if (delta.years < 0) {
-            year -= @intCast(u16, -delta.years);
+            year -= @intCast(-delta.years);
         } else {
-            year += @intCast(u16, delta.years);
+            year += @intCast(delta.years);
         }
         var ord = daysBeforeYear(year);
         var days = self.dayOfYear();
@@ -527,9 +527,9 @@ pub const Date = struct {
 
         // Shift days
         if (delta.days < 0) {
-            ord -= @intCast(u32, -delta.days);
+            ord -= @intCast(-delta.days);
         } else {
-            ord += @intCast(u32, delta.days);
+            ord += @intCast(delta.days);
         }
         return Date.fromOrdinal(ord);
     }
@@ -554,9 +554,9 @@ pub const Time = struct {
             return error.InvalidTime;
         }
         return Time{
-            .hour = @intCast(u8, hour),
-            .minute = @intCast(u8, minute),
-            .second = @intCast(u8, second),
+            .hour = @intCast(hour),
+            .minute = @intCast(minute),
+            .second = @intCast(second),
             .nanosecond = nanosecond,
         };
     }
@@ -569,15 +569,15 @@ pub const Time = struct {
     // Create Time from a UTC Timestamp in milliseconds
     pub fn fromTimestamp(timestamp: i64) Time {
         const remainder = @mod(timestamp, time.ms_per_day);
-        var t = @intCast(u64, math.absInt(remainder) catch unreachable);
+        var t: u64 = @intCast(math.absInt(remainder) catch unreachable);
         // t is now only the time part of the day
-        const h = @intCast(u32, @divFloor(t, time.ms_per_hour));
+        const h: u32 = @intCast(@divFloor(t, time.ms_per_hour));
         t -= h * time.ms_per_hour;
-        const m = @intCast(u32, @divFloor(t, time.ms_per_min));
+        const m: u32 = @intCast(@divFloor(t, time.ms_per_min));
         t -= m * time.ms_per_min;
-        const s = @intCast(u32, @divFloor(t, time.ms_per_s));
+        const s: u32 = @intCast(@divFloor(t, time.ms_per_s));
         t -= s * time.ms_per_s;
-        const ns = @intCast(u32, t * time.ns_per_ms);
+        const ns: u32 = @intCast(t * time.ns_per_ms);
         return Time.create(h, m, s, ns) catch unreachable;
     }
 
@@ -586,7 +586,7 @@ pub const Time = struct {
         assert(seconds >= 0);
         // Convert to s and us
         const r = math.modf(seconds);
-        var s = @floatToInt(u32, @mod(r.ipart, time.s_per_day)); // s
+        var s: u32 = @intFromFloat(@mod(r.ipart, time.s_per_day)); // s
         const h = @divFloor(s, time.s_per_hour);
         s -= h * time.s_per_hour;
         const m = @divFloor(s, time.s_per_min);
@@ -602,32 +602,32 @@ pub const Time = struct {
             s -= 1;
             frac += time.ns_per_s;
         }
-        const ns = @floatToInt(u32, frac);
+        const ns: u32 = @intFromFloat(frac);
         return Time.create(h, m, s, ns) catch unreachable; // If this fails it's a bug
     }
 
     // Convert to a time in seconds relative to the UTC timezones
     // including the nanosecond component
     pub fn toSeconds(self: Time) f64 {
-        const s = @intToFloat(f64, self.totalSeconds());
-        const ns = @intToFloat(f64, self.nanosecond) / time.ns_per_s;
+        const s: f64 = @floatFromInt(self.totalSeconds());
+        const ns: f64 = @as(f64, @floatFromInt(self.nanosecond)) / time.ns_per_s;
         return s + ns;
     }
 
     // Convert to a timestamp in milliseconds from UTC
     pub fn toTimestamp(self: Time) i64 {
-        const h = @intCast(i64, self.hour) * time.ms_per_hour;
-        const m = @intCast(i64, self.minute) * time.ms_per_min;
-        const s = @intCast(i64, self.second) * time.ms_per_s;
-        const ms = @intCast(i64, self.nanosecond / time.ns_per_ms);
+        const h: i64 = @as(i64, @intCast(self.hour)) * time.ms_per_hour;
+        const m: i64 = @as(i64, @intCast(self.minute)) * time.ms_per_min;
+        const s: i64 = @as(i64, @intCast(self.second)) * time.ms_per_s;
+        const ms: i64 = @as(i64, @intCast(self.nanosecond / time.ns_per_ms));
         return h + m + s + ms;
     }
 
     // Total seconds from the start of day
     pub fn totalSeconds(self: Time) i32 {
-        const h = @intCast(i32, self.hour) * time.s_per_hour;
-        const m = @intCast(i32, self.minute) * time.s_per_min;
-        const s = @intCast(i32, self.second);
+        const h: i32 = @as(i32, @intCast(self.hour)) * time.s_per_hour;
+        const m: i32 = @as(i32, @intCast(self.minute)) * time.s_per_min;
+        const s: i32 = @as(i32, @intCast(self.second));
         return h + m + s;
     }
 
@@ -724,14 +724,14 @@ pub const DateTimeDelta = struct {
                 const a = daysBeforeYear(dt.date.year);
                 // Must always subtract greater of the two
                 if (self.years > 0) {
-                    const y = @intCast(u32, self.years);
+                    const y: u32 = @intCast(self.years);
                     const b = daysBeforeYear(dt.date.year + y);
-                    days += @intCast(i32, b - a);
+                    days += @intCast(b - a);
                 } else {
-                    const y = @intCast(u32, -self.years);
+                    const y: u32 = @intCast(-self.years);
                     assert(y < dt.date.year); // Does not work below year 1
                     const b = daysBeforeYear(dt.date.year - y);
-                    days -= @intCast(i32, a - b);
+                    days -= @intCast(a - b);
                 }
             }
         } else {
@@ -811,9 +811,9 @@ pub const LocalDatetime = struct {
 
     // Return a Datetime.Delta relative to this date
     pub fn sub(self: LocalDatetime, other: LocalDatetime) DateTimeDelta {
-        const days = @intCast(i32, self.date.toOrdinal()) - @intCast(i32, other.date.toOrdinal());
-        var seconds = self.time.totalSeconds() - other.time.totalSeconds();
-        const ns = @intCast(i32, self.time.nanosecond) - @intCast(i32, other.time.nanosecond);
+        const days: i32 = @as(i32, @intCast(self.date.toOrdinal())) - @as(i32, @intCast(other.date.toOrdinal()));
+        const seconds = self.time.totalSeconds() - other.time.totalSeconds();
+        const ns: i32 = @as(i32, @intCast(self.time.nanosecond)) - @as(i32, @intCast(other.time.nanosecond));
         return DateTimeDelta{ .days = days, .seconds = seconds, .nanoseconds = ns };
     }
 
@@ -822,7 +822,7 @@ pub const LocalDatetime = struct {
         var s = delta.seconds + self.time.totalSeconds();
 
         // Rollover ns to s
-        var ns = delta.nanoseconds + @intCast(i32, self.time.nanosecond);
+        var ns: i32 = delta.nanoseconds + @as(i32, @intCast(self.time.nanosecond));
         if (ns >= time.ns_per_s) {
             s += 1;
             ns -= time.ns_per_s;
@@ -831,17 +831,17 @@ pub const LocalDatetime = struct {
             ns += time.ns_per_s;
         }
         assert(ns >= 0 and ns < time.ns_per_s);
-        const nanosecond = @intCast(u32, ns);
+        const nanosecond: u32 = @intCast(ns);
 
         // Rollover s to days
         if (s >= time.s_per_day) {
             const d = @divFloor(s, time.s_per_day);
-            days += @intCast(i32, d);
+            days += @intCast(d);
             s -= d * time.s_per_day;
         } else if (s < 0) {
             if (s < -time.s_per_day) { // Wrap multiple
                 const d = @divFloor(s, -time.s_per_day);
-                days -= @intCast(i32, d);
+                days -= @intCast(d);
                 s += d * time.s_per_day;
             }
             days -= 1;
@@ -849,7 +849,7 @@ pub const LocalDatetime = struct {
         }
         assert(s >= 0 and s < time.s_per_day);
 
-        var second = @intCast(u32, s);
+        var second: u32 = @intCast(s);
         const hour = @divFloor(second, time.s_per_hour);
         second -= hour * time.s_per_hour;
         const minute = @divFloor(second, time.s_per_min);
@@ -891,7 +891,7 @@ pub const LocalDatetime = struct {
     }
 
     pub fn toSystemZoneTimestamp(self: LocalDatetime) !i64 {
-        const asInstantTimestamp: i64 = @intCast(i64, @divFloor((try self.asInstant()).toTimestamp(), 1_000));
+        const asInstantTimestamp: i64 = @intCast(@divFloor((try self.asInstant()).toTimestamp(), 1_000));
         const file_contents = try std.fs.cwd().readFileAlloc(default_allocator, "/etc/localtime", 1 << 20);
         defer default_allocator.free(file_contents);
         var in_stream = std.io.fixedBufferStream(file_contents);
@@ -954,15 +954,15 @@ pub const Instant = struct {
     // From POSIX timestamp in milliseconds relative to 1 Jan 1970
     pub fn fromTimestamp(timestamp: i64) Instant {
         const t = @divFloor(timestamp, time.ms_per_day);
-        const d = @intCast(u64, math.absInt(t) catch unreachable);
+        const d: u64 = @intCast(math.absInt(t) catch unreachable);
         const days = if (timestamp >= 0) d + EPOCH else EPOCH - d;
         assert(days >= 0 and days <= MAX_ORDINAL);
-        return Instant{ .date_time = LocalDatetime{ .date = Date.fromOrdinal(@intCast(u32, days)), .time = Time.fromTimestamp(timestamp - @intCast(i64, d) * time.ns_per_day) } };
+        return Instant{ .date_time = LocalDatetime{ .date = Date.fromOrdinal(@intCast(days)), .time = Time.fromTimestamp(timestamp - @as(i64, @intCast(d)) * time.ns_per_day) } };
     }
 
     // From a file modified time in ns
     pub fn fromModifiedTime(mtime: i128) Instant {
-        const ts = @intCast(i64, @divFloor(mtime, time.ns_per_ms));
+        const ts: i64 = @intCast(@divFloor(mtime, time.ns_per_ms));
         return Instant.fromTimestamp(ts);
     }
 
@@ -1003,7 +1003,7 @@ pub const Instant = struct {
 
     // From time in nanoseconds
     pub fn formatHttpFromModifiedDate(buf: []u8, mtime: i128) ![]const u8 {
-        const ts = @intCast(i64, @divFloor(mtime, time.ns_per_ms));
+        const ts: i64 = @intCast(@divFloor(mtime, time.ns_per_ms));
         return Instant.formatHttpFromTimestamp(buf, ts);
     }
 
@@ -1018,7 +1018,7 @@ pub const Instant = struct {
         const value = std.mem.trim(u8, ims, " ");
         if (value.len < 29) return error.InvalidFormat;
         const day = std.fmt.parseInt(u8, value[5..7], 10) catch return error.InvalidFormat;
-        const month = @enumToInt(try Month.parseAbbr(value[8..11]));
+        const month = @intFromEnum(try Month.parseAbbr(value[8..11]));
         const year = std.fmt.parseInt(u16, value[12..16], 10) catch return error.InvalidFormat;
         const hour = std.fmt.parseInt(u8, value[17..19], 10) catch return error.InvalidFormat;
         const minute = std.fmt.parseInt(u8, value[20..22], 10) catch return error.InvalidFormat;
@@ -1033,7 +1033,7 @@ test "date-now" {
 
 test "date-compare" {
     var d1 = try Date.create(2019, 7, 3);
-    var d2 = try Date.create(2019, 7, 3);
+    const d2 = try Date.create(2019, 7, 3);
     var d3 = try Date.create(2019, 6, 3);
     var d4 = try Date.create(2020, 7, 3);
     try testing.expect(d1.eql(d2));
@@ -1160,7 +1160,7 @@ test "date-create" {
 
 test "date-copy" {
     var d1 = try Date.create(2020, 1, 1);
-    var d2 = try d1.copy();
+    const d2 = try d1.copy();
     try testing.expect(d1.eql(d2));
 }
 
@@ -1173,7 +1173,7 @@ test "date-parse-iso" {
 }
 
 test "date-format-iso" {
-    var date_strs = [_][]const u8{
+    const date_strs = [_][]const u8{
         "0959-02-05",
         "2018-12-15",
     };
@@ -1187,7 +1187,7 @@ test "date-format-iso" {
 }
 
 test "date-format-iso-buf" {
-    var date_strs = [_][]const u8{
+    const date_strs = [_][]const u8{
         "0959-02-05",
         "2018-12-15",
     };
@@ -1200,7 +1200,7 @@ test "date-format-iso-buf" {
 }
 
 test "date-write-iso" {
-    var date_strs = [_][]const u8{
+    const date_strs = [_][]const u8{
         "0959-02-05",
         "2018-12-15",
     };
@@ -1262,7 +1262,7 @@ test "date-isocalendar" {
         ISOCalendar{ .year = 2024, .week = 3, .weekday = 2 },
     };
 
-    for (dates) |d, i| {
+    for (dates, 0..) |d, i| {
         const date = try Date.parseIso(d);
         const cal = date.isoCalendar();
         try testing.expectEqual(cal, expect[i]);
@@ -1270,11 +1270,11 @@ test "date-isocalendar" {
     }
 }
 
-test "iso-first-monday" {
+test "iso-first-monday2" {
     // Created using python
     const years = [20]u16{ 1816, 1823, 1839, 1849, 1849, 1870, 1879, 1882, 1909, 1910, 1917, 1934, 1948, 1965, 1989, 2008, 2064, 2072, 2091, 2096 };
     const output = [20]u32{ 662915, 665470, 671315, 674969, 674969, 682641, 685924, 687023, 696886, 697250, 699805, 706014, 711124, 717340, 726104, 733041, 753495, 756421, 763358, 765185 };
-    for (years) |year, i| {
+    for (years, 0..) |year, i| {
         try testing.expectEqual(daysBeforeFirstMonday(year), output[i]);
     }
 }
@@ -1333,7 +1333,7 @@ test "time-from-seconds" {
 
 test "time-copy" {
     var t1 = try Time.create(8, 30, 0, 0);
-    var t2 = try t1.copy();
+    const t2 = try t1.copy();
     try testing.expect(t1.eql(t2));
 }
 
@@ -1341,7 +1341,7 @@ test "time-compare" {
     var t1 = try Time.create(8, 30, 0, 0);
     var t2 = try Time.create(9, 30, 0, 0);
     var t3 = try Time.create(8, 0, 0, 0);
-    var t4 = try Time.create(9, 30, 17, 0);
+    const t4 = try Time.create(9, 30, 17, 0);
 
     try testing.expect(t1.lt(t2));
     try testing.expect(t1.gt(t3));
@@ -1451,9 +1451,9 @@ test "datetime-parse-modified-since" {
 
 test "file-modified-date" {
     var f = try std.fs.cwd().openFile("README.md", .{});
-    var stat = try f.stat();
+    const stat = try f.stat();
     var buf: [32]u8 = undefined;
-    var str = try Instant.formatHttpFromModifiedDate(&buf, stat.mtime);
+    const str = try Instant.formatHttpFromModifiedDate(&buf, stat.mtime);
     std.log.warn("Modtime: {s}\n", .{str});
 }
 
