@@ -20,47 +20,31 @@ const help_message =
 ;
 
 pub fn main() !void {
-    const allocator = std.heap.page_allocator;
-    const arguments = try std.process.argsAlloc(allocator);
-
-    const Mode = enum {
-        help,
-        version,
-        main
+    const args: []const clap2.Argument = &[_]clap2.Argument{
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
     };
 
-    var current_mode: ?Mode = null;
+    var parser = clap2.Parser.init(args);
+    defer parser.deinit();
 
-    if (arguments.len > 2) {
-        print("{s}: too many arguments", .{application_name});
-        std.posix.exit(1);
-    } else if (arguments.len == 2) {
-        if (mem.eql(u8, "--help", arguments[1])) {
-            current_mode = Mode.help;
-        } else if (mem.eql(u8, "--version", arguments[1])) {
-            current_mode = Mode.version;
-        } else {
-            print("{s}: Unknown argument \"{s}\"\n", .{application_name, arguments[1]});
-            std.posix.exit(1);
-        }
-    } else {
-        current_mode = Mode.main;
-    }
-
-    if (current_mode == Mode.help) {
-        print("{s}", .{help_message});
+    if (parser.flag("help")) {
+        print(help_message, .{});
         std.posix.exit(0);
-    } else if (current_mode == Mode.version) {
+    } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
         std.posix.exit(0);
-    } else if (current_mode == Mode.main) {
-        const uid = linux.geteuid();
-        const pw: *users.Passwd = users.getpwuid(uid);
-        print("{s}\n", .{pw.pw_name});
-        std.posix.exit(0);
-    } else {
-        print("{s}: inconsistent state\n", .{application_name});
+    }
+
+    const positionals = parser.positionals();
+
+    if (positionals.len > 0) {
+        print("{s}: too many arguments", .{application_name});
         std.posix.exit(1);
     }
 
+    const uid = linux.geteuid();
+    const pw: *users.Passwd = users.getpwuid(uid);
+    print("{s}\n", .{pw.pw_name});
+    std.posix.exit(0);
 }

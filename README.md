@@ -5,4 +5,3 @@ The goal of the project is the implementation of all commands of the GNU Coreuti
 ## Bundles
 coreutils-zig is built using the help of the following dependencies:
 - 'zig-datetime' created by 'Jairus Martin'.
-- 'zig-clap' created by 'Hejsil'

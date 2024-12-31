@@ -3,7 +3,6 @@ const fs = std.fs;
 const os = std.os;
 const io = std.io;
 
-const clap = @import("clap.zig");
 const clap2 = @import("clap2/clap2.zig");
 const system = @import("util/system.zig");
 const version = @import("util/version.zig");
@@ -38,43 +37,40 @@ const help_message =
 
 
 pub fn main() !void {
-
-
-    const params = comptime [_]clap.Param(clap.Help){
-        clap.parseParam("--help") catch unreachable,
-        clap.parseParam("--version") catch unreachable,
-        clap.parseParam("-a, --all") catch unreachable,
-        clap.parseParam("-s, --kernel-name") catch unreachable,
-        clap.parseParam("-n, --nodename") catch unreachable,
-        clap.parseParam("-r, --kernel-release") catch unreachable,
-        clap.parseParam("-v, --kernel-version") catch unreachable,
-        clap.parseParam("-m, --machine") catch unreachable,
-        clap.parseParam("-p, --processor") catch unreachable,
-        clap.parseParam("-i, --hardware-platform") catch unreachable,
-        clap.parseParam("-o, --operating-system") catch unreachable,
-        clap.parseParam("<STRING>") catch unreachable,
+    const args: []const clap2.Argument = &[_]clap2.Argument{
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
+        clap2.Argument.FlagArgument("a", &[_][]const u8{"all"}),
+        clap2.Argument.FlagArgument("s", &[_][]const u8{"kernel-name"}),
+        clap2.Argument.FlagArgument("n", &[_][]const u8{"node-name"}),
+        clap2.Argument.FlagArgument("r", &[_][]const u8{"kernel-release"}),
+        clap2.Argument.FlagArgument("v", &[_][]const u8{"kernel-version"}),
+        clap2.Argument.FlagArgument("m", &[_][]const u8{"machine"}),
+        clap2.Argument.FlagArgument("p", &[_][]const u8{"processor"}),
+        clap2.Argument.FlagArgument("i", &[_][]const u8{"hardware-platform"}),
+        clap2.Argument.FlagArgument("o", &[_][]const u8{"operating-system"}),
     };
 
-    var diag = clap.Diagnostic{};
-    var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
-    defer args.deinit();
-    
-    const kernel_name = args.flag("-s") or args.flag("-a");
-    const node_name = args.flag("-n") or args.flag("-a");
-    const kernel_release = args.flag("-r") or args.flag("-a");
-    const kernel_version = args.flag("-v") or args.flag("-a");
-    const machine = args.flag("-m") or args.flag("-a");
-    const processor = args.flag("-p") or args.flag("-a");
-    const hardware_platform = args.flag("-i") or args.flag("-a");
-    const operating_system = args.flag("-o") or args.flag("-a");
-        
-    if (args.flag("--help")) {
+    var parser = clap2.Parser.init(args);
+    defer parser.deinit();
+
+    if (parser.flag("help")) {
         print(help_message, .{});
         std.posix.exit(0);
-    } else if (args.flag("--version")) {
+    } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
         std.posix.exit(0);
     }
+
+    const kernel_name = parser.flag("-s") or parser.flag("-a");
+    const node_name = parser.flag("-n") or parser.flag("-a");
+    const kernel_release = parser.flag("-r") or parser.flag("-a");
+    const kernel_version = parser.flag("-v") or parser.flag("-a");
+    const machine = parser.flag("-m") or parser.flag("-a");
+    const processor = parser.flag("-p") or parser.flag("-a");
+    const hardware_platform = parser.flag("-i") or parser.flag("-a");
+    const operating_system = parser.flag("-o") or parser.flag("-a");
+
     
     const uname_info = std.posix.uname();
     if (kernel_name) print("{s} ", .{uname_info.sysname});

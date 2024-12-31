@@ -6,7 +6,6 @@ const mem = std.mem;
 const uid = linux.uid_t;
 const gid = linux.gid_t;
 
-const clap = @import("clap.zig");
 const clap2 = @import("clap2/clap2.zig");
 const version = @import("util/version.zig");
 const users = @import("util/users.zig");
@@ -210,7 +209,7 @@ fn printInformation(alloc: std.mem.Allocator, file_name: []const u8, boot: bool,
                     const username = strings.substringFromNullTerminatedSlice(log.ut_user[0..]);
                     const term = strings.substringFromNullTerminatedSlice(log.ut_line[0..]);
                     const time_struct = time_info.getLocalTimeStructFromi32(log.ut_tv.tv_sec);
-                    const time_string = time_info.toLocalDateTimeStringAlloc(default_allocator, time_struct);
+                    const time_string = try time_info.toLocalDateTimeStringAlloc(default_allocator, time_struct);
                     if (message_status) {
                         print("{s: <8} +", .{username});
                     } else {
@@ -222,7 +221,7 @@ fn printInformation(alloc: std.mem.Allocator, file_name: []const u8, boot: bool,
                     const name = "";
                     const term = "system boot";
                     const time_struct = time_info.getLocalTimeStructFromi32(log.ut_tv.tv_sec);
-                    const time_string = time_info.toLocalDateTimeStringAlloc(default_allocator, time_struct);
+                    const time_string = try time_info.toLocalDateTimeStringAlloc(default_allocator, time_struct);
                     if (message_status) {
                         print("{s: <10}", .{name});
                     } else {
@@ -234,7 +233,7 @@ fn printInformation(alloc: std.mem.Allocator, file_name: []const u8, boot: bool,
                     const name = "";
                     const term = "run-level 5";
                     const time_struct = time_info.getLocalTimeStructFromi32(log.ut_tv.tv_sec);
-                    const time_string = time_info.toLocalDateTimeStringAlloc(default_allocator, time_struct);
+                    const time_string = try time_info.toLocalDateTimeStringAlloc(default_allocator, time_struct);
                     if (message_status) {
                         print("{s: <10}", .{name});
                     } else {
@@ -247,7 +246,7 @@ fn printInformation(alloc: std.mem.Allocator, file_name: []const u8, boot: bool,
                     const name = "LOGIN";
                     const term = strings.substringFromNullTerminatedSlice(log.ut_line[0..]);
                     const time_struct = time_info.getLocalTimeStructFromi32(log.ut_tv.tv_sec);
-                    const time_string = time_info.toLocalDateTimeStringAlloc(default_allocator, time_struct);
+                    const time_string = try time_info.toLocalDateTimeStringAlloc(default_allocator, time_struct);
                     if (message_status) {
                         print("{s: <10}", .{name});
                     } else {
@@ -259,7 +258,7 @@ fn printInformation(alloc: std.mem.Allocator, file_name: []const u8, boot: bool,
                     const name = "";
                     const term = strings.substringFromNullTerminatedSlice(log.ut_line[0..]);
                     const time_struct = time_info.getLocalTimeStructFromi32(log.ut_tv.tv_sec);
-                    const time_string = time_info.toLocalDateTimeStringAlloc(default_allocator, time_struct);
+                    const time_string = try time_info.toLocalDateTimeStringAlloc(default_allocator, time_struct);
                     if (message_status) {
                         print("{s: <10}", .{name});
                     } else {

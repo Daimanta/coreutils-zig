@@ -1,9 +1,9 @@
 const std = @import("std");
 const process = std.process;
-const clap = @import("clap.zig");
 const clap2 = @import("clap2/clap2.zig");
 const version = @import("util/version.zig");
 const strings = @import("util/strings.zig");
+const default_allocator = std.heap.page_allocator;
 
 const print = @import("util/print_tools.zig").print;
 
@@ -18,49 +18,34 @@ const help_message =
             ;
 
 const application_name = "yes";
+const default_output_string = "y";
 
 pub fn main() !void {
-        const allocator = std.heap.page_allocator;
-        const params = comptime [_]clap.Param(clap.Help){
-            clap.parseParam("--help display this help and exit") catch unreachable,
-            clap.parseParam("--version  output version information and exit") catch unreachable,
-            clap.parseParam("<STRING>") catch unreachable
-        };
+    const args: []const clap2.Argument = &[_]clap2.Argument{
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
+    };
 
-        var diag = clap.Diagnostic{};
-        var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
-        defer args.deinit();
+    var parser = clap2.Parser.init(args);
+    defer parser.deinit();
 
-        if (args.flag("--help")) {
-            print(help_message, .{});
-            std.posix.exit(0);
-        } else if (args.flag("--version")) {
-            version.printVersionInfo(application_name);
-        } else {
-            const arguments = try std.process.argsAlloc(allocator);
-            if (arguments.len <= 2) {
-                var outputted_text: []const u8 = undefined;
-                if (arguments.len == 1) {
-                    outputted_text = "y";
-                } else {
-                    outputted_text = arguments[1];
-                }
-                while (true) {
-                    print("{s}\n", .{outputted_text});
-                }
-            }
-            var prepared_size = arguments.len - 2;
-            var i: usize = 1;
-            while (i < arguments.len) {
-                prepared_size += arguments[i].len;
-                i += 1;
-            }
+    if (parser.flag("help")) {
+        print(help_message, .{});
+        std.posix.exit(0);
+    } else if (parser.flag("version")) {
+        version.printVersionInfo(application_name);
+        std.posix.exit(0);
+    }
 
-            const outputted_text = try allocator.alloc(u8, prepared_size);
-            strings.joinStrings(arguments, outputted_text);
-
-            while(true) {
-                print("{s}\n", .{outputted_text});
-            }
+    const positionals = parser.positionals();
+    if (positionals.len > 0) {
+        const positionals_string = try std.mem.join(default_allocator, " ", positionals);
+        while(true) {
+            print("{s}\n", .{positionals_string});
         }
+    } else {
+        while(true) {
+            print("{s}\n", .{default_output_string});
+        }
+    }
 }
