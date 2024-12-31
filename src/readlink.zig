@@ -3,7 +3,6 @@ const fs = std.fs;
 const os = std.os;
 const linux = os.linux;
 
-const clap = @import("clap.zig");
 const clap2 = @import("clap2/clap2.zig");
 const fileinfo = @import("util/fileinfo.zig");
 const strings = @import("util/strings.zig");
@@ -57,43 +56,42 @@ const OutputMode = enum {
 };
 
 pub fn main() !void {
-    const params = comptime [_]clap.Param(clap.Help){
-        clap.parseParam("--help") catch unreachable,
-        clap.parseParam("--version") catch unreachable,
-        clap.parseParam("-f, --canonicalize") catch unreachable,
-        clap.parseParam("-e, --canonicalize-existing") catch unreachable,
-        clap.parseParam("-m, --canonicalize-missing") catch unreachable,
-        clap.parseParam("-n, --no-newline") catch unreachable,
-        clap.parseParam("-q, --quiet") catch unreachable,
-        clap.parseParam("-s, --silent") catch unreachable,
-        clap.parseParam("-v, --verbose") catch unreachable,
-        clap.parseParam("-z, --zero") catch unreachable,
-        clap.parseParam("<STRING>") catch unreachable,
+    const args: []const clap2.Argument = &[_]clap2.Argument{
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
+        clap2.Argument.FlagArgument("f", &[_][]const u8{"canonicalize"}),
+        clap2.Argument.FlagArgument("e", &[_][]const u8{"canonicalize-existing"}),
+        clap2.Argument.FlagArgument("m", &[_][]const u8{"canonicalize-missing"}),
+        clap2.Argument.FlagArgument("n", &[_][]const u8{"no-newline"}),
+        clap2.Argument.FlagArgument("q", &[_][]const u8{"quiet"}),
+        clap2.Argument.FlagArgument("s", &[_][]const u8{"silent"}),
+        clap2.Argument.FlagArgument("v", &[_][]const u8{"verbose"}),
+        clap2.Argument.FlagArgument("z", &[_][]const u8{"zero"}),
     };
 
-    var diag = clap.Diagnostic{};
-    var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
+    var parser = clap2.Parser.init(args);
+    defer parser.deinit();
 
-    if (args.flag("--help")) {
+    if (parser.flag("help")) {
         print(help_message, .{});
         std.posix.exit(0);
-    } else if (args.flag("--version")) {
+    } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
         std.posix.exit(0);
     }
 
-    const quiet = (args.flag("-q") or args.flag("--quiet"));
-    const silent = (args.flag("-s") or args.flag("--silent"));
-    const verbose = (args.flag("-v") or args.flag("--verbose"));
-    const zero = (args.flag("-z") or args.flag("--zero"));
-    var suppress_newline = (args.flag("-n") or args.flag("--no-newline"));
-    const find_all_but_last_link = (args.flag("-f") or args.flag("--canonicalize"));
-    const find_all_links = (args.flag("-e") or args.flag("--canonicalize-existing"));
-    const accept_missing_links = (args.flag("-m") or args.flag("--canonicalize-missing"));
+    const quiet = parser.flag("-q");
+    const silent = (parser.flag("-s"));
+    const verbose = (parser.flag("-v"));
+    const zero = (parser.flag("-z"));
+    var suppress_newline = (parser.flag("-n"));
+    const find_all_but_last_link = (parser.flag("-f"));
+    const find_all_links = (parser.flag("-e"));
+    const accept_missing_links = (parser.flag("-m"));
 
     checkInconsistencies(quiet, silent, verbose, zero, suppress_newline, find_all_but_last_link, find_all_links, accept_missing_links);
 
-    const positionals = args.positionals();
+    const positionals = parser.positionals();
     if (positionals.len == 0) {
         print("{s}: missing operand\n", .{application_name});
         std.posix.exit(1);

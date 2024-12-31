@@ -410,7 +410,7 @@ const ArgState = struct {
         }
 
         // Mark this argument as used
-        self.used_args |= @as(ArgSetType, 1) << @intCast(u5, next_index);
+        self.used_args |= @as(ArgSetType, 1) << @intCast(next_index);
         return next_index;
     }
 };
@@ -423,15 +423,15 @@ pub fn formatAddress(value: anytype, options: FormatOptions, writer: anytype) @T
         .Pointer => |info| {
             try writer.writeAll(@typeName(info.child) ++ "@");
             if (info.size == .Slice)
-                try formatInt(@ptrToInt(value.ptr), 16, .lower, FormatOptions{}, writer)
+                try formatInt(@intFromPtr(value.ptr), 16, .lower, FormatOptions{}, writer)
             else
-                try formatInt(@ptrToInt(value), 16, .lower, FormatOptions{}, writer);
+                try formatInt(@intFromPtr(value), 16, .lower, FormatOptions{}, writer);
             return;
         },
         .Optional => |info| {
             if (@typeInfo(info.child) == .Pointer) {
                 try writer.writeAll(@typeName(info.child) ++ "@");
-                try formatInt(@ptrToInt(value), 16, .lower, FormatOptions{}, writer);
+                try formatInt(@intFromPtr(value), 16, .lower, FormatOptions{}, writer);
                 return;
             }
         },
@@ -545,7 +545,7 @@ pub fn formatType(
             // Use @tagName only if value is one of known fields
             @setEvalBranchQuota(3 * enumInfo.fields.len);
             inline for (enumInfo.fields) |enumField| {
-                if (@enumToInt(value) == enumField.value) {
+                if (@intFromEnum(value) == enumField.value) {
                     try writer.writeAll(".");
                     try writer.writeAll(@tagName(value));
                     return;
@@ -553,7 +553,7 @@ pub fn formatType(
             }
 
             try writer.writeAll("(");
-            try formatType(@enumToInt(value), actual_fmt, options, writer, max_depth);
+            try formatType(@intFromEnum(value), actual_fmt, options, writer, max_depth);
             try writer.writeAll(")");
         },
         .Union => |info| {
@@ -573,7 +573,7 @@ pub fn formatType(
                 }
                 try writer.writeAll(" }");
             } else {
-                try format(writer, "@{x}", .{@ptrToInt(&value)});
+                try format(writer, "@{x}", .{@intFromPtr(&value)});
             }
         },
         .Struct => |info| {
@@ -638,7 +638,7 @@ pub fn formatType(
                 .Enum, .Union, .Struct => {
                     return formatType(value.*, actual_fmt, options, writer, max_depth);
                 },
-                else => return format(writer, "{s}@{x}", .{ @typeName(ptr_info.child), @ptrToInt(value) }),
+                else => return format(writer, "{s}@{x}", .{ @typeName(ptr_info.child), @intFromPtr(value) }),
             },
             .Many, .C => {
                 if (actual_fmt.len == 0)
@@ -698,7 +698,7 @@ pub fn formatType(
                 }
             }
             try writer.writeAll("{ ");
-            for (value) |elem, i| {
+            for (value, 0..) |elem, i| {
                 try formatType(elem, actual_fmt, options, writer, max_depth - 1);
                 if (i < value.len - 1) {
                     try writer.writeAll(", ");
@@ -719,7 +719,7 @@ pub fn formatType(
         },
         .Fn => {
             if (actual_fmt.len != 0) invalidFmtError(fmt, value);
-            return format(writer, "{s}@{x}", .{ @typeName(T), @ptrToInt(value) });
+            return format(writer, "{s}@{x}", .{ @typeName(T), @intFromPtr(value) });
         },
         .Type => {
             if (actual_fmt.len != 0) invalidFmtError(fmt, value);
@@ -1094,7 +1094,7 @@ pub fn formatFloatScientific(
     const start = 1;
     var buf_stream = std.io.fixedBufferStream(buf[start..]);
 
-    var x = @floatCast(f64, value);
+    var x: 64 = @floatFromInt(value);
     const negative = math.signbit(x);
 
     // Errol doesn't handle these special cases.
@@ -1235,9 +1235,9 @@ fn formatFloatHexadecimalUnsigned(
     const exponent_mask = (1 << exponent_bits) - 1;
     const exponent_bias = (1 << (exponent_bits - 1)) - 1;
 
-    const as_bits = @bitCast(TU, value);
+    const as_bits: TU = @bitCast(value);
     var mantissa = as_bits & mantissa_mask;
-    var exponent: i32 = @truncate(u16, (as_bits >> mantissa_bits) & exponent_mask);
+    var exponent: i32 = @as(u16, @truncate((as_bits >> mantissa_bits) & exponent_mask));
 
     const is_denormal = exponent == 0 and mantissa != 0;
     const is_zero = exponent == 0 and mantissa == 0;
@@ -1281,12 +1281,12 @@ fn formatFloatHexadecimalUnsigned(
                 extra_bits -= 1;
             }
             // Round to nearest, tie to even.
-            mantissa |= @boolToInt(mantissa & 0b100 != 0);
+            mantissa |= @intFromBool(mantissa & 0b100 != 0);
             mantissa += 1;
             // Drop the excess bits.
             mantissa >>= 2;
             // Restore the alignment.
-            mantissa <<= @intCast(math.Log2Int(TU), (mantissa_digits - precision) * 4);
+            mantissa <<= @as(math.Log2Int(TU), @intCast((mantissa_digits - precision) * 4));
 
             const overflow = mantissa & (1 << 1 + mantissa_digits * 4) != 0;
             // Prefer a normalized result in case of overflow.
@@ -1382,10 +1382,10 @@ fn formatFloatDecimalPositive(
         errol.roundToPrecision(&float_decimal, precision, errol.RoundMode.Decimal);
 
         // exp < 0 means the leading is always 0 as errol result is normalized.
-        var num_digits_whole = if (float_decimal.exp > 0) @intCast(usize, float_decimal.exp) else 0;
+        const num_digits_whole = if (float_decimal.exp > 0) @as(usize, @intCast(float_decimal.exp)) else 0;
 
         // the actual slice into the buffer, we may need to zero-pad between num_digits_whole and this.
-        var num_digits_whole_no_pad = math.min(num_digits_whole, float_decimal.digits.len);
+        const num_digits_whole_no_pad = math.min(num_digits_whole, float_decimal.digits.len);
 
         if (num_digits_whole > 0) {
             // We may have to zero pad, for instance 1e4 requires zero padding.
@@ -1411,7 +1411,7 @@ fn formatFloatDecimalPositive(
 
         // Zero-fill until we reach significant digits or run out of precision.
         if (float_decimal.exp <= 0) {
-            const zero_digit_count = @intCast(usize, -float_decimal.exp);
+            const zero_digit_count: usize = @intCast(-float_decimal.exp);
             const zeros_to_print = math.min(zero_digit_count, precision);
 
             var i: usize = 0;
@@ -1440,10 +1440,10 @@ fn formatFloatDecimalPositive(
         }
     } else {
         // exp < 0 means the leading is always 0 as errol result is normalized.
-        var num_digits_whole = if (float_decimal.exp > 0) @intCast(usize, float_decimal.exp) else 0;
+        const num_digits_whole = if (float_decimal.exp > 0) @as(usize, @intCast(float_decimal.exp)) else 0;
 
         // the actual slice into the buffer, we may need to zero-pad between num_digits_whole and this.
-        var num_digits_whole_no_pad = math.min(num_digits_whole, float_decimal.digits.len);
+        const num_digits_whole_no_pad = math.min(num_digits_whole, float_decimal.digits.len);
 
         if (num_digits_whole > 0) {
             // We may have to zero pad, for instance 1e4 requires zero padding.
@@ -1466,7 +1466,7 @@ fn formatFloatDecimalPositive(
 
         // Zero-fill until we reach significant digits or run out of precision.
         if (float_decimal.exp < 0) {
-            const zero_digit_count = @intCast(usize, -float_decimal.exp);
+            const zero_digit_count = @as(usize, @intCast(-float_decimal.exp));
 
             var i: usize = 0;
             while (i < zero_digit_count) : (i += 1) {
@@ -1496,12 +1496,12 @@ pub fn formatInt(
 
     // The type must have the same size as `base` or be wider in order for the
     // division to work
-    const min_int_bits = comptime math.max(value_info.bits, 8);
+    const min_int_bits = @max(value_info.bits, 8);
     const MinInt = std.meta.Int(.unsigned, min_int_bits);
 
-    const abs_value = math.absCast(int_value);
+    const abs_value = @abs(int_value);
     // The worst case in terms of space needed is base 2, plus 1 for the sign
-    var buf: [1 + math.max(value_info.bits, 1)]u8 = undefined;
+    var buf: [1 + @max(value_info.bits, 1)]u8 = undefined;
 
     var a: MinInt = abs_value;
     var index: usize = buf.len;
@@ -1510,21 +1510,21 @@ pub fn formatInt(
     if (base == 10 and !isComptime()) {
         while (a >= 100) : (a = @divTrunc(a, 100)) {
             index -= 2;
-            buf[index..][0..2].* = digits2(@intCast(usize, a % 100));
+            buf[index..][0..2].* = digits2(@as(usize, @intCast(a % 100)));
         }
 
         if (a < 10) {
             index -= 1;
-            buf[index] = '0' + @intCast(u8, a);
+            buf[index] = '0' + @as(u8, @intCast(a));
         } else {
             index -= 2;
-            buf[index..][0..2].* = digits2(@intCast(usize, a));
+            buf[index..][0..2].* = digits2(@as(usize, @intCast(a)));
         }
     } else {
         while (true) {
             const digit = a % base;
             index -= 1;
-            buf[index] = digitToChar(@intCast(u8, digit), case);
+            buf[index] = digitToChar(@as(u8, @intCast(digit)), case);
             a /= base;
             if (a == 0) break;
         }
@@ -1566,7 +1566,7 @@ fn formatNumber(
 
 // TODO: Remove once https://github.com/ziglang/zig/issues/868 is resolved.
 fn isComptime() bool {
-    var a: u8 = 0;
+    const a: u8 = 0;
     return @typeInfo(@TypeOf(.{a})).Struct.fields[0].is_comptime;
 }
 
@@ -1657,10 +1657,10 @@ pub fn fmtDuration(ns: u64) Formatter(formatDuration) {
 
 fn formatDurationSigned(ns: i64, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
     if (ns < 0) {
-        const data = FormatDurationData{ .ns = @intCast(u64, -ns), .negative = true };
+        const data = FormatDurationData{ .ns = @as(u64, @intCast(-ns)), .negative = true };
         try formatDuration(data, fmt, options, writer);
     } else {
-        const data = FormatDurationData{ .ns = @intCast(u64, ns) };
+        const data = FormatDurationData{ .ns = @as(u64, @intCast(ns)) };
         try formatDuration(data, fmt, options, writer);
     }
 }

@@ -3,7 +3,6 @@ const fs = std.fs;
 const os = std.os;
 const io = std.io;
 
-const clap = @import("clap.zig");
 const clap2 = @import("clap2/clap2.zig");
 const version = @import("util/version.zig");
 const system = @import("util/system.zig");
@@ -42,38 +41,35 @@ const help_message =
 extern fn getpriority(which: c_int, who: system.id_t) c_int;
 
 pub fn main() !void {
-    const params = comptime [_]clap.Param(clap.Help){
-        clap.parseParam("--help") catch unreachable,
-        clap.parseParam("--version") catch unreachable,
-        clap.parseParam("-n, --adjustment <NUM>") catch unreachable,
-        clap.parseParam("<STRING>") catch unreachable,
+    const args: []const clap2.Argument = &[_]clap2.Argument{
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
+        clap2.Argument.OptionArgument("n", &[_][]const u8{"adjustment"}, false),
     };
 
-    var diag = clap.Diagnostic{};
-    var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
-    defer args.deinit();
+    var parser = clap2.Parser.init(args);
+    defer parser.deinit();
 
-
-    if (args.flag("--help")) {
+    if (parser.flag("help")) {
         print(help_message, .{});
         std.posix.exit(0);
-    } else if (args.flag("--version")) {
+    } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
         std.posix.exit(0);
     }
 
-    const arguments = args.positionals();
-    const adjustment_string = args.option("-n");
+    const arguments = parser.positionals();
+    const adjustment_string = parser.option("n");
 
-    if (arguments.len == 0 and adjustment_string == null) {
+    if (arguments.len == 0 and !adjustment_string.found) {
         print("{d}\n", .{getpriority(@intFromEnum(PriorityType.PRIO_PROCESS), 0)});
         std.posix.exit(0);
     }
 
     var adjustment: i32 = 0;
-    if (adjustment_string != null) {
-        adjustment = std.fmt.parseInt(i32, adjustment_string.?, 10) catch {
-            print("{s}: invalid number: '{s}'\n", .{application_name, adjustment_string.?});
+    if (adjustment_string.found) {
+        adjustment = std.fmt.parseInt(i32, adjustment_string.value.?, 10) catch {
+            print("{s}: invalid number: '{s}'\n", .{application_name, adjustment_string.value.?});
             std.posix.exit(1);
         };
     }

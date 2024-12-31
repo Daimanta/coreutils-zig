@@ -6,7 +6,6 @@ const io = std.io;
 const testing = std.testing;
 const hash = std.crypto.hash;
 
-const clap = @import("clap.zig");
 const clap2 = @import("clap2/clap2.zig");
 const fileinfo = @import("util/fileinfo.zig");
 const version = @import("util/version.zig");
@@ -57,42 +56,40 @@ var handled_stdin = false;
 const HashError = error{ FileDoesNotExist, IsDir, FileAccessFailed, OtherError };
 
 pub fn main() !void {
-    const params = comptime [_]clap.Param(clap.Help){
-        clap.parseParam("--help") catch unreachable,
-        clap.parseParam("--version") catch unreachable,
-        clap.parseParam("-b, --binary") catch unreachable,
-        clap.parseParam("-c, --check") catch unreachable,
-        clap.parseParam("--tag") catch unreachable,
-        clap.parseParam("-t, --text") catch unreachable,
-        clap.parseParam("-z, --zero") catch unreachable,
-        clap.parseParam("--ignore-missing") catch unreachable,
-        clap.parseParam("--quiet") catch unreachable,
-        clap.parseParam("--status") catch unreachable,
-        clap.parseParam("--strict") catch unreachable,
-        clap.parseParam("-w, --warn") catch unreachable,
-        clap.parseParam("<STRING>") catch unreachable,
+    const args: []const clap2.Argument = &[_]clap2.Argument{
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
+        clap2.Argument.FlagArgument("b", &[_][]const u8{"binary"}),
+        clap2.Argument.FlagArgument("c", &[_][]const u8{"check"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"tag"}),
+        clap2.Argument.FlagArgument("t", &[_][]const u8{"text"}),
+        clap2.Argument.FlagArgument("z", &[_][]const u8{"zero"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"ignore-missing"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"quiet"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"status"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"strict"}),
+        clap2.Argument.FlagArgument("w", &[_][]const u8{"warn"}),
     };
 
-    var diag = clap.Diagnostic{};
-    var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
-    defer args.deinit();
+    var parser = clap2.Parser.init(args);
+    defer parser.deinit();
 
-    if (args.flag("--help")) {
+    if (parser.flag("help")) {
         print(help_message, .{});
         std.posix.exit(0);
-    } else if (args.flag("--version")) {
+    } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
         std.posix.exit(0);
     }
 
-    const check = args.flag("-c");
-    const bsd = args.flag("--tag");
-    const zero_terminated = args.flag("-z");
-    const ignore_missing = args.flag("--ignore-missing");
-    const quiet = args.flag("--quiet");
-    const status_only = args.flag("--status");
-    const strict = args.flag("--strict");
-    const warn = args.flag("-w");
+    const check = parser.flag("c");
+    const bsd = parser.flag("tag");
+    const zero_terminated = parser.flag("z");
+    const ignore_missing = parser.flag("ignore-missing");
+    const quiet = parser.flag("quiet");
+    const status_only = parser.flag("status");
+    const strict = parser.flag("strict");
+    const warn = parser.flag("w");
 
     const terminator: []const u8 = if (zero_terminated) "\x00" else "\n";
 
@@ -106,7 +103,7 @@ pub fn main() !void {
         std.posix.exit(1);
     }
 
-    const positionals = args.positionals();
+    const positionals = parser.positionals();
     var clean = true;
     if (check) {
         for (positionals) |arg| {

@@ -5,7 +5,6 @@ const os = std.os;
 const io = std.io;
 const testing = std.testing;
 
-const clap = @import("clap.zig");
 const clap2 = @import("clap2/clap2.zig");
 const fileinfo = @import("util/fileinfo.zig");
 const version = @import("util/version.zig");
@@ -71,56 +70,54 @@ var handled_stdin = false;
 const HashError = error{ FileDoesNotExist, IsDir, FileAccessFailed, OtherError };
 
 pub fn main() !void {
-    const params = comptime [_]clap.Param(clap.Help){
-        clap.parseParam("--help") catch unreachable,
-        clap.parseParam("--version") catch unreachable,
-        clap.parseParam("--backup <STR>") catch unreachable,
-        clap.parseParam("-b") catch unreachable,
-        clap.parseParam("-d, --directory") catch unreachable,
-        clap.parseParam("-F") catch unreachable,
-        clap.parseParam("-f, --force") catch unreachable,
-        clap.parseParam("-i, --interactive") catch unreachable,
-        clap.parseParam("-L, --logical") catch unreachable,
-        clap.parseParam("-n, --no-dereference") catch unreachable,
-        clap.parseParam("-P, --physical") catch unreachable,
-        clap.parseParam("-r, --relative") catch unreachable,
-        clap.parseParam("-s, --symbolic") catch unreachable,
-        clap.parseParam("-S, --suffix <STR>") catch unreachable,
-        clap.parseParam("-t, --target-directory <STR>") catch unreachable,
-        clap.parseParam("-T, --no-target-directory") catch unreachable,
-        clap.parseParam("-v, --verbose") catch unreachable,
-        clap.parseParam("<STRING>") catch unreachable,
+    const args: []const clap2.Argument = &[_]clap2.Argument{
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
+        clap2.Argument.FlagArgument("b", null),
+        clap2.Argument.FlagArgument("d", &[_][]const u8{"directory"}),
+        clap2.Argument.FlagArgument("F", null),
+        clap2.Argument.FlagArgument("f", &[_][]const u8{"force"}),
+        clap2.Argument.FlagArgument("i", &[_][]const u8{"interactive"}),
+        clap2.Argument.FlagArgument("L", &[_][]const u8{"logical"}),
+        clap2.Argument.FlagArgument("n", &[_][]const u8{"no-dereference"}),
+        clap2.Argument.FlagArgument("P", &[_][]const u8{"physical"}),
+        clap2.Argument.FlagArgument("r", &[_][]const u8{"relative"}),
+        clap2.Argument.FlagArgument("s", &[_][]const u8{"symbol"}),
+        clap2.Argument.FlagArgument("T", &[_][]const u8{"no-target-directory"}),
+        clap2.Argument.FlagArgument("v", &[_][]const u8{"verbose"}),
+        clap2.Argument.OptionArgument(null, &[_][]const u8{"backup"}, false),
+        clap2.Argument.OptionArgument("S", &[_][]const u8{"suffix"}, false),
+        clap2.Argument.OptionArgument("t", &[_][]const u8{"target-directory"}, false),
     };
 
-    var diag = clap.Diagnostic{};
-    var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
-    defer args.deinit();
+    var parser = clap2.Parser.init(args);
+    defer parser.deinit();
 
-    if (args.flag("--help")) {
-       print(help_message, .{});
+    if (parser.flag("help")) {
+        print(help_message, .{});
         std.posix.exit(0);
-    } else if (args.flag("--version")) {
+    } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
         std.posix.exit(0);
     }
 
-    const backup = args.option("--backup");
-    const directory = args.flag("-d") or args.flag("-F");
-    const force = args.flag("-f");
-    const interactive = args.flag("-i");
-    const logical = args.flag("-L");
-    const no_dereference = args.flag("-n");
-    const physical = args.flag("-P");
-    const relative = args.flag("-r");
-    const symbolic = args.flag("-s");
-    const suffix = args.option("-S");
-    const target_directory = args.option("-t");
-    const no_target_directory = args.flag("-T");
-    const verbose = args.flag("-v");
+    const backup = parser.option("backup");
+    const directory = parser.flag("d") or parser.flag("F");
+    const force = parser.flag("f");
+    const interactive = parser.flag("i");
+    const logical = parser.flag("L");
+    const no_dereference = parser.flag("n");
+    const physical = parser.flag("P");
+    const relative = parser.flag("r");
+    const symbolic = parser.flag("s");
+    const suffix = parser.option("S");
+    const target_directory = parser.option("t");
+    const no_target_directory = parser.flag("T");
+    const verbose = parser.flag("v");
     _ = backup; _ = suffix; _ = verbose;
-    checkInconsistencies(directory, symbolic, physical, relative, force, interactive, target_directory != null, no_target_directory, logical, no_dereference);
+    checkInconsistencies(directory, symbolic, physical, relative, force, interactive, target_directory.found, no_target_directory, logical, no_dereference);
     
-    const positionals = args.positionals();
+    const positionals = parser.positionals();
     
     if (positionals.len == 0) {
         print("{s}: No targets specified. Exiting.\n", .{application_name});

@@ -3,7 +3,6 @@ const fs = std.fs;
 const os = std.os;
 const io = std.io;
 
-const clap = @import("clap.zig");
 const clap2 = @import("clap2/clap2.zig");
 const version = @import("util/version.zig");
 const strings = @import("util/strings.zig");
@@ -31,35 +30,37 @@ extern fn get_nprocs() callconv(.C) c_int;
 extern fn get_nprocs_conf() callconv(.C) c_int;
 
 pub fn main() !void {
-    const params = comptime [_]clap.Param(clap.Help){
-        clap.parseParam("--help") catch unreachable,
-        clap.parseParam("--version") catch unreachable,
-        clap.parseParam("--ignore <NUM>") catch unreachable,
-        clap.parseParam("--all") catch unreachable,
+    const args: []const clap2.Argument = &[_]clap2.Argument{
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"all"}),
+        clap2.Argument.OptionArgument(null, &[_][]const u8{"ignore"}, false),
     };
 
-    var diag = clap.Diagnostic{};
-    var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
-    defer args.deinit();
+    var parser = clap2.Parser.init(args);
+    defer parser.deinit();
 
-    var ignore: u32 = 0;
-    var all_processors = false;
-
-    if (args.flag("--help")) {
+    if (parser.flag("help")) {
         print(help_message, .{});
         std.posix.exit(0);
-    } else if (args.flag("--version")) {
+    } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
         std.posix.exit(0);
     }
 
-    if (args.flag("--all")) {
+    var ignore: u32 = 0;
+    var all_processors = false;
+
+    const all = parser.flag("all");
+    const ignoreFlag = parser.option("ignore");
+
+    if (all) {
         all_processors = true;
     }
 
-    if (args.option("--ignore")) |count| {
-        const temp = std.fmt.parseInt(u32, count, 10) catch {
-            print("{s}: invalid number: '{s}'\n", .{application_name, count});
+    if (ignoreFlag.found) {
+        const temp = std.fmt.parseInt(u32, ignoreFlag.value.?, 10) catch {
+            print("{s}: invalid number: '{s}'\n", .{application_name, ignoreFlag.value.?});
             std.posix.exit(1);
         };
         ignore = temp;

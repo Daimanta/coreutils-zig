@@ -2,7 +2,6 @@ const std = @import("std");
 const fs = std.fs;
 const os = std.os;
 
-const clap = @import("clap.zig");
 const clap2 = @import("clap2/clap2.zig");
 const version = @import("util/version.zig");
 
@@ -31,31 +30,32 @@ const help_message =
 ;
 
 pub fn main() !void {
-    const params = comptime [_]clap.Param(clap.Help){
-        clap.parseParam("--help") catch unreachable,
-        clap.parseParam("--version") catch unreachable,
-        clap.parseParam("-L") catch unreachable,
-        clap.parseParam("-P") catch unreachable
+    const args: []const clap2.Argument = &[_]clap2.Argument{
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
+        clap2.Argument.FlagArgument("P", null),
+        clap2.Argument.FlagArgument("L", null),
     };
 
-    var diag = clap.Diagnostic{};
-    var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
-    defer args.deinit();
+    var parser = clap2.Parser.init(args);
+    defer parser.deinit();
+
+    if (parser.flag("help")) {
+        print(help_message, .{});
+        std.posix.exit(0);
+    } else if (parser.flag("version")) {
+        version.printVersionInfo(application_name);
+        std.posix.exit(0);
+    }
 
     var resolve_symlink = false;
 
-    if (args.flag("--help")) {
-        print(help_message, .{});
-        std.posix.exit(0);
-    } else if (args.flag("--version")) {
-        version.printVersionInfo(application_name);
-        std.posix.exit(0);
-    } else if (args.flag("-L") and args.flag("-P")) {
+    if (parser.flag("-L") and parser.flag("-P")) {
         print("Conflicting options -L and -P set. Exiting.", .{});
         std.posix.exit(1);
-    } else if (args.flag("-L")) {
+    } else if (parser.flag("-L")) {
         resolve_symlink = false;
-    } else if (args.flag("-P")) {
+    } else if (parser.flag("-P")) {
         resolve_symlink = true;
     }
 

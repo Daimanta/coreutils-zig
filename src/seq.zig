@@ -3,7 +3,6 @@ const fs = std.fs;
 const os = std.os;
 const linux = os.linux;
 
-const clap = @import("clap.zig");
 const clap2 = @import("clap2/clap2.zig");
 const fileinfo = @import("util/fileinfo.zig");
 const print_tools = @import("util/print_tools.zig");
@@ -51,47 +50,49 @@ const help_message =
 ;
 
 pub fn main() !void {
-    const params = comptime [_]clap.Param(clap.Help){
-        clap.parseParam("--help") catch unreachable,
-        clap.parseParam("--version") catch unreachable,
-        clap.parseParam("-f, --format <STR>") catch unreachable,
-        clap.parseParam("-s, --separator <STR>") catch unreachable,
-        clap.parseParam("-w, --equal-width") catch unreachable,
-        clap.parseParam("<STRING>") catch unreachable,
+    const args: []const clap2.Argument = &[_]clap2.Argument{
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
+        clap2.Argument.FlagArgument("f", &[_][]const u8{"format"}),
+        clap2.Argument.OptionArgument("s", &[_][]const u8{"separator"}, false),
+        clap2.Argument.FlagArgument("w", &[_][]const u8{"equal-width"}),
     };
 
-    var diag = clap.Diagnostic{};
-    var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag, .numbers_can_be_flags = false }, application_name, 1);
+    var parser = clap2.Parser.init(args);
+    defer parser.deinit();
 
-    if (args.flag("--help")) {
+    if (parser.flag("help")) {
         print(help_message, .{});
         std.posix.exit(0);
-    } else if (args.flag("--version")) {
+    } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
         std.posix.exit(0);
     }
 
-    const format = args.option("-f");
-    var separator = args.option("-s");
-    const equal_width = args.flag("-w");
-    const arguments = args.positionals();
+    const format = parser.option("-f");
+    const separatorFlag = parser.option("-s");
+    const equal_width = parser.flag("-w");
+    const arguments = parser.positionals();
 
-    if (equal_width and format != null) {
+    if (equal_width and format.found) {
         print("{s}: -w and -f cannot be active at the same time. Exiting\n", .{application_name});
-        os.exit(1);
+        std.posix.exit(1);
     }
 
-    if (separator == null) separator = "\n";
+    var separator: []const u8 = "\n";
+    if (separatorFlag.found) {
+        separator = separatorFlag.value.?;
+    }
 
     if (arguments.len == 0) {
         print("{s}: At least one argument required. Exiting\n", .{application_name});
-        os.exit(1);
+        std.posix.exit(1);
     } else if (arguments.len > 3) {
         print("{s}: At most three arguments are accepted. Exiting\n", .{application_name});
-        os.exit(1);
+        std.posix.exit(1);
     }
     if (all_integer_arguments(arguments)) {
-        process_integers(arguments, equal_width, separator.?, format);
+        process_integers(arguments, equal_width, separator, format.value);
     } else {
         // Either floats or invalid data
     }
@@ -164,7 +165,7 @@ fn process_integers(arguments: []const []const u8, equal_width: bool, separator:
     if (equal_width) {
         width = 1;
         const actual_last_value = first + (@divFloor(last-first, increment) * increment);
-        width = std.math.max(count_digits(first), count_digits(actual_last_value));
+        width = @max(count_digits(first), count_digits(actual_last_value));
     }
     var format_string: ?FormatString = null;
     if (format != null) {
@@ -190,7 +191,7 @@ fn print_integer(iterator: i64, separator: []const u8, width: ?u8, format: ?Form
         const len = zig_fixes.formatIntBuf(buffer, iterator, 10, .lower, .{.fill = '0', .width = width.?});
         print("{s}{s}", .{buffer[0..len], separator});
     } else if (format != null) {
-        format.?.printf(&.{printf.FormatArgument{.FLOAT = @intToFloat(f64, iterator)}}) catch std.posix.exit(1);
+        format.?.printf(&.{printf.FormatArgument{.FLOAT = @floatFromInt(iterator)}}) catch std.posix.exit(1);
     } else {
         print("{d}{s}", .{iterator, separator});
     }

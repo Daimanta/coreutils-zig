@@ -182,7 +182,7 @@ pub const FormatString = struct {
 };
 
 pub fn main() !void {
-    var input_string: []const u8 = "This is a %d plain string";
+    const input_string: []const u8 = "This is a %d plain string";
     var result = try FormatString.init(input_string, std.heap.page_allocator);
     defer result.deinit();
     try result.printf(&.{FormatArgument{.UNSIGNED_INT = 3}});
@@ -467,7 +467,7 @@ test "foo" {
 }
 
 test "bar" {
-    var input_string: []const u8 = "This is a plain string";
+    const input_string: []const u8 = "This is a plain string";
     var result = try FormatString.init(input_string, test_allocator);
     defer result.deinit();
     try result.printf(&.{});

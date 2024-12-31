@@ -41,8 +41,8 @@ const consider_group = false;
 const consider_mode = true;
 
 pub fn main() !void {
-    const params = comptime file_ownership.getParams2(file_ownership.Program.CHMOD);
-    const ownership_options = file_ownership.getOwnershipOptions2(params, application_name, help_message, file_ownership.Program.CHMOD);
+    const params = comptime file_ownership.getParams(file_ownership.Program.CHMOD);
+    const ownership_options = file_ownership.getOwnershipOptions(params, application_name, help_message, file_ownership.Program.CHMOD);
     var change_params = file_ownership.getChangeParams(ownership_options, application_name, consider_user, consider_group, consider_mode);
     const positionals = ownership_options.parser.positionals();
     var start: usize = 1;

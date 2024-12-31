@@ -3,7 +3,6 @@ const fs = std.fs;
 const os = std.os;
 const linux = os.linux;
 
-const clap = @import("../clap.zig");
 const clap2 = @import("../clap2/clap2.zig");
 const fileinfo = @import("../util/fileinfo.zig");
 const mode_import = @import("../util/mode.zig");

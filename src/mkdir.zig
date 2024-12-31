@@ -39,46 +39,45 @@ const help_message =
 
 
 pub fn main() !void {
-    const params = comptime [_]clap.Param(clap.Help){
-        clap.parseParam("--help") catch unreachable,
-        clap.parseParam("--version") catch unreachable,
-        clap.parseParam("-m, --mode <STR>") catch unreachable,
-        clap.parseParam("-Z") catch unreachable,
-        clap.parseParam("--context <STR>") catch unreachable,
-        clap.parseParam("-p, --parents") catch unreachable,
-        clap.parseParam("-v, --verbose") catch unreachable,
-        clap.parseParam("<STRING>") catch unreachable,
+    const args: []const clap2.Argument = &[_]clap2.Argument{
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
+        clap2.Argument.OptionArgument("m", &[_][]const u8{"mode"}, false),
+        clap2.Argument.FlagArgument("Z", null),
+        clap2.Argument.OptionArgument(null, &[_][]const u8{"context"}, false),
+        clap2.Argument.FlagArgument("p", &[_][]const u8{"parents"}),
+        clap2.Argument.FlagArgument("z", &[_][]const u8{"zero"}),
+        clap2.Argument.FlagArgument("v", &[_][]const u8{"verbose"}),
     };
 
-    var diag = clap.Diagnostic{};
-    var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
-    defer args.deinit();
+    var parser = clap2.Parser.init(args);
+    defer parser.deinit();
 
-    if (args.flag("--help")) {
+    if (parser.flag("help")) {
         print(help_message, .{});
         std.posix.exit(0);
-    } else if (args.flag("--version")) {
+    } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
         std.posix.exit(0);
     }
 
-    const arguments = args.positionals();
+    const arguments = parser.positionals();
     
     var used_mode: mode_t = mode.getModeFromStringAndZeroMode("a=rw") catch unreachable;
     
-    const mode_string = args.option("-m");
-    const create_parents = args.flag("-p");
-    const verbose = args.flag("-v");
-    const default_selinux_context = args.flag("-Z");
-    const special_selinux_context = args.option("--context");
+    const mode_string = parser.option("m");
+    const create_parents = parser.flag("p");
+    const verbose = parser.flag("v");
+    const default_selinux_context = parser.flag("Z");
+    const special_selinux_context = parser.option("context");
     
-    if (default_selinux_context and special_selinux_context != null) {
+    if (default_selinux_context and special_selinux_context.found) {
         print("SELinux context cannot be both default and specific. Exiting.\n", .{});
         std.posix.exit(1);
     }   
     
-    if (mode_string != null) {
-        used_mode = mode.getModeFromStringAndZeroMode(mode_string.?) catch |err| {
+    if (mode_string.found) {
+        used_mode = mode.getModeFromStringAndZeroMode(mode_string.value.?) catch |err| {
             switch (err) {
                 mode.ModeError.InvalidModeString => print("Invalid mode. Exiting.\n", .{}),
                 mode.ModeError.UnknownError => print("Unknown mode error. Exiting.\n", .{}),

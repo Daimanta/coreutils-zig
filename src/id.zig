@@ -2,7 +2,6 @@ const std = @import("std");
 const os = std.os;
 const linux = os.linux;
 
-const clap = @import("clap.zig");
 const clap2 = @import("clap2/clap2.zig");
 const version = @import("util/version.zig");
 const strings = @import("util/strings.zig");
@@ -46,40 +45,37 @@ const Mode = enum {
 
 
 pub fn main() !void {
-    const params = comptime [_]clap.Param(clap.Help){
-        clap.parseParam("--help") catch unreachable,
-        clap.parseParam("--version") catch unreachable,
-        clap.parseParam("-Z, --context") catch unreachable,
-        clap.parseParam("-g, --group") catch unreachable,
-        clap.parseParam("-G, --groups") catch unreachable,
-        clap.parseParam("-n, --name") catch unreachable,
-        clap.parseParam("-r, --real") catch unreachable,
-        clap.parseParam("-u, --user") catch unreachable,
-        clap.parseParam("-z, --zero") catch unreachable,
-        clap.parseParam("<STRING>") catch unreachable,
+    const args: []const clap2.Argument = &[_]clap2.Argument{
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
+        clap2.Argument.FlagArgument("Z", &[_][]const u8{"context"}),
+        clap2.Argument.FlagArgument("g", &[_][]const u8{"group"}),
+        clap2.Argument.FlagArgument("G", &[_][]const u8{"groups"}),
+        clap2.Argument.FlagArgument("n", &[_][]const u8{"name"}),
+        clap2.Argument.FlagArgument("r", &[_][]const u8{"real"}),
+        clap2.Argument.FlagArgument("u", &[_][]const u8{"user"}),
+        clap2.Argument.FlagArgument("z", &[_][]const u8{"zero"}),
     };
 
-    var diag = clap.Diagnostic{};
-    var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
-    defer args.deinit();
+    var parser = clap2.Parser.init(args);
+    defer parser.deinit();
 
-
-    if (args.flag("--help")) {
+    if (parser.flag("help")) {
         print(help_message, .{});
         std.posix.exit(0);
-    } else if (args.flag("--version")) {
+    } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
         std.posix.exit(0);
     }
-    
-    const security_context = args.flag("-Z");
+
+    const security_context = parser.flag("Z");
     _ = security_context;
-    const group_id = args.flag("-g");
-    const all_groups = args.flag("-G");
-    const name = args.flag("-n");
-    const real_id = args.flag("-r");
-    const user_id = args.flag("-u");
-    const zero_terminator = args.flag("-z");
+    const group_id = parser.flag("g");
+    const all_groups = parser.flag("G");
+    const name = parser.flag("n");
+    const real_id = parser.flag("r");
+    const user_id = parser.flag("u");
+    const zero_terminator = parser.flag("z");
     
     if ((name or real_id) and !(user_id or group_id or all_groups)) {
         print("{s}: cannot print only names or real IDs in default format\n", .{application_name});
@@ -106,7 +102,7 @@ pub fn main() !void {
         std.posix.exit(1);
     }
     
-    const user_list = args.positionals();
+    const user_list = parser.positionals();
     
     if (user_list.len == 0) {
         const my_uid = linux.geteuid();

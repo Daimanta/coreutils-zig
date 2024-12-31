@@ -3,7 +3,6 @@ const fs = std.fs;
 const os = std.os;
 const io = std.io;
 
-const clap = @import("clap.zig");
 const clap2 = @import("clap2/clap2.zig");
 const fileinfo = @import("util/fileinfo.zig");
 const version = @import("util/version.zig");
@@ -41,50 +40,48 @@ const help_message =
 
 
 pub fn main() !void {
-    const params = comptime [_]clap.Param(clap.Help){
-        clap.parseParam("-e, --canonicalize-existing") catch unreachable,
-        clap.parseParam("-m, --canonicalize-missing") catch unreachable,
-        clap.parseParam("-L, --logical") catch unreachable,
-        clap.parseParam("-P, --physical") catch unreachable,
-        clap.parseParam("-q, --quiet") catch unreachable,
-        clap.parseParam("--relative-to <STR>") catch unreachable,
-        clap.parseParam("--relative-base <STR>") catch unreachable,
-        clap.parseParam("-s, --strip") catch unreachable,
-        clap.parseParam("--no-symlinks") catch unreachable,
-        clap.parseParam("-z") catch unreachable,
-        clap.parseParam("--help") catch unreachable,
-        clap.parseParam("--version") catch unreachable,
-        clap.parseParam("<STRING>") catch unreachable,
+    const args: []const clap2.Argument = &[_]clap2.Argument{
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
+        clap2.Argument.FlagArgument("e", &[_][]const u8{"canonicalize-existing"}),
+        clap2.Argument.FlagArgument("m", &[_][]const u8{"canonicalize-missing"}),
+        clap2.Argument.FlagArgument("L", &[_][]const u8{"logical"}),
+        clap2.Argument.FlagArgument("P", &[_][]const u8{"physical"}),
+        clap2.Argument.FlagArgument("q", &[_][]const u8{"quiet"}),
+        clap2.Argument.FlagArgument("s", &[_][]const u8{"strip"}),
+        clap2.Argument.FlagArgument("z", null),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"no-symlinks"}),
+        clap2.Argument.OptionArgument(null, &[_][]const u8{"relative-to"}, false),
+        clap2.Argument.OptionArgument(null, &[_][]const u8{"relative-base"}, false),
     };
 
-    var diag = clap.Diagnostic{};
-    var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
-    defer args.deinit();
-    
-    if (args.flag("--help")) {
+    var parser = clap2.Parser.init(args);
+    defer parser.deinit();
+
+    if (parser.flag("help")) {
         print(help_message, .{});
         std.posix.exit(0);
-    } else if (args.flag("--version")) {
+    } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
         std.posix.exit(0);
     }
-    
-    const must_exist = args.flag("-e");
-    const may_exist = args.flag("-m");
-    const logical = args.flag("-L");
-    const physical = args.flag("-P");
-    const quiet = args.flag("-q");
-    const relative_to = args.option("--relative-to");
-    const relative_base = args.option("--relative-base");
-    const strip = args.flag("-s") or args.flag("--no-symlinks");
-    const zero = args.flag("-z");
+
+    const must_exist = parser.flag("-e");
+    const may_exist = parser.flag("-m");
+    const logical = parser.flag("-L");
+    const physical = parser.flag("-P");
+    const quiet = parser.flag("-q");
+    const relative_to = parser.option("--relative-to");
+    const relative_base = parser.option("--relative-base");
+    const strip = parser.flag("-s") or parser.flag("--no-symlinks");
+    const zero = parser.flag("-z");
     
     const separator = if (zero) "\x00" else "\n";
     
-    const errors = checkInconsistencies(must_exist, may_exist, physical, strip, relative_to, relative_base);
+    const errors = checkInconsistencies(must_exist, may_exist, physical, strip, relative_to.value, relative_base.value);
     if (errors) std.posix.exit(1);
     
-    const positionals = args.positionals();
+    const positionals = parser.positionals();
     
     if (positionals.len == 0) {
         print("{s}: No arguments supplied. Exiting.\n", .{application_name});
@@ -92,7 +89,7 @@ pub fn main() !void {
     }
     
     for (positionals, 0..) |arg, i| {
-        printRealpath(arg, must_exist, logical, !strip, quiet, relative_to, relative_base, i != positionals.len - 1, separator);
+        printRealpath(arg, must_exist, logical, !strip, quiet, relative_to.value, relative_base.value, i != positionals.len - 1, separator);
     }
     print("\n", .{});
 }

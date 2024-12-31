@@ -4,14 +4,13 @@ const os = std.os;
 const linux = os.linux;
 const io = std.io;
 
-const clap = @import("clap.zig");
 const clap2 = @import("clap2/clap2.zig");
 const strings = @import("util/strings.zig");
 const version = @import("util/version.zig");
 const users = @import("util/users.zig");
 
 const Allocator = std.mem.Allocator;
-const ChildProcess = std.ChildProcess;
+const ChildProcess = std.process.Child;
 const File = std.fs.File;
 
 const default_allocator = std.heap.page_allocator;
@@ -42,26 +41,32 @@ const help_message =
 
 
 pub fn main() !void {
-    const params = comptime [_]clap.Param(clap.Help){
-        clap.parseParam("--help") catch unreachable,
-        clap.parseParam("--version") catch unreachable,
-        clap.parseParam("<STRING>") catch unreachable,
+    const args: []const clap2.Argument = &[_]clap2.Argument{
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
+        clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
     };
 
-    var diag = clap.Diagnostic{};
-    var args = clap.parseAndHandleErrors(clap.Help, &params, .{ .diagnostic = &diag }, application_name, 1);
-    defer args.deinit();
-    
-    const arguments = args.positionals();
-    const stout = os.STDOUT_FILENO;
+    var parser = clap2.Parser.init(args);
+    defer parser.deinit();
+
+    if (parser.flag("help")) {
+        print(help_message, .{});
+        std.posix.exit(0);
+    } else if (parser.flag("version")) {
+        version.printVersionInfo(application_name);
+        std.posix.exit(0);
+    }
+
+    const arguments = parser.positionals();
+    const stout = std.c.STDOUT_FILENO;
     
     var default_filename = "nohup.out";
     
     var output_file: File = undefined;
     
-    if (std.os.isatty(stout)) {
+    if (std.posix.isatty(stout)) {
         var can_write = true;
-        std.fs.cwd().access(".", .{.write = true}) catch |err| {
+        std.fs.cwd().access(".", .{.mode = .write_only}) catch {
             can_write = false;
         };
         
@@ -84,10 +89,10 @@ pub fn main() !void {
     }
     
     
-    var child = try ChildProcess.init(arguments[0..], default_allocator);
+    var child = ChildProcess.init(arguments[0..], default_allocator);
     
-    if (std.os.isatty(stout)) {
-        _ = linux.dup2(output_file.handle, os.STDOUT_FILENO);
+    if (std.posix.isatty(stout)) {
+        _ = linux.dup2(output_file.handle, std.c.STDOUT_FILENO);
     }
     
     try child.spawn();
