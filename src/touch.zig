@@ -85,14 +85,14 @@ pub fn main() !void {
 
     const arguments = parser.positionals();
 
-    var change_only_access_time = parser.flag("-a");
-    const create_if_not_exists = !parser.flag("-c");
-    const date_string = parser.option("-d");
-    const affect_symlink = parser.flag("-h");
-    var change_only_modification_time = parser.flag("-m");
-    const use_reference_file_time = parser.option("-r");
-    const use_timestamp = parser.option("-t");
-    const change_specified_attribute = parser.option("--time");
+    var change_only_access_time = parser.flag("a");
+    const create_if_not_exists = !parser.flag("c");
+    const date_string = parser.option("d");
+    const affect_symlink = parser.flag("h");
+    var change_only_modification_time = parser.flag("m");
+    const use_reference_file_time = parser.option("r");
+    const use_timestamp = parser.option("t");
+    const change_specified_attribute = parser.option("time");
 
     if (change_specified_attribute.found) {
         if (eql(u8, change_specified_attribute.value.?, "access") or eql(u8, change_specified_attribute.value.?, "atime") or eql(u8, change_specified_attribute.value.?, "use")) {

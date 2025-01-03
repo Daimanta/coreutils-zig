@@ -56,9 +56,9 @@ pub fn main() !void {
 
     const arguments = parser.positionals();
     
-    const remove_parents = parser.flag("-p");
-    const verbose = parser.flag("-v");
-    const ignore_non_empty_fail = parser.flag("--ignore-fail-on-non-empty");
+    const remove_parents = parser.flag("p");
+    const verbose = parser.flag("v");
+    const ignore_non_empty_fail = parser.flag("ignore-fail-on-non-empty");
         
     var success = true;
     

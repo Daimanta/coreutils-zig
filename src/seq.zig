@@ -69,9 +69,9 @@ pub fn main() !void {
         std.posix.exit(0);
     }
 
-    const format = parser.option("-f");
-    const separatorFlag = parser.option("-s");
-    const equal_width = parser.flag("-w");
+    const format = parser.option("f");
+    const separatorFlag = parser.option("s");
+    const equal_width = parser.flag("w");
     const arguments = parser.positionals();
 
     if (equal_width and format.found) {

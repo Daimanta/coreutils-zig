@@ -50,12 +50,12 @@ pub fn main() !void {
 
     var resolve_symlink = false;
 
-    if (parser.flag("-L") and parser.flag("-P")) {
+    if (parser.flag("L") and parser.flag("P")) {
         print("Conflicting options -L and -P set. Exiting.", .{});
         std.posix.exit(1);
-    } else if (parser.flag("-L")) {
+    } else if (parser.flag("L")) {
         resolve_symlink = false;
-    } else if (parser.flag("-P")) {
+    } else if (parser.flag("P")) {
         resolve_symlink = true;
     }
 

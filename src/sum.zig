@@ -102,8 +102,8 @@ pub fn main() !void {
         std.posix.exit(0);
     }
 
-    const bsd = parser.flag("-r");
-    const sysv = parser.flag("-s");
+    const bsd = parser.flag("r");
+    const sysv = parser.flag("s");
     
     if (bsd and sysv) {
         print("-r and -s cannot be active at the same time\n", .{});

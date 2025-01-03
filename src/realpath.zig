@@ -48,9 +48,8 @@ pub fn main() !void {
         clap2.Argument.FlagArgument("L", &[_][]const u8{"logical"}),
         clap2.Argument.FlagArgument("P", &[_][]const u8{"physical"}),
         clap2.Argument.FlagArgument("q", &[_][]const u8{"quiet"}),
-        clap2.Argument.FlagArgument("s", &[_][]const u8{"strip"}),
+        clap2.Argument.FlagArgument("s", &[_][]const u8{"strip", "no-symlinks"}),
         clap2.Argument.FlagArgument("z", null),
-        clap2.Argument.FlagArgument(null, &[_][]const u8{"no-symlinks"}),
         clap2.Argument.OptionArgument(null, &[_][]const u8{"relative-to"}, false),
         clap2.Argument.OptionArgument(null, &[_][]const u8{"relative-base"}, false),
     };
@@ -66,15 +65,15 @@ pub fn main() !void {
         std.posix.exit(0);
     }
 
-    const must_exist = parser.flag("-e");
-    const may_exist = parser.flag("-m");
-    const logical = parser.flag("-L");
-    const physical = parser.flag("-P");
-    const quiet = parser.flag("-q");
-    const relative_to = parser.option("--relative-to");
-    const relative_base = parser.option("--relative-base");
-    const strip = parser.flag("-s") or parser.flag("--no-symlinks");
-    const zero = parser.flag("-z");
+    const must_exist = parser.flag("e");
+    const may_exist = parser.flag("m");
+    const logical = parser.flag("L");
+    const physical = parser.flag("P");
+    const quiet = parser.flag("q");
+    const relative_to = parser.option("relative-to");
+    const relative_base = parser.option("relative-base");
+    const strip = parser.flag("s");
+    const zero = parser.flag("z");
     
     const separator = if (zero) "\x00" else "\n";
     

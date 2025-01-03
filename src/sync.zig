@@ -62,16 +62,8 @@ pub fn main() !void {
 
     const arguments = parser.positionals();
 
-    if (parser.flag("--help")) {
-        print(help_message, .{});
-        std.posix.exit(0);
-    } else if (parser.flag("--version")) {
-        version.printVersionInfo(application_name);
-        std.posix.exit(0);
-    }
-    
-    const only_filedata = parser.flag("-d");
-    const sync_filesystem = parser.flag("-f");
+    const only_filedata = parser.flag("d");
+    const sync_filesystem = parser.flag("f");
     
     var sync_type = SyncType.FILE;
     if (only_filedata) sync_type = SyncType.DATA;

@@ -80,14 +80,14 @@ pub fn main() !void {
         std.posix.exit(0);
     }
 
-    const quiet = parser.flag("-q");
-    const silent = (parser.flag("-s"));
-    const verbose = (parser.flag("-v"));
-    const zero = (parser.flag("-z"));
-    var suppress_newline = (parser.flag("-n"));
-    const find_all_but_last_link = (parser.flag("-f"));
-    const find_all_links = (parser.flag("-e"));
-    const accept_missing_links = (parser.flag("-m"));
+    const quiet = parser.flag("q");
+    const silent = (parser.flag("s"));
+    const verbose = (parser.flag("v"));
+    const zero = (parser.flag("z"));
+    var suppress_newline = (parser.flag("n"));
+    const find_all_but_last_link = (parser.flag("f"));
+    const find_all_links = (parser.flag("e"));
+    const accept_missing_links = (parser.flag("m"));
 
     checkInconsistencies(quiet, silent, verbose, zero, suppress_newline, find_all_but_last_link, find_all_links, accept_missing_links);
 

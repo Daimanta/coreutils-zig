@@ -80,9 +80,9 @@ pub fn main() !void {
 
     const arguments = parser.positionals();
 
-    const append_files = parser.flag("-a");
-    const ignore_interrupts = parser.flag("-i");
-    const my_output_error = parser.option("--output-error");
+    const append_files = parser.flag("a");
+    const ignore_interrupts = parser.flag("i");
+    const my_output_error = parser.option("output-error");
     _ = ignore_interrupts; _ = my_output_error;
 
     const stdin = std.io.getStdIn().reader();

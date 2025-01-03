@@ -89,21 +89,21 @@ pub fn main() !void {
         std.posix.exit(0);
     }
 
-    const all = parser.flag("-a");
-    const boot = parser.flag("-b") or all;
-    const dead = parser.flag("-d") or all;
-    const heading = parser.flag("-H");
-    const ips = parser.flag("--ips");
-    const login = parser.flag("-l") or all;
-    const lookup = parser.flag("--lookup");
-    const stdin_users = parser.flag("-m");
-    const processes = parser.flag("-p") or all;
-    const count = parser.flag("-q");
-    const runlevel = parser.flag("-r") or all;
-    const short = parser.flag("-s");
-    const time = parser.flag("-t") or all;
-    const message_status = parser.flag("-T") or parser.flag("--message") or parser.flag("--writable") or all;
-    const list_users = parser.flag("-u") or all;
+    const all = parser.flag("a");
+    const boot = parser.flag("b") or all;
+    const dead = parser.flag("d") or all;
+    const heading = parser.flag("H");
+    const ips = parser.flag("ips");
+    const login = parser.flag("l") or all;
+    const lookup = parser.flag("lookup");
+    const stdin_users = parser.flag("m");
+    const processes = parser.flag("p") or all;
+    const count = parser.flag("q");
+    const runlevel = parser.flag("r") or all;
+    const short = parser.flag("s");
+    const time = parser.flag("t") or all;
+    const message_status = parser.flag("T") or parser.flag("message") or parser.flag("writable") or all;
+    const list_users = parser.flag("u") or all;
   
     checkConflicts(boot, dead, heading, ips, login, lookup, stdin_users, processes, count, runlevel, short, time, message_status, list_users);
 

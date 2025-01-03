@@ -62,14 +62,15 @@ pub fn main() !void {
         std.posix.exit(0);
     }
 
-    const kernel_name = parser.flag("-s") or parser.flag("-a");
-    const node_name = parser.flag("-n") or parser.flag("-a");
-    const kernel_release = parser.flag("-r") or parser.flag("-a");
-    const kernel_version = parser.flag("-v") or parser.flag("-a");
-    const machine = parser.flag("-m") or parser.flag("-a");
-    const processor = parser.flag("-p") or parser.flag("-a");
-    const hardware_platform = parser.flag("-i") or parser.flag("-a");
-    const operating_system = parser.flag("-o") or parser.flag("-a");
+    const all = parser.flag("a");
+    const kernel_name = all or parser.flag("s");
+    const node_name = all or parser.flag("n");
+    const kernel_release = all or parser.flag("r");
+    const kernel_version = all or parser.flag("v");
+    const machine = all or parser.flag("m");
+    const processor = all or parser.flag("p");
+    const hardware_platform = all or parser.flag("i");
+    const operating_system = all or parser.flag("o");
 
     
     const uname_info = std.posix.uname();
