@@ -34,6 +34,7 @@ pub fn build(b: *Builder) void {
     const md5sum = addExe(b,target, "md5sum");
     const mkdir = addExe(b, target,"mkdir");
     const mkfifo = addExe(b, target,"mkfifo");
+    const mktemp = addExe(b, target,"mktemp");
     const nice = addExe(b,target, "nice");
     const nproc = addExe(b, target,"nproc");
     const printenv = addExe(b,target, "printenv");
@@ -65,6 +66,7 @@ pub fn build(b: *Builder) void {
     _ = kill;
     _ = link;
     _ = md5sum;
+    _ = mktemp;
     _ = pwd;
     _ = readlink;
     _ = realpath;
