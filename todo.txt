@@ -3,7 +3,6 @@
     278 tee.c
     280 mknod.c
     325 unexpand.c
-    350 mktemp.c
     373 rm.c
     388 truncate.c
     394 stdbuf.c
