@@ -160,13 +160,53 @@ fn truncate_file(file: []const u8, size: SizeValue, size_in_blocks: bool) void {
     if (size_in_blocks) {
         used_size = @as(u64, @intCast(stat.blksize)) * size.value;
     }
-
-    const opened_file = std.fs.cwd().openFile(file, .{.mode = .write_only}) catch unreachable;
-    ftruncate(opened_file.handle, used_size) catch {
-        print("{s}: Error truncating file '{s}'. Exiting.\n", .{application_name, file});
-        exit(1);
-    };
-    opened_file.close();
+    const file_size: u64 = @intCast(stat.size);
+    var do_truncate: bool = true;
+    switch (size.size_type) {
+        .EXACT => {
+            do_truncate = true;
+        },
+        .AT_LEAST => {
+            do_truncate = (file_size < used_size);
+        },
+        .AT_MOST => {
+            do_truncate = (file_size > used_size);
+        },
+        .EXTEND => {
+            do_truncate = true;
+            used_size += file_size;
+        },
+        .REDUCE => {
+            do_truncate = true;
+            used_size = file_size -| used_size;
+        },
+        .ROUND_DOWN => {
+            const diff = @mod(file_size, used_size);
+            if (diff > 0) {
+                do_truncate = true;
+                used_size = file_size - diff;
+            } else {
+                do_truncate = false;
+            }
+        },
+        .ROUND_UP => {
+            const diff = @mod(file_size, used_size);
+            if (diff > 0) {
+                do_truncate = true;
+                used_size = file_size + (used_size - diff);
+            } else {
+                do_truncate = false;
+            }
+        }
+    }
+    if (do_truncate) {
+        const opened_file = std.fs.cwd().openFile(file, .{.mode = .write_only}) catch unreachable;
+        ftruncate(opened_file.handle, used_size) catch {
+            print("{s}: Error truncating file '{s}'. Exiting.\n", .{application_name, file});
+            exit(1);
+        };
+        opened_file.close();
+    }
 }
 
 
@@ -183,7 +223,7 @@ fn parseSize(size_string: []const u8) SizeValue {
     var used_size_type: SizeType = .EXACT;
     if (size_string[0] < '0' or size_string[0] > '9') {
         start_index = 1;
-        const modifiers_index = std.mem.indexOf(u8, modifiers, size_string[0..1]);
+        const modifiers_index = std.mem.indexOfScalar(u8, modifiers, size_string[0]);
         if (modifiers_index == null) {
             print("{s}: Could not parse size. Exiting.\n", .{application_name});
             exit(1);
@@ -210,7 +250,11 @@ fn parseSize(size_string: []const u8) SizeValue {
                 print("{s}: Could not parse size. Exiting.\n", .{application_name});
                 exit(1);
             };
-            used_value = used_value * multiplier;
+            used_value = used_value *| multiplier;
+            if (used_value == std.math.maxInt(u64)) {
+                print("{s}: Used size too large. Exiting.\n", .{application_name});
+                exit(1);
+            }
         }
 
         return SizeValue{
