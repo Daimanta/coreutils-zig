@@ -47,6 +47,7 @@ pub fn build(b: *Builder) void {
     const sync = addExe(b, target,"sync");
     const touch = addExe(b,target, "true");
     const true_app = addExe(b,target, "true");
+    const truncate = addExe(b, target, "truncate");
     const tty = addExe(b,target, "tty");
     const unlink = addExe(b,target, "unlink");
     const uname = addExe(b, target,"uname");
@@ -76,6 +77,7 @@ pub fn build(b: *Builder) void {
     _ = sync;
     _ = touch;
     _ = true_app;
+    _ = truncate;
     _ = unlink;
     _ = uname;
     _ = users;
