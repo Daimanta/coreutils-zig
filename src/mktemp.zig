@@ -58,7 +58,7 @@ pub fn main() !void {
         .{.shorts = null, .longs = &[_][]const u8{"suffix"}, .type = .one, .allow_none = false},
         .{.shorts = "p", .longs = &[_][]const u8{"tmpdir"}, .type = .one, .allow_none = false},
     };
-    var parser = clap2.Parser.init(args);
+    var parser = clap2.Parser.init(args, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {

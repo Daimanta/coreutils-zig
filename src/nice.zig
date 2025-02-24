@@ -47,7 +47,7 @@ pub fn main() !void {
         clap2.Argument.OptionArgument("n", &[_][]const u8{"adjustment"}, false),
     };
 
-    var parser = clap2.Parser.init(args);
+    var parser = clap2.Parser.init(args, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {

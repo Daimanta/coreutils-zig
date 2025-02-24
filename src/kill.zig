@@ -53,7 +53,7 @@ pub fn main() !void {
         .{.shorts = "t", .longs = &[_][]const u8{"table"}, .type = .none},
         .{.shorts = "s", .longs = &[_][]const u8{"signal"}, .type = .one, .allow_none = false},
     };
-    var parser = clap2.Parser.init(args);
+    var parser = clap2.Parser.init(args, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {

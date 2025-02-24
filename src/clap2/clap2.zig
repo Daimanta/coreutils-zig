@@ -48,14 +48,19 @@ pub const OptionValue = struct {
     value: ?[]const u8 = null
 };
 
+pub const ParserOptions = struct {
+    accept_numerical_arguments: bool = true
+};
+
 pub const Parser = struct {
     allocator: std.heap.ArenaAllocator,
     pairs: []ValuePair,
     _positionals: [][]const u8,
+    parser_options: ParserOptions,
 
     const Self = @This();
-    pub fn init(arguments: []const Argument) Self{
-        var result = Self{.allocator = std.heap.ArenaAllocator.init(std.heap.page_allocator), .pairs = undefined, ._positionals = undefined};
+    pub fn init(arguments: []const Argument, parser_options: ParserOptions) Self{
+        var result = Self{.allocator = std.heap.ArenaAllocator.init(std.heap.page_allocator), .pairs = undefined, ._positionals = undefined, .parser_options = parser_options};
         result.pairs = result.allocator.allocator().alloc(ValuePair, arguments.len) catch {
             std.debug.print("Error!'\n", .{});
             std.posix.exit(1);
@@ -184,10 +189,11 @@ pub const Parser = struct {
                 } else {
                     try self.handleMatch(matched.?, arguments, &i, true);
                 }
-            } else if (std.mem.startsWith(u8, arg, "-") and arg.len > 1) {
+            } else if (std.mem.startsWith(u8, arg, "-") and arg.len > 1 and (self.parser_options.accept_numerical_arguments or !arguments_are_numeric(arg))) {
                 if (arg.len > 2) {
                     var j: usize = 1;
                     while (j < arg.len - 1): (j += 1) {
+                        if (!(self.parser_options.accept_numerical_arguments or (arg[j] < '0' and arg[j] > '9'))) continue;
                         const matched = self.match(arg[j..j+1]);
                         if (matched == null) {
                             std.debug.print("Unrecognized flag '{s}'\n", .{arg[j..j+1]});
@@ -211,19 +217,19 @@ pub const Parser = struct {
         self._positionals = try positionalsArrayList.toOwnedSlice();
     }
 
-    fn getNextAsPositional(arguments: [][]const u8, index: usize) ?[]const u8 {
+    fn getNextAsPositional(arguments: [][]const u8, index: usize, accept_numerical_arguments: bool) ?[]const u8 {
         if (index >= arguments.len - 1) {
             return null;
         }
-        if (isPositional(arguments[index + 1])) {
+        if (isPositional(arguments[index + 1], accept_numerical_arguments)) {
             return arguments[index + 1];
         } else {
             return null;
         }
     }
 
-    fn isPositional(str: []const u8) bool {
-        return str.len == 1 or !std.mem.startsWith(u8, str, "-");
+    fn isPositional(str: []const u8, accept_numerical_arguments: bool) bool {
+        return str.len == 1 or !std.mem.startsWith(u8, str, "-") or ((arguments_are_numeric(str) and !accept_numerical_arguments));
     }
 
     fn handleMatch(self: *Self, matched: *ValuePair, arguments: [][]const u8, i: *usize, look_forward: bool) !void {
@@ -231,7 +237,7 @@ pub const Parser = struct {
         matched.value.matched = true;
         const allowNone = matched.argument.allow_none;
         if (matched.argument.type == .one) {
-            const next = getNextAsPositional(arguments, i.*);
+            const next = getNextAsPositional(arguments, i.*, self.parser_options.accept_numerical_arguments);
             if (!look_forward and !allowNone) {
                 std.debug.print("Expected an option for '{s}' but received none.\n", .{arg});
                 std.posix.exit(1);
@@ -247,7 +253,7 @@ pub const Parser = struct {
                 i.* += 1;
             }
         } else if (matched.argument.type == .many) {
-            var next = getNextAsPositional(arguments, i.*);
+            var next = getNextAsPositional(arguments, i.*, self.parser_options.accept_numerical_arguments);
             if (!look_forward and !allowNone) {
                 std.debug.print("Expected an option for '{s}' but received none.\n", .{arg});
                 std.posix.exit(1);
@@ -265,13 +271,21 @@ pub const Parser = struct {
                 while (next != null) {
                     try multiList.append(next.?);
                     i.* += 1;
-                    next = getNextAsPositional(arguments, i.*);
+                    next = getNextAsPositional(arguments, i.*, self.parser_options.accept_numerical_arguments);
                 }
                 matched.value.multiValue = try multiList.toOwnedSlice();
             } else {
                 matched.value.multiValue = try self.allocator.allocator().alloc([]const u8, 0);
             }
         }
+    }
+
+    fn arguments_are_numeric(str: []const u8) bool {
+        if (str.len <= 1) return false;
+        for (str[1..]) |val| {
+            if (val >= '0' and val <= '9') return true;
+        }
+        return false;
     }
 };
 

@@ -91,7 +91,7 @@ pub fn main() !void {
         clap2.Argument.FlagArgument("s", &[_][]const u8{"sysv"}),
     };
 
-    var parser = clap2.Parser.init(args);
+    var parser = clap2.Parser.init(args, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {

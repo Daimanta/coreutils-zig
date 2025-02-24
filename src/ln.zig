@@ -90,7 +90,7 @@ pub fn main() !void {
         clap2.Argument.OptionArgument("t", &[_][]const u8{"target-directory"}, false),
     };
 
-    var parser = clap2.Parser.init(args);
+    var parser = clap2.Parser.init(args, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {

@@ -91,7 +91,7 @@ pub fn getParams(comptime program: Program) []const clap2.Argument{
 }
 
 pub fn getOwnershipOptions(comptime args: []const clap2.Argument, comptime application_name: []const u8, comptime help_message: []const u8, comptime program: Program) OwnershipOptions {
-    var parser = clap2.Parser.init(args);
+    var parser = clap2.Parser.init(args, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {

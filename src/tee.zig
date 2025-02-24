@@ -67,7 +67,7 @@ pub fn main() !void {
         clap2.Argument.OptionArgument(null, &[_][]const u8{"output-error"}, false)
     };
 
-    var parser = clap2.Parser.init(args);
+    var parser = clap2.Parser.init(args, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {

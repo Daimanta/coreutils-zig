@@ -74,7 +74,7 @@ pub fn main() !void {
         clap2.Argument.OptionArgument("s", &[_][]const u8{"size"}, false),
     };
 
-    var parser = clap2.Parser.init(args);
+    var parser = clap2.Parser.init(args, .{.accept_numerical_arguments = false});
     defer parser.deinit();
 
     if (parser.flag("help")) {

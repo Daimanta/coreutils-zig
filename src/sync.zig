@@ -49,7 +49,7 @@ pub fn main() !void {
         clap2.Argument.FlagArgument("f", &[_][]const u8{"file-system"}),
     };
 
-    var parser = clap2.Parser.init(args);
+    var parser = clap2.Parser.init(args, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {
