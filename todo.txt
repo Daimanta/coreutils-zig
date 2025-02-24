@@ -4,7 +4,6 @@
     280 mknod.c
     325 unexpand.c
     373 rm.c
-    388 truncate.c
     394 stdbuf.c
     431 chroot.c
     499 comm.c
