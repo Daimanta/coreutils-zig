@@ -99,7 +99,7 @@ pub fn main() !void {
 fn parseDircolorsFile(path: []const u8, csh: bool) !void {
     const file_contents = fs.cwd().readFileAlloc(default_allocator, path, 1 << 20) catch "";
     defer default_allocator.free(file_contents);
-    var lines = std.mem.tokenize(u8, file_contents, "\n"[0..]);
+    var lines = std.mem.tokenizeSequence(u8, file_contents, "\n"[0..]);
     var buffer: [1 << 20]u8 = undefined;
     var string_builder = strings.StringBuilder.init(buffer[0..]);
     if (csh) {
@@ -111,7 +111,7 @@ fn parseDircolorsFile(path: []const u8, csh: bool) !void {
     while (lines.next()) |line| {
         if (line.len > 0 and !std.mem.startsWith(u8, line, "#") and !std.mem.startsWith(u8, line, " #") and !std.mem.startsWith(u8, line, "TERM")) {
             const considered = line[0..std.mem.indexOf(u8, line, " #") orelse line.len];
-            var pair = std.mem.tokenize(u8, considered, " ");
+            var pair = std.mem.tokenizeScalar(u8, considered, ' ');
             var first: []const u8 = undefined;
             var second: []const u8 = undefined;
             
@@ -224,7 +224,7 @@ fn matchBuiltin(key: []const u8) ?[]const u8 {
 
 fn validColorString(value: []const u8) bool {
     var counter: u8 = 0;
-    var iterator = std.mem.tokenize(u8, value, ";");
+    var iterator = std.mem.tokenizeScalar(u8, value, ';');
     while (iterator.next()) |number_string| {
         const number = std.fmt.parseInt(u32, number_string, 10) catch return false;
         if (number > 47 or (number > 8 and number < 30) or (number > 37 and number < 40)) {

@@ -132,7 +132,7 @@ fn create_temp_exec(template: []const u8, create_directory: bool, dryrun: bool, 
     std.mem.copyForwards(u8, result_string[template_end..], template[template_end..]);
 
     const seed: u64 = @truncate(@as(u128, @bitCast(std.time.nanoTimestamp())));
-    var prng = std.rand.DefaultPrng.init(seed);
+    var prng = std.Random.DefaultPrng.init(seed);
 
     for (result_string[template_start..template_end], template_start..template_end) |_, i| {
         const random_index = @mod(prng.random().int(u8), random_chars.len);

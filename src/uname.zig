@@ -96,7 +96,7 @@ fn printProcessor(uname_info: std.posix.utsname) void {
         return;
     };
     defer default_allocator.free(file_contents);
-    var lines = std.mem.tokenize(u8, file_contents, "\n"[0..]);
+    var lines = std.mem.tokenizeAny(u8, file_contents, "\n"[0..]);
     while (lines.next()) |line| {
         if (std.mem.startsWith(u8, line, "model name")) {
             const separator = std.mem.indexOf(u8, line, ":");

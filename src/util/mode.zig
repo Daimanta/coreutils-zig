@@ -205,7 +205,7 @@ pub fn getModeFromString(string: []const u8, initial_mode: mode_t) ModeError!mod
     var modifiers = ArrayList(ModeChange).init(default_allocator);
     defer modifiers.deinit();
 
-    var tokenIterator = std.mem.tokenize(u8, string, ",");
+    var tokenIterator = std.mem.tokenizeScalar(u8, string, ',');
     var items: u32 = 0;
     while (tokenIterator.next()) |_| {
         items += 1;

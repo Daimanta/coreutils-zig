@@ -58,7 +58,7 @@ pub fn main() !void {
         std.posix.exit(1);
     }
 
-    std.posix.link(file_target, file_source, AT_SYMLINK_FOLLOW) catch |err| {
+    std.posix.link(file_target, file_source) catch |err| {
         const error_message = switch (err) {
         LinkError.AccessDenied => "Access denied",
         LinkError.DiskQuota => "Disk quota exceeded",

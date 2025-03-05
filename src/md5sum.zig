@@ -165,7 +165,7 @@ fn checkBytes(path: []const u8, bytes: []const u8, ignore_missing: bool, quiet: 
     var incorrect: u32 = 0;
     var format: u32 = 0;
     
-    var iterator = mem.split(u8, bytes, "\n");
+    var iterator = mem.splitScalar(u8, bytes, '\n');
     var i: u32 = 0;
     while (iterator.next()) |line| {
         if (line.len > 0) {

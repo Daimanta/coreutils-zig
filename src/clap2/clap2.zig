@@ -165,7 +165,12 @@ pub const Parser = struct {
     }
 
     fn construct_values(self: *Self) !void {
-        const arguments = try std.process.argsAlloc(self.allocator.allocator());
+        const arguments_null_term: [][:0]u8 = try std.process.argsAlloc(self.allocator.allocator());
+        var arguments = try self.allocator.allocator().alloc([]const u8, arguments_null_term.len);
+        for (arguments_null_term, 0..) |arg_prim, i| {
+            arguments[i] = arg_prim;
+        }
+
         if (arguments.len == 1) {
             self._positionals = try self.allocator.allocator().alloc([]const u8, 0);
             return;
