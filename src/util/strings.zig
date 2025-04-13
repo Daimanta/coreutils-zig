@@ -107,6 +107,13 @@ pub const StringBuilder = struct {
     pub fn append(self: *Self, input: []const u8) void {
         insertStringAtIndex(self.buffer, input, &self.insertion_index);
     }
+
+    pub fn appendChar(self: *Self, char: u8) void {
+        if (self.insertion_index < self.buffer.len - 1) {
+            self.buffer[self.insertion_index] = char;
+            self.insertion_index += 1;
+        }
+    }
     
     pub fn appendBufPrint(self: *Self, comptime fmt: []const u8, args: anytype) void {
         const inserted = std.fmt.bufPrint(self.buffer[self.insertion_index..], fmt, args) catch return;
@@ -129,5 +136,9 @@ pub const StringBuilder = struct {
     
     pub fn resetTo(self: *Self, index: usize) void {
         self.insertion_index = index;
+    }
+
+    pub fn getSize(self: *Self) usize {
+        return self.insertion_index;
     }
 };

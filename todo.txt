@@ -1,4 +1,3 @@
-    237 expand.c
     263 runcon.c
     278 tee.c
     280 mknod.c

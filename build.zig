@@ -22,6 +22,7 @@ pub fn build(b: *Builder) void {
     const dircolors = addExe(b,target, "dircolors");
     const dirname = addExe(b,target, "dirname");
     const echo = addExe(b,target, "echo");
+    const expand = addExe(b, target, "expand");
     const false_app = addExe(b,target, "false");
     const fold = addExe(b, target,"fold");
     const groups = addExe(b, target,"groups");
@@ -61,6 +62,7 @@ pub fn build(b: *Builder) void {
     _ = dircolors;
     _ = dirname;
     _ = echo;
+    _ = expand;
     _ = false_app;
     _ = fold;
     _ = hostname;
