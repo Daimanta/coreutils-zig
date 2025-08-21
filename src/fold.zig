@@ -92,7 +92,7 @@ pub fn main() !void {
 fn fold(path: []const u8, wrap_bytes: bool, break_only_at_spaces: bool, width: u32) !void {
 
     const stat = fileinfo.getLstat(path) catch |err| {
-        print("{?}\n", .{err});
+        print("{any}\n", .{err});
         return;
     };
     if (!fileinfo.fileExists(stat)) {

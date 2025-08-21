@@ -150,7 +150,7 @@ fn traverseDir(path: []const u8, change_params: ChangeParams, verbosity: Verbosi
         if (verbosity != Verbosity.QUIET) {
             switch (err) {
                 OpenError.AccessDenied => print("{s}: Access Denied to '{s}'\n", .{ application_name, path }),
-                else => print("{?}\n", .{err}),
+                else => print("{any}\n", .{err}),
             }
         }
         return;
@@ -165,7 +165,7 @@ fn traverseDir(path: []const u8, change_params: ChangeParams, verbosity: Verbosi
             } else |err| {
                 switch (err) {
                     ChownError.AccessDenied => print("{s}: Access Denied to '{s}'\n", .{ application_name, path }),
-                    else => print("{?}\n", .{err}),
+                    else => print("{any}\n", .{err}),
                 }
             }
         }
@@ -232,7 +232,7 @@ pub fn changeRights(path: []const u8, change_params: ChangeParams, recursive: bo
             if (verbosity != Verbosity.QUIET) {
                 switch (err) {
                     OpenError.AccessDenied => print("{s}: Access Denied to '{s}'\n", .{ application_name, path }),
-                    else => print("{?}\n", .{err}),
+                    else => print("{any}\n", .{err}),
                 }
             }
             return;
@@ -246,7 +246,7 @@ pub fn changeRights(path: []const u8, change_params: ChangeParams, recursive: bo
                 } else |err| {
                     switch (err) {
                         ChownError.AccessDenied => print("{s}: Access Denied to '{s}'\n", .{ application_name, path }),
-                        else => print("{?}\n", .{err}),
+                        else => print("{any}\n", .{err}),
                     }
                 }
             } else {
@@ -256,7 +256,7 @@ pub fn changeRights(path: []const u8, change_params: ChangeParams, recursive: bo
                         print("Changed mode on '{s}'\n", .{path});
                     }
                 } else |err| {
-                    print("{s}: Cannot chmod dir '{s}'. {?}\n", .{application_name, path, err});
+                    print("{s}: Cannot chmod dir '{s}'. {any}\n", .{application_name, path, err});
                 }
             }
         }
@@ -303,7 +303,7 @@ fn changePlainFile(path: []const u8, kernel_stat: ?KernelStat, change_params: Ch
                 if (verbosity != Verbosity.QUIET) {
                     switch (err) {
                         OpenFileError.AccessDenied => print("{s}: Access Denied to '{s}'\n", .{ application_name, path }),
-                        else => print("{?}\n", .{err}),
+                        else => print("{any}\n", .{err}),
                     }
                 }
                 return;
@@ -319,7 +319,7 @@ fn changePlainFile(path: []const u8, kernel_stat: ?KernelStat, change_params: Ch
                 if (verbosity != Verbosity.QUIET) {
                     switch (err) {
                         ChownError.AccessDenied => print("{s}: Access Denied to '{s}'\n", .{ application_name, path }),
-                        else => print("{?}\n", .{err}),
+                        else => print("{any}\n", .{err}),
                     }
                 }
             }
@@ -333,7 +333,7 @@ fn changePlainFile(path: []const u8, kernel_stat: ?KernelStat, change_params: Ch
                 if (err == ChmodError.AccessDenied) {
                     print("{s}: Cannot chmod file '{s}'. Access Denied\n", .{application_name, path});
                 } else {
-                    print("{s}: Cannot chmod file '{s}'. {?}\n", .{application_name, path, err});
+                    print("{s}: Cannot chmod file '{s}'. {any}\n", .{application_name, path, err});
                 }
                 
             }

@@ -510,7 +510,7 @@ pub fn formatType(
         },
         .Optional => {
             if (actual_fmt.len == 0 or actual_fmt[0] != '?')
-                @compileError("cannot format optional without a specifier (i.e. {?} or {any})");
+                @compileError("cannot format optional without a specifier (i.e. {any} or {any})");
             const remaining_fmt = comptime stripOptionalOrErrorUnionSpec(actual_fmt);
             if (value) |payload| {
                 return formatType(payload, remaining_fmt, options, writer, max_depth);

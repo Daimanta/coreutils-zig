@@ -208,7 +208,7 @@ fn handleOpenDirErrors(err: OpenError, check_path: []const u8) void {
         error.NotDir => print("{s}: Basepath '{s}' is not a dir\n", .{application_name, check_path}),
         error.AccessDenied => print("{s}: Access to '{s}' denied\n", .{application_name, check_path}),
         error.FileNotFound => print("{s}: Basepath '{s}' does not exist\n", .{application_name, check_path}),
-        else => print("{s}: Unknown error '{?}' encountered when trying to create directory\n", .{application_name, err}),
+        else => print("{s}: Unknown error '{any}' encountered when trying to create directory\n", .{application_name, err}),
     }
 }
 

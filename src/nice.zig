@@ -83,7 +83,7 @@ pub fn main() !void {
         if (err == SetPriorityError.NoRightsForNiceValue) {
             print("{s}: cannot set niceness: Permission denied\n", .{application_name});
         } else {
-            print("{s}: cannot set niceness: Unknown error occurred: '{?}'\n", .{application_name, err});
+            print("{s}: cannot set niceness: Unknown error occurred: '{any}'\n", .{application_name, err});
         }
     };
 
@@ -91,7 +91,7 @@ pub fn main() !void {
         if (err == SpawnError.FileNotFound) {
             print("{s}: '{s}': No such file or directory\n", .{application_name, arguments[0]});
         } else {
-            print("{s}: '{s}': Unknown error occurred: '{?}'\n", .{application_name, arguments[0], err});
+            print("{s}: '{s}': Unknown error occurred: '{any}'\n", .{application_name, arguments[0], err});
         }
         std.posix.exit(1);
     };

@@ -139,7 +139,7 @@ fn sumFile(file_path: []const u8, algorithm: Algorithm, print_name: bool) void {
         if (err == error.FileNotFound) {
             print("{s}: {s}: No such file or directory\n", .{application_name, file_path});
         } else {
-            print("{s}: Unknown error encountered '{?}'\n", .{application_name, err});
+            print("{s}: Unknown error encountered '{any}'\n", .{application_name, err});
         }
         return;
     };

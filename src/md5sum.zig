@@ -133,7 +133,7 @@ fn checkVerificationFile(path: []const u8, ignore_missing: bool, quiet: bool, st
         }
     } else {
         const stat = fileinfo.getLstat(path) catch |err| {
-            print("{?}\n", .{err});
+            print("{any}\n", .{err});
             return false;
         };
         if (!fileinfo.fileExists(stat)) {
@@ -288,7 +288,7 @@ fn hashFile(path: []const u8, bsd: bool, terminator: []const u8) bool {
 
 fn digestFromFile(path: []const u8) HashError![2 * HASH_BYTE_SIZE]u8 {
     const stat = fileinfo.getLstat(path) catch |err| {
-        print("{?}\n", .{err});
+        print("{any}\n", .{err});
         return HashError.OtherError;
     };
     if (!fileinfo.fileExists(stat)) {

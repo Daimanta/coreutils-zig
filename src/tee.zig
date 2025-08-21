@@ -116,7 +116,7 @@ pub fn main() !void {
 fn write_to_file(path: []const u8, bytes: []const u8, append: bool) void {
     _ = bytes; _ = append;
     const stat = fileinfo.getLstat(path) catch |err| {
-        print("{?}\n", .{err});
+        print("{any}\n", .{err});
         return;
     };
 
@@ -126,7 +126,7 @@ fn write_to_file(path: []const u8, bytes: []const u8, append: bool) void {
             switch (err) {
                 OpenError.AccessDenied => print("Access denied to '{s}'\n", .{path}),
                 OpenError.FileNotFound => print("File '{s}' not found\n", .{path}),
-                else => print("{?}\n", .{err}),
+                else => print("{any}\n", .{err}),
             }
             return;
         };
@@ -139,7 +139,7 @@ fn touch_file(path: []const u8, create_if_not_exists: bool, affect_symlink: bool
     //TODO: Affect symlink
     _ = affect_symlink; _ = change_access_time; _ = change_mod_time; _ = reference_time_access; _ = reference_time_mod;
     const stat = fileinfo.getLstat(path) catch |err| {
-        print("{?}\n", .{err});
+        print("{any}\n", .{err});
         return;
     };
     if (!fileinfo.fileExists(stat)) {
@@ -148,13 +148,13 @@ fn touch_file(path: []const u8, create_if_not_exists: bool, affect_symlink: bool
             switch (err) {
                 OpenError.AccessDenied => print("Access denied to '{s}'\n", .{path}),
                 OpenError.FileNotFound => print("File '{s}' not found\n", .{path}),
-                else => print("{?}\n", .{err}),
+                else => print("{any}\n", .{err}),
             }
             return;
         };
         defer file.close();
         // update_times(file, change_access_time, change_mod_time, reference_time_access, reference_time_mod) catch |err| {
-        //     print("{?}\n", .{err});
+        //     print("{any}\n", .{err});
         //     return;
         // };
     } else {
@@ -162,13 +162,13 @@ fn touch_file(path: []const u8, create_if_not_exists: bool, affect_symlink: bool
             switch (err) {
                 OpenError.AccessDenied => print("Access denied to '{s}'\n", .{path}),
                 OpenError.FileNotFound => print("File '{s}' not found\n", .{path}),
-                else => print("{?}\n", .{err}),
+                else => print("{any}\n", .{err}),
             }
             return;
         };
         defer file.close();
         // update_times(file, change_access_time, change_mod_time, reference_time_access, reference_time_mod) catch |err| {
-        //     print("{?}\n", .{err});
+        //     print("{any}\n", .{err});
         //     return;
         // };
     }

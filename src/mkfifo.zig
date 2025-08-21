@@ -90,7 +90,7 @@ pub fn main() !void {
                 MakeFifoError.QuotaReached => print("{s}: Quota reached\n", .{application_name}),
                 MakeFifoError.NoSpaceLeft => print("{s}: No space left on device\n", .{application_name}),
                 MakeFifoError.NotImplemented => print("{s}: Named pipes are not possible on file system\n", .{application_name}),
-                MakeFifoError.Unknown => print("{s}: Unknown error encountered: '{?}'\n", .{application_name, err}),
+                MakeFifoError.Unknown => print("{s}: Unknown error encountered: '{any}'\n", .{application_name, err}),
             }
         };
         success = false;

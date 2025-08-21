@@ -210,7 +210,7 @@ fn touch_file(path: []const u8, create_if_not_exists: bool, affect_symlink: bool
     //TODO: Affect symlink
     _ = affect_symlink;
     const stat = fileinfo.getLstat(path) catch |err| {
-        print("{?}\n", .{err});
+        print("{any}\n", .{err});
         return;
     };
     if (!fileinfo.fileExists(stat)) {
@@ -219,13 +219,13 @@ fn touch_file(path: []const u8, create_if_not_exists: bool, affect_symlink: bool
             switch (err) {
                 OpenError.AccessDenied => print("Access denied to '{s}'\n", .{path}),
                 OpenError.FileNotFound => print("File '{s}' not found\n", .{path}),
-                else => print("{?}\n", .{err}),
+                else => print("{any}\n", .{err}),
             }
             return;
         };
         defer file.close();
         update_times(file, change_access_time, change_mod_time, reference_time_access, reference_time_mod) catch |err| {
-            print("{?}\n", .{err});
+            print("{any}\n", .{err});
             return;
         };
     } else {
@@ -233,13 +233,13 @@ fn touch_file(path: []const u8, create_if_not_exists: bool, affect_symlink: bool
             switch (err) {
                 OpenError.AccessDenied => print("Access denied to '{s}'\n", .{path}),
                 OpenError.FileNotFound => print("File '{s}' not found\n", .{path}),
-                else => print("{?}\n", .{err}),
+                else => print("{any}\n", .{err}),
             }
             return;
         };
         defer file.close();
         update_times(file, change_access_time, change_mod_time, reference_time_access, reference_time_mod) catch |err| {
-            print("{?}\n", .{err});
+            print("{any}\n", .{err});
             return;
         };
     }
@@ -253,7 +253,7 @@ fn update_times(file: std.fs.File, change_access_time: bool, change_mod_time: bo
     if (!change_mod_time) used_mod_time = metadata.modified();
     file.updateTimes(used_access_time, used_mod_time) catch |err| {
         switch (err) {
-            else => print("{?}\n", .{err}),
+            else => print("{any}\n", .{err}),
         }
         return;
     };
