@@ -176,7 +176,7 @@ pub const Parser = struct {
             return;
         }
 
-        var positionalsArrayList = std.ArrayList([]const u8).init(std.heap.page_allocator);
+        var positionalsArrayList = std.array_list.Managed([]const u8).init(std.heap.page_allocator);
         defer positionalsArrayList.deinit();
 
         var i: usize = 1;
@@ -271,7 +271,7 @@ pub const Parser = struct {
                 std.debug.print("Expected an option for '{s}' but received none.\n", .{arg});
                 std.posix.exit(1);
             } else if (next != null) {
-                var multiList = std.ArrayList([]const u8).init(std.heap.page_allocator);
+                var multiList = std.array_list.Managed([]const u8).init(std.heap.page_allocator);
                 defer multiList.deinit();
                 while (next != null) {
                     try multiList.append(next.?);

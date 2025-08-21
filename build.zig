@@ -105,7 +105,12 @@ pub fn build(b: *Builder) void {
 }
 
 fn addExe(b: *Builder, target: std.Build.ResolvedTarget, comptime name: []const u8) *Builder.Step.Compile {
-    const exe = b.addExecutable(.{ .name = name, .target = target, .root_source_file = b.path("src/" ++ name ++ ".zig"), .optimize = .ReleaseSafe, .version = .{ .major = version.major, .minor = version.minor, .patch = version.patch } });
+    const module = b.createModule(.{
+        .root_source_file = b.path("src/" ++ name ++ ".zig"),
+        .optimize = .ReleaseSafe,
+        .target = target
+    });
+    const exe = b.addExecutable(.{ .name = name, .root_module = module, .version = .{ .major = version.major, .minor = version.minor, .patch = version.patch } });
     b.default_step.dependOn(&exe.step);
     b.installArtifact(exe);
     return exe;
