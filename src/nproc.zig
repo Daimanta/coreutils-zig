@@ -26,8 +26,8 @@ const help_message =
 \\
 ;
 
-extern fn get_nprocs() callconv(.C) c_int;
-extern fn get_nprocs_conf() callconv(.C) c_int;
+extern fn get_nprocs() callconv(.c) c_int;
+extern fn get_nprocs_conf() callconv(.c) c_int;
 
 pub fn main() !void {
     const args: []const clap2.Argument = &[_]clap2.Argument{

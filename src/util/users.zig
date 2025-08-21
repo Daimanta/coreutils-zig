@@ -31,9 +31,9 @@ pub const Group = extern struct {
     gr_mem: [*][*:0]u8
 };
 
-pub extern fn getpwuid (uid: uid) callconv(.C) *Passwd;
-pub extern fn getpwnam (name: [*:0]u8) callconv(.C) *Passwd;
-pub extern fn getgrnam(name: [*:0]const u8) callconv(.C) ?*Group;
+pub extern fn getpwuid (uid: uid) callconv(.c) *Passwd;
+pub extern fn getpwnam (name: [*:0]u8) callconv(.c) *Passwd;
+pub extern fn getgrnam(name: [*:0]const u8) callconv(.c) ?*Group;
 
 pub fn getUserByNameA(name: []const u8) !*Passwd {
     const nameZ = try strings.toNullTerminatedPointer(name, default_allocator);
@@ -71,8 +71,8 @@ pub fn getGroupByNameZ(name: [*:0]u8) !*Group {
 }
 
 
-pub extern fn getgrgid (gid: gid) callconv(.C) *Group;
-extern fn getgrouplist(user: [*:0]const u8, group: gid, groups: [*]gid, ngroups: *c_int) callconv(.C) c_int;
+pub extern fn getgrgid (gid: gid) callconv(.c) *Group;
+extern fn getgrouplist(user: [*:0]const u8, group: gid, groups: [*]gid, ngroups: *c_int) callconv(.c) c_int;
 
 pub fn getGroupsFromPasswd(user: *Passwd, allocator: Allocator) ![]gid {
     const user_gid: gid = user.pw_gid;

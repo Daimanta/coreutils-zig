@@ -20,7 +20,7 @@ const help_message =
 \\
 ;
 
-extern fn gethostid() callconv(.C) c_long;
+extern fn gethostid() callconv(.c) c_long;
 
 pub fn main() !void {
     const args: []const clap2.Argument = &[_]clap2.Argument{

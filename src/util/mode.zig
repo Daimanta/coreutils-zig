@@ -6,7 +6,6 @@ const testing = std.testing;
 
 pub const mode_t = linux.mode_t;
 const default_allocator = std.heap.page_allocator;
-const ArrayList = std.ArrayList;
 
 pub const SUID: u12 = 0o4000; // set user id
 pub const SGID: u12 = 0o2000; // set group id
@@ -202,7 +201,7 @@ fn updateOther(mode: *mode_t, operation: Operation, absolute_change: AbsoluteCha
 
 pub fn getModeFromString(string: []const u8, initial_mode: mode_t) ModeError!mode_t {
     var result: mode_t = initial_mode;
-    var modifiers = ArrayList(ModeChange).init(default_allocator);
+    var modifiers = std.array_list.Managed(ModeChange).init(default_allocator);
     defer modifiers.deinit();
 
     var tokenIterator = std.mem.tokenizeScalar(u8, string, ',');
@@ -247,7 +246,7 @@ pub fn getModeFromStringAndZeroMode(string: []const u8) ModeError!mode_t {
     return getModeFromString(string, 0);
 }
 
-fn handleNumber(token: []const u8, modifiers: *ArrayList(ModeChange)) ModeError!void {
+fn handleNumber(token: []const u8, modifiers: *std.array_list.Managed(ModeChange)) ModeError!void {
     const skip_first = (token[0] < '0' or token[0] > '9');
     const parsed_token = if (skip_first) token[1..] else token;
     var operation = Operation.SET;
@@ -277,7 +276,7 @@ fn handleNumber(token: []const u8, modifiers: *ArrayList(ModeChange)) ModeError!
     }
 }
 
-fn handleString(token: []const u8, modifiers: *ArrayList(ModeChange)) ModeError!void {
+fn handleString(token: []const u8, modifiers: *std.array_list.Managed(ModeChange)) ModeError!void {
     const first_mod = std.mem.indexOfAny(u8, token, "-+=");
     if (first_mod == null) return ModeError.InvalidModeString;
     const write_target = token[0..first_mod.?];

@@ -24,8 +24,8 @@ const help_message =
 \\
 ;
 
-pub extern fn getlogin() callconv(.C) [*:0]u8;
-pub extern fn getlogin_r(buf: [*:0]u8, bufsize: usize) callconv(.C) c_int;
+pub extern fn getlogin() callconv(.c) [*:0]u8;
+pub extern fn getlogin_r(buf: [*:0]u8, bufsize: usize) callconv(.c) c_int;
 
 pub fn main() !void {
     const args: []const clap2.Argument = &[_]clap2.Argument{

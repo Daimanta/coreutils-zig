@@ -92,7 +92,7 @@ fn sumFile(file_path: []const u8) void {
 }
 
 fn sumStdin(print_dash: bool) void {
-    const stdin = std.io.getStdIn().reader();
+    const stdin = std.fs.File.stdin().deprecatedReader();
     const bytes = stdin.readAllAlloc(default_allocator, 1 << 30) catch {
         print("Reading stdin failed\n", .{});
         return;

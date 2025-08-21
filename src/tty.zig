@@ -23,7 +23,7 @@ const help_message =
 \\
 ;
 
-pub extern fn ttyname(fd: c_int) callconv(.C) [*:0]u8;
+pub extern fn ttyname(fd: c_int) callconv(.c) [*:0]u8;
 
 pub fn main() !void {
     const args: []const clap2.Argument = &[_]clap2.Argument{

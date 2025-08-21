@@ -128,7 +128,7 @@ fn fold(path: []const u8, wrap_bytes: bool, break_only_at_spaces: bool, width: u
 }
 
 fn handleStdin(break_only_at_spaces: bool, width: u32) !void {
-    const stdin = std.io.getStdIn().reader();
+    const stdin = std.fs.File.stdin().deprecatedReader();
     const bytes = stdin.readAllAlloc(default_allocator, 1 << 30) catch {
         print("Reading stdin failed\n", .{});
         return;

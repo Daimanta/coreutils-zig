@@ -122,7 +122,7 @@ pub fn main() !void {
 fn checkVerificationFile(path: []const u8, ignore_missing: bool, quiet: bool, status: bool, strict: bool, warn: bool) bool {
     if (mem.eql(u8, "-", path)) {
         if (!handled_stdin) {
-            const stdin = std.io.getStdIn().reader();
+            const stdin = std.fs.File.stdin();
             const bytes = stdin.readAllAlloc(default_allocator, 1 << 30) catch {
                 print("Reading stdin failed\n", .{});
                 return false;
@@ -259,7 +259,7 @@ fn checkFileHashMatch(path: []const u8, provided_hash: []const u8) HashError!boo
 fn hashFile(path: []const u8, bsd: bool, terminator: []const u8) bool {
     if (mem.eql(u8, "-", path)) {
         if (!handled_stdin) {
-            const stdin = std.io.getStdIn().reader();
+            const stdin = std.fs.File.stdin().deprecatedReader();
             const bytes = stdin.readAllAlloc(default_allocator, 1 << 30) catch {
                 print("Reading stdin failed\n", .{});
                 return false;

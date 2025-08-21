@@ -82,7 +82,7 @@ pub fn main() !void {
             tab_size = @intCast(int);
         } else |_| {
             var splitIterator = std.mem.splitScalar(u8, tabs.value.?,',');
-            var array_list = std.ArrayList([]const u8).init(default_allocator);
+            var array_list = std.array_list.Managed([]const u8).init(default_allocator);
             defer array_list.clearAndFree();
             var next = splitIterator.next();
             while (next != null) {
@@ -164,7 +164,7 @@ fn expand(path: []const u8, initial_only: bool, tab_size_opt: ?u32, tab_list_opt
     defer file.close();
 
     while (true) {
-        const lineOpt = file.reader().readUntilDelimiterOrEofAlloc(default_allocator, '\n', 1 << 24) catch {
+        const lineOpt = file.deprecatedReader().readUntilDelimiterOrEofAlloc(default_allocator, '\n', 1 << 24) catch {
             print("{s}: Error while reading file '{s}'\n", .{application_name, path});
             exit(1);
         };
