@@ -7,6 +7,7 @@ pub fn print(comptime format_string: []const u8, args: anytype) void {
     var stdout_writer = std.fs.File.stdout().writer(&buffer);
     const stdout = &stdout_writer.interface;
     stdout.print(format_string, args) catch return;
+    stdout.flush() catch return;
 }
 
 pub fn println(comptime format_string: []const u8, args: anytype) void {
@@ -14,6 +15,7 @@ pub fn println(comptime format_string: []const u8, args: anytype) void {
     var stdout_writer = std.fs.File.stdout().writer(&buffer);
     const stdout = &stdout_writer.interface;
     stdout.print(format_string ++ "\n", args) catch return;
+    stdout.flush() catch return;
 }
 
 pub fn pprint(comptime format_string: []const u8) void {
@@ -21,6 +23,7 @@ pub fn pprint(comptime format_string: []const u8) void {
     var stdout_writer = std.fs.File.stdout().writer(&buffer);
     const stdout = &stdout_writer.interface;
     stdout.print(format_string, .{}) catch return;
+    stdout.flush() catch return;
 }
 
 pub fn pprintln(comptime format_string: []const u8) void {
@@ -28,4 +31,5 @@ pub fn pprintln(comptime format_string: []const u8) void {
     var stdout_writer = std.fs.File.stdout().writer(&buffer);
     const stdout = &stdout_writer.interface;
     stdout.print(format_string ++ "\n", .{}) catch return;
+    stdout.flush() catch return;
 }

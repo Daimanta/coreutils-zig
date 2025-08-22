@@ -103,16 +103,16 @@ fn getUptimeString(alloc: std.mem.Allocator) ![]const u8 {
         stringBuilder.append(" up ");
         var num_buffer: [10]u8 = undefined;
         if (days > 0) {
-            stringBuilder.append(std.fmt.bufPrintIntToSlice(num_buffer[0..], days, 10, Case.lower, std.fmt.FormatOptions{}));
+            stringBuilder.append(try std.fmt.bufPrint(num_buffer[0..], "{d}", .{days}));
             const descr: []const u8 = switch(days > 1) {
                 true => " days ",
                 false => " day ",
             };
             stringBuilder.append(descr);
         }
-        stringBuilder.append(std.fmt.bufPrintIntToSlice(num_buffer[0..], hours, 10, Case.lower, std.fmt.FormatOptions{}));
+        stringBuilder.append(try std.fmt.bufPrint(num_buffer[0..], "{d}", .{hours}));
         stringBuilder.append(":");
-        stringBuilder.append(std.fmt.bufPrintIntToSlice(num_buffer[0..], minutes, 10, Case.lower, std.fmt.FormatOptions{.width=2, .fill='0'}));
+        stringBuilder.append(try std.fmt.bufPrint(num_buffer[0..], "{d:0>2}", .{minutes}));
     } else {
         stringBuilder.append(" up ???? days ??:??");
     }
@@ -129,7 +129,7 @@ fn getUsersString(alloc: std.mem.Allocator, file_name: []const u8) ![]const u8 {
     var buffer: [64]u8 = undefined;
     var numbuffer: [10]u8 = undefined;
     var stringBuilder = strings.StringBuilder.init(buffer[0..]);
-    stringBuilder.append(std.fmt.bufPrintIntToSlice(numbuffer[0..], count, 10, Case.lower, std.fmt.FormatOptions{}));
+    stringBuilder.append(try std.fmt.bufPrint(numbuffer[0..], "{d}", .{count}));
     if (count == 1) {
         stringBuilder.append(" user");
     } else {

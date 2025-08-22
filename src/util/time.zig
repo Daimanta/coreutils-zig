@@ -43,9 +43,9 @@ pub fn toLocalDateTimeStringAlloc(alloc: std.mem.Allocator, local_time: *struct_
 
 pub fn toTimeStringAlloc(alloc: std.mem.Allocator, local_time: *struct_tm) ![]const u8 {
     var result = try alloc.alloc(u8, 8);
-    _ = std.fmt.bufPrintIntToSlice(result[0..2], @as(u32, @intCast(local_time.tm_hour)), 10, Case.lower, std.fmt.FormatOptions{.width=2, .fill='0'});
-    _ = std.fmt.bufPrintIntToSlice(result[3..5], @as(u32, @intCast(local_time.tm_min)), 10, Case.lower, std.fmt.FormatOptions{.width=2, .fill='0'});
-    _ = std.fmt.bufPrintIntToSlice(result[6..], @as(u32, @intCast(local_time.tm_sec)), 10, Case.lower, std.fmt.FormatOptions{.width=2, .fill='0'});
+    _ = std.fmt.bufPrint(result[0..2], "{d:0>2}", .{@as(u32, @intCast(local_time.tm_hour))}) catch {};
+    _ = std.fmt.bufPrint(result[3..5], "{d:0>2}", .{@as(u32, @intCast(local_time.tm_min))}) catch {};
+    _ = std.fmt.bufPrint(result[6..], "{d:0>2}", .{@as(u32, @intCast(local_time.tm_sec))}) catch {};
     result[2] = ':';
     result[5] = ':';
     return result;
