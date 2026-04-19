@@ -12,6 +12,7 @@ const ArrayList = std.ArrayList;
 
 const default_allocator = std.heap.page_allocator;
 const print = @import("util/print_tools.zig").print;
+const exit = std.process.exit;
 
 const application_name = "id";
 
@@ -44,7 +45,7 @@ const Mode = enum {
 };
 
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     const args: []const clap2.Argument = &[_]clap2.Argument{
         clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
         clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
@@ -57,15 +58,15 @@ pub fn main() !void {
         clap2.Argument.FlagArgument("z", &[_][]const u8{"zero"}),
     };
 
-    var parser = clap2.Parser.init(args, .{});
+    var parser = clap2.Parser.init(args, init.minimal, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {
         print(help_message, .{});
-        std.posix.exit(0);
+        exit(0);
     } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
-        std.posix.exit(0);
+        exit(0);
     }
 
     const security_context = parser.flag("Z");
@@ -79,17 +80,17 @@ pub fn main() !void {
     
     if ((name or real_id) and !(user_id or group_id or all_groups)) {
         print("{s}: cannot print only names or real IDs in default format\n", .{application_name});
-        std.posix.exit(1);
+        exit(1);
     }
     
     if (group_id and all_groups) {
         print("{s}: cannot print \"only\" of more than one choice\n", .{application_name});
-        std.posix.exit(1);
+        exit(1);
     }
     
     if (name and real_id) {
         print("{s}: cannot print \"only\" of more than one choice\n", .{application_name});
-        std.posix.exit(1);
+        exit(1);
     }
     
     var mode = Mode.DEFAULT;
@@ -99,7 +100,7 @@ pub fn main() !void {
     
     if (mode == Mode.DEFAULT and zero_terminator) {
         print("{s}: option --zero not permitted in default format\n", .{application_name});
-        std.posix.exit(1);
+        exit(1);
     }
     
     const user_list = parser.positionals();

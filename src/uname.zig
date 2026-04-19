@@ -1,7 +1,6 @@
 const std = @import("std");
 const fs = std.fs;
 const os = std.os;
-const io = std.io;
 
 const clap2 = @import("clap2/clap2.zig");
 const system = @import("util/system.zig");
@@ -13,6 +12,7 @@ const SetHostnameError = system.SetHostnameError;
 const default_allocator = std.heap.page_allocator;
 const HOST_NAME_MAX = os.linux.HOST_NAME_MAX;
 const print = @import("util/print_tools.zig").print;
+const exit = std.process.exit;
 
 const application_name = "uname";
 
@@ -36,7 +36,7 @@ const help_message =
 ;
 
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     const args: []const clap2.Argument = &[_]clap2.Argument{
         clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
         clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
@@ -51,15 +51,15 @@ pub fn main() !void {
         clap2.Argument.FlagArgument("o", &[_][]const u8{"operating-system"}),
     };
 
-    var parser = clap2.Parser.init(args, .{});
+    var parser = clap2.Parser.init(args, init.minimal, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {
         print(help_message, .{});
-        std.posix.exit(0);
+        exit(0);
     } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
-        std.posix.exit(0);
+        exit(0);
     }
 
     const all = parser.flag("a");
@@ -79,7 +79,7 @@ pub fn main() !void {
     if (kernel_release) print("{s} ", .{uname_info.release});
     if (kernel_version) print("{s} ", .{uname_info.version});
     if (machine) print("{s} ", .{uname_info.machine});
-    if (processor) printProcessor(uname_info);
+    if (processor) printProcessor(uname_info, init.io);
     if (hardware_platform) print("{s} ", .{uname_info.machine});
     if (operating_system) print("{s}", .{"GNU/Linux"});
     
@@ -90,8 +90,8 @@ pub fn main() !void {
 
 }
 
-fn printProcessor(uname_info: std.posix.utsname) void {
-    const file_contents = fs.cwd().readFileAlloc(default_allocator, "/proc/cpuinfo", 1 << 20) catch {
+fn printProcessor(uname_info: std.posix.utsname, io: std.Io) void {
+    const file_contents = std.Io.Dir.cwd().readFileAlloc(io, "/proc/cpuinfo", default_allocator, .unlimited) catch {
         print("{s} ", .{uname_info.machine});
         return;
     };

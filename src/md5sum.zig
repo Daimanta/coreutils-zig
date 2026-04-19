@@ -2,13 +2,13 @@ const std = @import("std");
 const fs = std.fs;
 const mem = std.mem;
 const os = std.os;
-const io = std.io;
 const testing = std.testing;
 const hash = std.crypto.hash;
 
 const clap2 = @import("clap2/clap2.zig");
 const fileinfo = @import("util/fileinfo.zig");
 const version = @import("util/version.zig");
+const custom_io = @import("util/io.zig");
 
 const Allocator = std.mem.Allocator;
 const LinkError = os.LinkError;
@@ -16,6 +16,7 @@ const Md5 = hash.Md5;
 
 const default_allocator = std.heap.page_allocator;
 const print = @import("util/print_tools.zig").print;
+const exit = std.process.exit;
 
 const application_name = "md5sum";
 const HASH_BYTE_SIZE = 16;
@@ -55,7 +56,7 @@ var handled_stdin = false;
 
 const HashError = error{ FileDoesNotExist, IsDir, FileAccessFailed, OtherError };
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     const args: []const clap2.Argument = &[_]clap2.Argument{
         clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
         clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
@@ -71,15 +72,15 @@ pub fn main() !void {
         clap2.Argument.FlagArgument("w", &[_][]const u8{"warn"}),
     };
 
-    var parser = clap2.Parser.init(args, .{});
+    var parser = clap2.Parser.init(args, init.minimal, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {
         print(help_message, .{});
-        std.posix.exit(0);
+        exit(0);
     } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
-        std.posix.exit(0);
+        exit(0);
     }
 
     const check = parser.flag("c");
@@ -95,41 +96,40 @@ pub fn main() !void {
 
     if (!check and (ignore_missing or quiet or status_only or strict or warn)) {
         print("When '--check' is not set, non-check flags may not be active.\n", .{});
-        std.posix.exit(1);
+        exit(1);
     }
     
     if (status_only and warn) {
         print("When '--status' is set, --warn may not be active.\n", .{});
-        std.posix.exit(1);
+        exit(1);
     }
 
     const positionals = parser.positionals();
     var clean = true;
     if (check) {
         for (positionals) |arg| {
-            clean = checkVerificationFile(arg, ignore_missing, quiet, status_only, strict, warn) and clean;
+            clean = checkVerificationFile(arg, ignore_missing, quiet, status_only, strict, warn, init.io) and clean;
         }
     } else {
         for (positionals) |arg| {
-            clean = hashFile(arg, bsd, terminator) and clean;
+            clean = hashFile(arg, bsd, terminator, init.io) and clean;
         }
     }
     if (!clean) {
-        std.posix.exit(1);
+        exit(1);
     }
 }
 
-fn checkVerificationFile(path: []const u8, ignore_missing: bool, quiet: bool, status: bool, strict: bool, warn: bool) bool {
+fn checkVerificationFile(path: []const u8, ignore_missing: bool, quiet: bool, status: bool, strict: bool, warn: bool, io: std.Io) bool {
     if (mem.eql(u8, "-", path)) {
         if (!handled_stdin) {
-            const stdin = std.fs.File.stdin().deprecatedReader();
-            const bytes = stdin.readAllAlloc(default_allocator, 1 << 30) catch {
+            const bytes = custom_io.readStdin(io, default_allocator) catch {
                 print("Reading stdin failed\n", .{});
                 return false;
             };
             defer default_allocator.free(bytes);            
             handled_stdin = true;
-            return checkBytes("-", bytes, ignore_missing, quiet, status, strict, warn);
+            return checkBytes("-", bytes, ignore_missing, quiet, status, strict, warn, io);
         }
     } else {
         const stat = fileinfo.getLstat(path) catch |err| {
@@ -146,20 +146,22 @@ fn checkVerificationFile(path: []const u8, ignore_missing: bool, quiet: bool, st
             return false;
         }
 
-        const file = fs.cwd().openFile(path, .{ .mode = .read_only }) catch {
+        const file = std.Io.Dir.cwd().openFile(io, path, .{ .mode = .read_only }) catch {
             print("Could not read file.\n", .{});
             return false;
         };
-        defer file.close();
-        const bytes = file.readToEndAlloc(default_allocator, 1 << 30) catch return false;        
+        defer file.close(io);
+        const bytes = @import("util/io.zig").readFileAlloc(file, io, default_allocator) catch {
+            return false;
+        };
         defer default_allocator.free(bytes);
-        return checkBytes(path, bytes, ignore_missing, quiet, status, strict, warn);
+        return checkBytes(path, bytes, ignore_missing, quiet, status, strict, warn, io);
     }
     return true;
 
 }
 
-fn checkBytes(path: []const u8, bytes: []const u8, ignore_missing: bool, quiet: bool, status_only: bool, strict: bool, warn: bool) bool {
+fn checkBytes(path: []const u8, bytes: []const u8, ignore_missing: bool, quiet: bool, status_only: bool, strict: bool, warn: bool, io: std.Io) bool {
     var result = true;
     var missing: u32 = 0;
     var incorrect: u32 = 0;
@@ -178,7 +180,7 @@ fn checkBytes(path: []const u8, bytes: []const u8, ignore_missing: bool, quiet: 
                 }
                 const file_path = line[bsd_prefix.len..string_index.?+bsd_prefix.len];
                 const hash_string = line[string_index.?+bsd_prefix.len+4..];
-                handleHashCheck(file_path, hash_string, quiet, ignore_missing, &missing, &incorrect);
+                handleHashCheck(file_path, hash_string, quiet, ignore_missing, &missing, &incorrect, io);
             } else if (line.len > 34 and line[32] == ' ' and line[33] == ' ') {
                 var correct = true;
                 for (line[0..32]) |byte|{
@@ -193,7 +195,7 @@ fn checkBytes(path: []const u8, bytes: []const u8, ignore_missing: bool, quiet: 
                 }
                 const file_path = line[34..];
                 const hash_string = line[0..32];
-                handleHashCheck(file_path, hash_string, quiet, ignore_missing, &missing, &incorrect);
+                handleHashCheck(file_path, hash_string, quiet, ignore_missing, &missing, &incorrect, io);
             } else {
                 handleFormatFailure(warn, path, &i, &format);
                 continue;
@@ -219,8 +221,8 @@ fn checkBytes(path: []const u8, bytes: []const u8, ignore_missing: bool, quiet: 
     return result;
 }
 
-fn handleHashCheck(file_path: []const u8, hash_string:[]const u8, quiet: bool, ignore_missing: bool, missing: *u32, incorrect: *u32) void {
-    if (checkFileHashMatch(file_path, hash_string)) |match| {
+fn handleHashCheck(file_path: []const u8, hash_string:[]const u8, quiet: bool, ignore_missing: bool, missing: *u32, incorrect: *u32, io: std.Io) void {
+    if (checkFileHashMatch(file_path, hash_string, io)) |match| {
         if (match) {
             if (!quiet) {
                 print("{s}: OK\n", .{file_path});
@@ -250,17 +252,16 @@ fn handleFormatFailure(warn: bool, path:[]const u8, index: *u32, format: *u32) v
     index.* += 1;
 }
 
-fn checkFileHashMatch(path: []const u8, provided_hash: []const u8) HashError!bool {
+fn checkFileHashMatch(path: []const u8, provided_hash: []const u8, io: std.Io) HashError!bool {
     if (provided_hash.len != 32) return false;
-    const digest = try digestFromFile(path);
+    const digest = try digestFromFile(path, io);
     return std.mem.eql(u8, provided_hash, digest[0..]);
 }
 
-fn hashFile(path: []const u8, bsd: bool, terminator: []const u8) bool {
+fn hashFile(path: []const u8, bsd: bool, terminator: []const u8, io: std.Io) bool {
     if (mem.eql(u8, "-", path)) {
         if (!handled_stdin) {
-            const stdin = std.fs.File.stdin().deprecatedReader();
-            const bytes = stdin.readAllAlloc(default_allocator, 1 << 30) catch {
+            const bytes = custom_io.readStdin(io, default_allocator) catch {
                 print("Reading stdin failed\n", .{});
                 return false;
             };
@@ -276,7 +277,7 @@ fn hashFile(path: []const u8, bsd: bool, terminator: []const u8) bool {
             handled_stdin = true;
         }
     } else {
-        const hash_string = digestFromFile(path) catch return false;
+        const hash_string = digestFromFile(path, io) catch return false;
         if (bsd) {
             print("MD5 ({s}) = {s}{s}", .{ path, hash_string, terminator });
         } else {
@@ -286,7 +287,7 @@ fn hashFile(path: []const u8, bsd: bool, terminator: []const u8) bool {
     return true;
 }
 
-fn digestFromFile(path: []const u8) HashError![2 * HASH_BYTE_SIZE]u8 {
+fn digestFromFile(path: []const u8, io: std.Io) HashError![2 * HASH_BYTE_SIZE]u8 {
     const stat = fileinfo.getLstat(path) catch |err| {
         print("{any}\n", .{err});
         return HashError.OtherError;
@@ -303,18 +304,18 @@ fn digestFromFile(path: []const u8) HashError![2 * HASH_BYTE_SIZE]u8 {
 
     const file_size: u64 = @intCast(stat.size);
 
-    const file = fs.cwd().openFile(path, .{ .mode = .read_only }) catch {
+    const file = std.Io.Dir.cwd().openFile(io, path, .{ .mode = .read_only }) catch {
         print("Could not read file.\n", .{});
         return HashError.FileAccessFailed;
     };
-    defer file.close();
+    defer file.close(io);
 
     var offset: usize = 0;
     var file_buffer = default_allocator.alloc(u8, block_read) catch return HashError.OtherError;
     defer default_allocator.free(file_buffer);
     var hash_processor = Md5.init(.{});
     while (offset < file_size) {
-        const read = file.pread(file_buffer[0..], offset) catch return HashError.OtherError;
+        const read = file.readPositionalAll(io, file_buffer[0..], offset) catch return HashError.OtherError;
         hash_processor.update(file_buffer[0..read]);
         offset += block_read;
     }

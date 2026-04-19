@@ -1,7 +1,6 @@
 const std = @import("std");
 const fs = std.fs;
 const os = std.os;
-const io = std.io;
 const time = std.time;
 
 const clap2 = @import("clap2/clap2.zig");
@@ -17,7 +16,7 @@ const mode_t = mode.mode_t;
 const MakeFifoError = fileinfo.MakeFifoError;
 const print = @import("util/print_tools.zig").print;
 const pprint = @import("util/print_tools.zig").pprint;
-const exit = std.posix.exit;
+const exit = std.process.exit;
 const OpenError = fs.File.OpenError;
 const parseInt = std.fmt.parseInt;
 const eql = std.mem.eql;
@@ -58,7 +57,7 @@ const help_message =
 
 var success = true;
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     const args: []const clap2.Argument = &[_]clap2.Argument{
         clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
         clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
@@ -72,15 +71,15 @@ pub fn main() !void {
         clap2.Argument.OptionArgument(null, &[_][]const u8{"time"}, false),
     };
 
-    var parser = clap2.Parser.init(args, .{});
+    var parser = clap2.Parser.init(args, init.minimal, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {
         print(help_message, .{});
-        std.posix.exit(0);
+        exit(0);
     } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
-        std.posix.exit(0);
+        exit(0);
     }
 
     const arguments = parser.positionals();

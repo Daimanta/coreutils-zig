@@ -1,7 +1,6 @@
 const std = @import("std");
 const fs = std.fs;
 const os = std.os;
-const io = std.io;
 const mem = std.mem;
 
 const clap2 = @import("clap2/clap2.zig");
@@ -16,7 +15,8 @@ const mode_t = mode.mode_t;
 const MakeFifoError = fileinfo.MakeFifoError;
 
 const allocator = std.heap.page_allocator;
-const exit = std.posix.exit;
+const exit = std.process.exit;
+const mkdirat = @import("util/io.zig").mkdirat;
 const print = @import("util/print_tools.zig").print;
 const println = @import("util/print_tools.zig").println;
 
@@ -48,7 +48,7 @@ const default_template = "tmp.XXXXXXXXXX";
 const default_dir = "/tmp";
 const random_chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     const args: []const clap2.Argument = &[_]clap2.Argument{
         .{.shorts = null, .longs = &[_][]const u8{"help"}, .type = .none},
         .{.shorts = null, .longs = &[_][]const u8{"version"}, .type = .none},
@@ -58,7 +58,7 @@ pub fn main() !void {
         .{.shorts = null, .longs = &[_][]const u8{"suffix"}, .type = .one, .allow_none = false},
         .{.shorts = "p", .longs = &[_][]const u8{"tmpdir"}, .type = .one, .allow_none = false},
     };
-    var parser = clap2.Parser.init(args, .{});
+    var parser = clap2.Parser.init(args, init.minimal, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {
@@ -87,16 +87,16 @@ pub fn main() !void {
     const suffix_val = if(suffix.found) suffix.value.? else null;
     const relative_template_val = if (relative_template.found) relative_template.value.? else null;
 
-    _ = try create_temp(template, is_directory, dryrun, quiet, suffix_val, relative_template_val);
+    _ = try create_temp(template, is_directory, dryrun, quiet, suffix_val, relative_template_val, init.environ_map.*, init.io);
 }
 
-fn create_temp(template: ?[]const u8, create_directory: bool, dryrun: bool, quiet: bool, suffix: ?[]const u8, relative_template: ?[]const u8) !void {
+fn create_temp(template: ?[]const u8, create_directory: bool, dryrun: bool, quiet: bool, suffix: ?[]const u8, relative_template: ?[]const u8, environ_map: std.process.Environ.Map, io: std.Io) !void {
     const used_template = if (template != null) template.? else default_template;
     var used_relative_template: []const u8 = undefined;
     if (relative_template != null) {
         used_relative_template = relative_template.?;
     } else {
-        const env_tempdir = std.posix.getenv("TMPDIR");
+        const env_tempdir = environ_map.get("TMPDIR");
         if (env_tempdir != null) {
             used_relative_template = env_tempdir.?;
         } else if (template == null) {
@@ -107,10 +107,10 @@ fn create_temp(template: ?[]const u8, create_directory: bool, dryrun: bool, quie
     }
     const used_suffix = if (suffix != null) suffix.? else "";
 
-    return create_temp_exec(used_template, create_directory, dryrun, quiet, used_suffix, used_relative_template);
+    return create_temp_exec(used_template, create_directory, dryrun, quiet, used_suffix, used_relative_template, io);
 }
 
-fn create_temp_exec(template: []const u8, create_directory: bool, dryrun: bool, quiet: bool, suffix: []const u8, relative_template: []const u8) !void {
+fn create_temp_exec(template: []const u8, create_directory: bool, dryrun: bool, quiet: bool, suffix: []const u8, relative_template: []const u8, io: std.Io) !void {
     const last_xxx_index_opt = mem.lastIndexOf(u8, template, "XXX");
     if (last_xxx_index_opt == null) {
         println("Template should contain at least consecutive 'X' characters.", .{});
@@ -131,7 +131,8 @@ fn create_temp_exec(template: []const u8, create_directory: bool, dryrun: bool, 
     std.mem.copyForwards(u8, result_string[0..template_start], template[0..template_start]);
     std.mem.copyForwards(u8, result_string[template_end..], template[template_end..]);
 
-    const seed: u64 = @truncate(@as(u128, @bitCast(std.time.nanoTimestamp())));
+
+    const seed: u64 = @truncate(@as(u96, @bitCast(std.Io.Timestamp.now(io, .boot).toNanoseconds())));
     var prng = std.Random.DefaultPrng.init(seed);
 
     for (result_string[template_start..template_end], template_start..template_end) |_, i| {
@@ -153,7 +154,7 @@ fn create_temp_exec(template: []const u8, create_directory: bool, dryrun: bool, 
 
     var success = true;
     
-    _ = std.fs.cwd().openDir(relative_template, .{}) catch {
+    _ = std.Io.Dir.cwd().openDir(io, relative_template, .{}) catch {
         if (!quiet) {
             println("Could not open relative directory '{s}'", .{relative_template});
         }
@@ -176,19 +177,19 @@ fn create_temp_exec(template: []const u8, create_directory: bool, dryrun: bool, 
     }
 
     if (!success) {
-        std.posix.exit(1);
+        exit(1);
     }
 
     if (!dryrun) {
         if (create_directory) {
-            std.posix.mkdirat(std.fs.cwd().fd, file_path, 0o700) catch {
+            mkdirat(std.Io.Dir.cwd(), file_path, 0o700) catch {
                 if (!quiet) {
                     println("Could not create directory at '{s}'", .{file_path});
                     exit(1);
                 }
             };
         } else {
-            _ = std.fs.cwd().createFile(file_path, .{.mode = 0o600}) catch {
+            _ = std.Io.Dir.cwd().createFile(io, file_path, .{.permissions = std.Io.File.Permissions.fromMode(0o600)}) catch {
                 if (!quiet) {
                     println("Could not create file at '{s}'", .{file_path});
                     exit(1);

@@ -1,7 +1,6 @@
 const std = @import("std");
 const fs = std.fs;
 const os = std.os;
-const io = std.io;
 
 const clap2 = @import("clap2/clap2.zig");
 const fileinfo = @import("util/fileinfo.zig");
@@ -9,6 +8,7 @@ const version = @import("util/version.zig");
 const strings = @import("util/strings.zig");
 const time_info = @import("util/time.zig");
 const utmp = @import("util/utmp.zig");
+const custom_io = @import("util/io.zig");
 
 const Allocator = std.mem.Allocator;
 const time_t = time_info.time_t;
@@ -16,6 +16,7 @@ const AccessError = os.AccessError;
 
 const default_allocator = std.heap.page_allocator;
 const print = @import("util/print_tools.zig").print;
+const exit = std.process.exit;
 
 const application_name = "fold";
 
@@ -37,7 +38,7 @@ const help_message =
 
 var handled_stdin = false;
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     const args: []const clap2.Argument = &[_]clap2.Argument{
         clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
         clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
@@ -46,15 +47,15 @@ pub fn main() !void {
         clap2.Argument.OptionArgument("w", &[_][]const u8{"width"}, false),
     };
 
-    var parser = clap2.Parser.init(args, .{});
+    var parser = clap2.Parser.init(args, init.minimal, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {
         print(help_message, .{});
-        std.posix.exit(0);
+        exit(0);
     } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
-        std.posix.exit(0);
+        exit(0);
     }
     
     const wrap_bytes = parser.flag("b");
@@ -80,16 +81,16 @@ pub fn main() !void {
     for (positionals) |arg| {
         if (std.mem.eql(u8, arg, "-")) {
             if (!handled_stdin) {
-                try handleStdin(break_only_at_spaces, width);
+                try handleStdin(break_only_at_spaces, width, init.io);
                 handled_stdin = true;
             }
         } else {
-            try fold(arg, wrap_bytes, break_only_at_spaces, width);
+            try fold(arg, wrap_bytes, break_only_at_spaces, width, init.io);
         }
     }
 }
 
-fn fold(path: []const u8, wrap_bytes: bool, break_only_at_spaces: bool, width: u32) !void {
+fn fold(path: []const u8, wrap_bytes: bool, break_only_at_spaces: bool, width: u32, io: std.Io) !void {
 
     const stat = fileinfo.getLstat(path) catch |err| {
         print("{any}\n", .{err});
@@ -107,8 +108,8 @@ fn fold(path: []const u8, wrap_bytes: bool, break_only_at_spaces: bool, width: u
     
     const file_size: u64 = @intCast(stat.size);
     
-    const file = try fs.cwd().openFile(path, .{.mode = .read_only});
-    defer file.close();
+    const file = try std.Io.Dir.cwd().openFile(io, path, .{.mode = .read_only});
+    defer file.close(io);
     
     //TODO: Actually handle UTF-8 strings (unlike GNU coreutils)
     if (wrap_bytes or !wrap_bytes) {
@@ -118,7 +119,7 @@ fn fold(path: []const u8, wrap_bytes: bool, break_only_at_spaces: bool, width: u
         var current_line_size: usize = 0;
         
         while (offset < file_size) {
-            const read = try file.pread(file_buffer[0..], offset);
+            const read = try file.readPositionalAll(io, file_buffer[0..], offset);
             processByteLoop(file_buffer[0..read], break_only_at_spaces, width, &current_line_size);
             offset += chunk_size;
         }
@@ -127,9 +128,8 @@ fn fold(path: []const u8, wrap_bytes: bool, break_only_at_spaces: bool, width: u
     }
 }
 
-fn handleStdin(break_only_at_spaces: bool, width: u32) !void {
-    const stdin = std.fs.File.stdin().deprecatedReader();
-    const bytes = stdin.readAllAlloc(default_allocator, 1 << 30) catch {
+fn handleStdin(break_only_at_spaces: bool, width: u32, io: std.Io) !void {
+    const bytes = custom_io.readStdin(io, default_allocator) catch {
         print("Reading stdin failed\n", .{});
         return;
     };

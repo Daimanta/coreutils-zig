@@ -10,7 +10,7 @@ const users = @import("util/users.zig");
 const Allocator = std.mem.Allocator;
 
 const default_allocator = std.heap.page_allocator;
-const exit = std.posix.exit;
+const exit = std.process.exit;
 const print = @import("util/print_tools.zig").print;
 
 const application_name = "chown";
@@ -67,9 +67,9 @@ const consider_user = true;
 const consider_group = true;
 const consider_mode = false;
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     const params = comptime file_ownership.getParams(file_ownership.Program.CHOWN);
-    const ownership_options = file_ownership.getOwnershipOptions(params, application_name, help_message, file_ownership.Program.CHOWN);
+    const ownership_options = file_ownership.getOwnershipOptions(params, application_name, help_message, file_ownership.Program.CHOWN, init.minimal);
     var change_params = file_ownership.getChangeParams(ownership_options, application_name, consider_user, consider_group, consider_mode);
     const positionals = ownership_options.parser.positionals();
     var start: usize = 1;
@@ -158,6 +158,6 @@ pub fn main() !void {
         }
     }
     for (positionals[start..]) |arg| {
-        file_ownership.changeRights(arg, change_params, ownership_options.recursive, ownership_options.verbosity, ownership_options.dereference_main, ownership_options.preserve_root, ownership_options.symlink_traversal, application_name);
+        file_ownership.changeRights(arg, change_params, ownership_options.recursive, ownership_options.verbosity, ownership_options.dereference_main, ownership_options.preserve_root, ownership_options.symlink_traversal, application_name, init.io);
     }
 }

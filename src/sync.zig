@@ -11,11 +11,12 @@ const version = @import("util/version.zig");
 const Allocator = std.mem.Allocator;
 const OpenError = std.posix.OpenError;
 
-const fsync = std.posix.fsync;
-const fdatasync = std.posix.fdatasync;
+const fsync = std.os.linux.fsync;
+const fdatasync = std.os.linux.fdatasync;
 const print = @import("util/print_tools.zig").print;
-const sync = std.posix.sync;
-const syncfs = std.posix.syncfs;
+const sync = std.os.linux.sync;
+const syncfs = std.os.linux.syncfs;
+const exit = std.process.exit;
 
 const default_allocator = std.heap.page_allocator;
 
@@ -41,7 +42,7 @@ const SyncType = enum {
     FILE_SYSTEM
 };
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     const args: []const clap2.Argument = &[_]clap2.Argument{
         clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
         clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
@@ -49,15 +50,15 @@ pub fn main() !void {
         clap2.Argument.FlagArgument("f", &[_][]const u8{"file-system"}),
     };
 
-    var parser = clap2.Parser.init(args, .{});
+    var parser = clap2.Parser.init(args, init.minimal, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {
         print(help_message, .{});
-        std.posix.exit(0);
+        exit(0);
     } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
-        std.posix.exit(0);
+        exit(0);
     }
 
     const arguments = parser.positionals();
@@ -71,12 +72,12 @@ pub fn main() !void {
     
     if (only_filedata and sync_filesystem) {
         print("Filesystem and data-only sync cannot be done at the same time. Exiting.\n", .{});
-        std.posix.exit(1);
+        exit(1);
     }
     
     if (sync_type != SyncType.FILE and arguments.len == 0) {
         print("The mode was set for syncing specific files but no files were provided. Exiting.\n", .{});
-        std.posix.exit(1);
+        exit(1);
     }
     
     synchronize(sync_type, arguments);
@@ -95,19 +96,14 @@ fn synchronize(sync_type: SyncType, targets: [] const []const u8) void{
 }
 
 fn synchronize_target(sync_type: SyncType, target: []const u8) bool {
-    const handle = std.posix.open(target, .{}, 0) catch |err| {
-        switch (err) {
-            OpenError.FileNotFound => print("{s}: File '{s}' not found.\n", .{application_name, target}),
-            OpenError.IsDir => print("{s}: Target '{s}' is a directory.\n", .{application_name, target}),
-            OpenError.AccessDenied => print("{s}: Access to file '{s}' denied.\n", .{application_name, target}),
-            else => print("Unknown error.\n", .{}),
-        }
+    const handle = std.posix.openat(std.Io.Dir.cwd().handle, target, .{}, 0) catch {
+        print("An error occured\n", .{});
         return false;
     };
-    switch(sync_type) {
-        SyncType.DATA => fdatasync(handle) catch return false,
-        SyncType.FILE => fsync(handle) catch return false,
-        SyncType.FILE_SYSTEM => syncfs(handle) catch return false   
-    }
+    _ = switch(sync_type) {
+        SyncType.DATA => fdatasync(handle),
+        SyncType.FILE => fsync(handle),
+        SyncType.FILE_SYSTEM => syncfs(handle)
+    };
     return true;
 }

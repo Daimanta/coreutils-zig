@@ -5,7 +5,7 @@ const linux = std.os.linux;
 
 const strings = @import("strings.zig");
 
-const KernelStat = linux.Stat;
+const KernelStat = linux.Statx;
 
 const Allocator = std.mem.Allocator;
 pub const mode_t = linux.mode_t;
@@ -68,29 +68,29 @@ pub fn isDir(stat: KernelStat) bool {
 
 pub fn getAbsolutePath(allocator: Allocator, path: []const u8, relative_to: ?[]const u8) ![]u8 {
     if (relative_to == null) {
-        const absolute_path_without_slash = try std.fs.path.relative(allocator, "/", path);
+        const absolute_path_without_slash = try std.fs.path.relative(allocator, ".", null, "/", path);
         defer allocator.free(absolute_path_without_slash);
         var result = try allocator.alloc(u8, absolute_path_without_slash.len + 1);
         result[0] = '/';
         std.mem.copyForwards(u8, result[1..], absolute_path_without_slash[0..]);
         return result;
     } else {
-        return try std.fs.path.relative(allocator, relative_to.?, path);
+        return try std.fs.path.relative(allocator, ".", null, relative_to.?, path);
     }
     
 }
 
 // Follows a symlink recursively to the last path provided
-pub fn followSymlink(allocator: Allocator, link: []const u8, target_must_exist: bool) FollowSymlinkResult {
+pub fn followSymlink(allocator: Allocator, link: []const u8, target_must_exist: bool, io: std.Io) FollowSymlinkResult {
     const max_path_length = 1 << 12;
     var link_iterator = link;
     var count: u8 = 0;
     var my_kernel_stat: KernelStat = undefined;
     var next: []u8 = undefined;
-    var link_buffer: [max_path_length]u8 = undefined;
+    //var link_buffer: [max_path_length]u8 = undefined;
     var next_buffer: [max_path_length]u8 = undefined;
     while (true) {
-        next = std.fs.cwd().readLink(link_iterator, link_buffer[0..]) catch return .{.error_result = FollowSymlinkError.NotLink};
+        next = @import("io.zig").readlink(std.Io.Dir.cwd(), io, default_allocator, link_iterator) catch return .{.error_result = FollowSymlinkError.NotLink};
         if (next.len > 0 and next[0] != '/') {
             const lastSlash = strings.lastIndexOf(link_iterator, '/');
             if (lastSlash != null) {
@@ -123,7 +123,10 @@ pub fn getLstat(path: []const u8) !KernelStat {
     var my_kernel_stat: KernelStat = std.mem.zeroes(KernelStat);
     const np_link = try strings.toNullTerminatedPointer(path, default_allocator);
     defer default_allocator.free(np_link);
-    _ = linux.lstat(np_link, &my_kernel_stat);
+    const stat_error_code = linux.statx(std.Io.Dir.cwd().handle, np_link, 0, .{}, &my_kernel_stat);
+    if (stat_error_code != 0) {
+        return error.StatError;
+    }
     return my_kernel_stat;
 }
 

@@ -1,7 +1,6 @@
 const std = @import("std");
 const fs = std.fs;
 const os = std.os;
-const io = std.io;
 
 const clap2 = @import("clap2/clap2.zig");
 const version = @import("util/version.zig");
@@ -15,6 +14,7 @@ const Case = std.fmt.Case;
 
 const allocator = std.heap.page_allocator;
 const print = @import("util/print_tools.zig").print;
+const exit = std.process.exit;
 
 const application_name = "uptime";
 
@@ -29,21 +29,21 @@ const help_message =
 ;
 
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     const args: []const clap2.Argument = &[_]clap2.Argument{
         clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
         clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
     };
 
-    var parser = clap2.Parser.init(args, .{});
+    var parser = clap2.Parser.init(args, init.minimal, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {
         print(help_message, .{});
-        std.posix.exit(0);
+        exit(0);
     } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
-        std.posix.exit(0);
+        exit(0);
     }
 
     const positionals = parser.positionals();
@@ -52,16 +52,16 @@ pub fn main() !void {
 
     if (positionals.len > 1) {
         print("Only one file can be specified. Exiting.\n", .{});
-        std.posix.exit(1);
+        exit(1);
     } else if (positionals.len == 1) {
         current_user_file = positionals[0];
     }
-    print(" {s},  ", .{try getUptimeString(allocator)});
-    print("{s},  ", .{try getUsersString(allocator, current_user_file)});
-    print("{s}\n", .{try getLoadString(allocator)});
+    print(" {s},  ", .{try getUptimeString(allocator, init.io)});
+    print("{s},  ", .{try getUsersString(allocator, current_user_file, init.io)});
+    print("{s}\n", .{try getLoadString(allocator, init.io)});
 }
 
-fn getUptimeString(alloc: std.mem.Allocator) ![]const u8 {
+fn getUptimeString(alloc: std.mem.Allocator, io: std.Io) ![]const u8 {
     const read_file: []const u8 = "/proc/uptime";
     var now: time_t = undefined;
     time_info.getCurrentTime(&now);
@@ -70,9 +70,7 @@ fn getUptimeString(alloc: std.mem.Allocator) ![]const u8 {
     defer alloc.free(time_repr);
 
     var can_determine_uptime = true;
-    var buffer: [1024]u8 = undefined;
-    var contents: []u8 = undefined;
-    contents = fs.cwd().readFile(read_file, buffer[0..]) catch "";
+    var contents: []u8 = std.Io.Dir.cwd().readFileAlloc(io, read_file, allocator, .unlimited) catch "";
 
     const space_index = strings.indexOf(contents, ' ');
     var days: u32 = undefined;
@@ -119,9 +117,9 @@ fn getUptimeString(alloc: std.mem.Allocator) ![]const u8 {
     return stringBuilder.toOwnedSlice(alloc);
 }
 
-fn getUsersString(alloc: std.mem.Allocator, file_name: []const u8) ![]const u8 {
+fn getUsersString(alloc: std.mem.Allocator, file_name: []const u8, io: std.Io) ![]const u8 {
     const backup: []u8 = &.{};
-    const file_contents = fs.cwd().readFileAlloc(alloc, file_name, 1 << 20) catch backup;
+    const file_contents = std.Io.Dir.cwd().readFileAlloc(io, file_name, alloc, .unlimited) catch backup;
     const count = switch (file_contents.len > 0 and file_contents.len % @sizeOf(utmp.Utmp) == 0) {
         false => 0,
         true => utmp.countActiveUsers(utmp.convertBytesToUtmpRecords(file_contents))
@@ -138,11 +136,11 @@ fn getUsersString(alloc: std.mem.Allocator, file_name: []const u8) ![]const u8 {
     return stringBuilder.toOwnedSlice(alloc);
 }
 
-fn getLoadString(alloc: std.mem.Allocator) ![]const u8 {
+fn getLoadString(alloc: std.mem.Allocator, io: std.Io) ![]const u8 {
     const file_name: []const u8 = "/proc/loadavg";
     const begin: []const u8 = "load average: ";
     const unknown: []const u8 = "?.?, ?.?, ?.?";
-    const file_contents = fs.cwd().readFileAlloc(alloc, file_name, 2 << 20) catch "";
+    const file_contents = std.Io.Dir.cwd().readFileAlloc(io, file_name, alloc, .unlimited) catch "";
     if (file_contents.len == 0) {
         return begin ++ unknown;
     } else {

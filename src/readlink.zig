@@ -12,8 +12,9 @@ const Allocator = std.mem.Allocator;
 
 const default_allocator = std.heap.page_allocator;
 const FollowSymlinkError = fileinfo.FollowSymlinkError;
-const kernel_stat = linux.Stat;
+const kernel_stat = linux.Statx;
 const print = @import("util/print_tools.zig").print;
+const exit = std.process.exit;
 
 const application_name = "readlink";
 const help_message =
@@ -55,7 +56,7 @@ const OutputMode = enum {
     VERBOSE
 };
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     const args: []const clap2.Argument = &[_]clap2.Argument{
         clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
         clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
@@ -69,15 +70,15 @@ pub fn main() !void {
         clap2.Argument.FlagArgument("z", &[_][]const u8{"zero"}),
     };
 
-    var parser = clap2.Parser.init(args, .{});
+    var parser = clap2.Parser.init(args, init.minimal, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {
         print(help_message, .{});
-        std.posix.exit(0);
+        exit(0);
     } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
-        std.posix.exit(0);
+        exit(0);
     }
 
     const quiet = parser.flag("q");
@@ -94,7 +95,7 @@ pub fn main() !void {
     const positionals = parser.positionals();
     if (positionals.len == 0) {
         print("{s}: missing operand\n", .{application_name});
-        std.posix.exit(1);
+        exit(1);
     } else if (positionals.len > 2 and suppress_newline) {
         print("{s}: ignoring --no-newline with multiple arguments\n", .{application_name});
         suppress_newline = false;
@@ -115,7 +116,7 @@ pub fn main() !void {
     if (zero) terminator = "\x00";
 
     for (positionals) |positional| {
-        const iteration_success = process_link(positional, terminator, read_mode, output_mode) catch false;
+        const iteration_success = process_link(positional, terminator, read_mode, output_mode, init.io) catch false;
         success = iteration_success and success;
     }
 
@@ -123,49 +124,48 @@ pub fn main() !void {
         false => @as(u8, 1),
         true => 0
     };
-    std.posix.exit(exit_code);
+    exit(exit_code);
 }
 
 
 fn checkInconsistencies(quiet: bool, silent: bool, verbose: bool, zero: bool, suppress_newline: bool, find_all_but_last_link: bool, find_all_links: bool, accept_missing_links: bool) void {
     if (silent and verbose) {
         print("Silent and verbose flags cannot be active at the same time. Exiting.\n", .{});
-        std.posix.exit(1);
+        exit(1);
     }
 
     if (zero and suppress_newline) {
         print("Zero delimiter and no delimiter cannot be active at the same time. Exiting.\n", .{});
-        std.posix.exit(1);
+        exit(1);
     }
 
     if (find_all_but_last_link and find_all_links) {
         print("Canonicalize and canonicalize-existing cannot be active at the same time. Exiting.\n", .{});
-        std.posix.exit(1);
+        exit(1);
     }
     if (find_all_but_last_link and accept_missing_links) {
         print("Canonicalize and canonicalize-missing cannot be active at the same time. Exiting.\n", .{});
-        std.posix.exit(1);
+        exit(1);
     }
 
     if (find_all_links and accept_missing_links) {
         print("Canonicalize-existing and canonicalize-missing cannot be active at the same time. Exiting.\n", .{});
-        std.posix.exit(1);
+        exit(1);
     }
 
     if (quiet and verbose) {
         print("Quiet and verbose flags cannot be active at the same time. Exiting.\n", .{});
-        std.posix.exit(1);
+        exit(1);
     }
 
 }
 
-fn process_link(link: []const u8, terminator: []const u8, read_mode: ReadMode, output_mode: OutputMode) !bool {
-    var link_buffer: [max_path_length]u8 = undefined;
+fn process_link(link: []const u8, terminator: []const u8, read_mode: ReadMode, output_mode: OutputMode, io: std.Io) !bool {
     var path_buffer: [max_path_length]u8 = undefined;
     var my_kernel_stat: kernel_stat = std.mem.zeroes(kernel_stat);
     const np_link = try strings.toNullTerminatedPointer(link, default_allocator);
     defer default_allocator.free(np_link);
-    _ = linux.lstat(np_link, &my_kernel_stat);
+    my_kernel_stat = try fileinfo.getLstat(np_link);
     const exists = fileinfo.fileExists(my_kernel_stat);
     if (!exists) {
         if (read_mode == ReadMode.ALLOW_MISSING) {
@@ -193,7 +193,8 @@ fn process_link(link: []const u8, terminator: []const u8, read_mode: ReadMode, o
             return false;
         } else if (read_mode == ReadMode.ALLOW_MISSING) {
             if (output_mode != OutputMode.QUIET) {
-                print("{s}{s}", .{try std.posix.realpath(link, &path_buffer), terminator});
+                const len = try std.Io.Dir.cwd().realPathFile(io, link, &path_buffer);
+                print("{s}{s}", .{path_buffer[0..len], terminator});
             }
             return true;
         } else {
@@ -201,17 +202,17 @@ fn process_link(link: []const u8, terminator: []const u8, read_mode: ReadMode, o
         }
     }
     if (read_mode == ReadMode.READ_ONE) {
-        const result = try std.fs.cwd().readLink(link, link_buffer[0..]);
+        const result = try @import("util/io.zig").readlink(std.Io.Dir.cwd(), io, default_allocator, link);
         print("{s}{s}", .{result, terminator});
         return true;
     } else if (read_mode == ReadMode.FOLLOW_ALMOST_ALL or read_mode == ReadMode.FOLLOW_ALL or read_mode == ReadMode.ALLOW_MISSING) {
-        return try follow_symlinks(link, terminator, read_mode, output_mode);
+        return try follow_symlinks(link, terminator, read_mode, output_mode, io);
     }
     unreachable;
 }
 
-fn follow_symlinks(link: []const u8, terminator: []const u8, read_mode: ReadMode, output_mode: OutputMode) !bool {
-    const symlink_result = fileinfo.followSymlink(default_allocator, link, read_mode == ReadMode.FOLLOW_ALL);
+fn follow_symlinks(link: []const u8, terminator: []const u8, read_mode: ReadMode, output_mode: OutputMode, io: std.Io) !bool {
+    const symlink_result = fileinfo.followSymlink(default_allocator, link, read_mode == ReadMode.FOLLOW_ALL, io);
     defer if (symlink_result.path != null) default_allocator.free(symlink_result.path.?);
     if (symlink_result.error_result != null) {
         const error_result = symlink_result.error_result.?;

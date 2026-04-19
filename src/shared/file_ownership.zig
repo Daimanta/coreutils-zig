@@ -11,16 +11,14 @@ const users = @import("../util/users.zig");
 const version = @import("../util/version.zig");
 
 const Allocator = std.mem.Allocator;
-const ChownError = std.posix.FChownError;
 const ChmodError = fileinfo.ChmodError;
-const FChmodError = std.posix.FChmodError;
-const OpenError = fs.Dir.OpenError;
-const OpenFileError = fs.File.OpenError;
+const OpenError = std.Io.Dir.OpenError;
+const OpenFileError = std.Io.File.OpenError;
 
 const default_allocator = std.heap.page_allocator;
-const exit = std.posix.exit;
+const exit = std.process.exit;
 const FollowSymlinkError = fileinfo.FollowSymlinkError;
-const KernelStat = linux.Stat;
+const KernelStat = linux.Statx;
 const mode_t = linux.mode_t;
 const print = @import("../util/print_tools.zig").print;
 
@@ -90,8 +88,8 @@ pub fn getParams(comptime program: Program) []const clap2.Argument{
     unreachable;
 }
 
-pub fn getOwnershipOptions(comptime args: []const clap2.Argument, comptime application_name: []const u8, comptime help_message: []const u8, comptime program: Program) OwnershipOptions {
-    var parser = clap2.Parser.init(args, .{});
+pub fn getOwnershipOptions(comptime args: []const clap2.Argument, comptime application_name: []const u8, comptime help_message: []const u8, comptime program: Program, minimal: std.process.Init.Minimal) OwnershipOptions {
+    var parser = clap2.Parser.init(args, minimal, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {
@@ -134,7 +132,7 @@ pub fn getOwnershipOptions(comptime args: []const clap2.Argument, comptime appli
     return OwnershipOptions{ .verbosity = verbosity, .dereference_main = dereference_main, .recursive = recursive, .symlink_traversal = symlink_traversal, .preserve_root = preserve_root, .rfile_group = rfile_group.value, .only_if_matching = only_if_matching.value, .parser = parser };
 }
 
-fn traverseDir(path: []const u8, change_params: ChangeParams, verbosity: Verbosity, symlink_traversal: SymlinkTraversal, also_process_dir: bool, application_name: []const u8) void {
+fn traverseDir(path: []const u8, change_params: ChangeParams, verbosity: Verbosity, symlink_traversal: SymlinkTraversal, also_process_dir: bool, application_name: []const u8, io: std.Io) void {
     var buffer: [8192]u8 = undefined;
     var string_builder = strings.StringBuilder.init(buffer[0..]);
     string_builder.append(path);
@@ -146,10 +144,10 @@ fn traverseDir(path: []const u8, change_params: ChangeParams, verbosity: Verbosi
     const current_user = stat.uid;
     const current_group = stat.gid;
 
-    var dir = fs.cwd().openDir(path, .{}) catch |err| {
+    var dir = std.Io.Dir.cwd().openDir(io, path, .{}) catch |err| {
         if (verbosity != Verbosity.QUIET) {
             switch (err) {
-                OpenError.AccessDenied => print("{s}: Access Denied to '{s}'\n", .{ application_name, path }),
+                //OpenError.AccessDenied => print("{s}: Access Denied to '{s}'\n", .{ application_name, path }),
                 else => print("{any}\n", .{err}),
             }
         }
@@ -158,13 +156,13 @@ fn traverseDir(path: []const u8, change_params: ChangeParams, verbosity: Verbosi
 
     if (also_process_dir) {
         if (change_params.willChange(stat)) {
-            if (dir.chown(change_params.user, change_params.group)) {
+            if (dir.setOwner(io, change_params.user, change_params.group)) {
                 if (verbosity == Verbosity.VERBOSE or (verbosity == Verbosity.CHANGED and ((change_params.group != null and (change_params.group.? != current_group)) or (change_params.user != null and (change_params.user.? != current_user))))) {
                     print("Changed owner/group on '{s}'\n", .{path});
                 }
             } else |err| {
                 switch (err) {
-                    ChownError.AccessDenied => print("{s}: Access Denied to '{s}'\n", .{ application_name, path }),
+                    //ChownError.AccessDenied => print("{s}: Access Denied to '{s}'\n", .{ application_name, path }),
                     else => print("{any}\n", .{err}),
                 }
             }
@@ -172,19 +170,19 @@ fn traverseDir(path: []const u8, change_params: ChangeParams, verbosity: Verbosi
     }
 
     var iterator = dir.iterate();
-    while (iterator.next() catch return) |element| {
+    while (iterator.next(io) catch return) |element| {
         string_builder.append(element.name);
-        changeItem(string_builder.toSlice(), change_params, verbosity, symlink_traversal, application_name);
+        changeItem(string_builder.toSlice(), change_params, verbosity, symlink_traversal, application_name, io);
         string_builder.resetTo(current_index);
     }
 
-    dir.close();
+    dir.close(io);
 }
 
 pub fn getChangeParams(ownership_options: OwnershipOptions, application_name: []const u8, consider_user: bool, consider_group: bool, consider_mode: bool) ChangeParams {
     var group_id_opt: ?linux.gid_t = null;
     var user_id_opt: ?linux.uid_t = null;
-    var mode: ?u64 = null;
+    var mode: ?u32 = null;
     var from_file = false;
 
     if (ownership_options.rfile_group != null) {
@@ -208,7 +206,7 @@ pub fn getChangeParams(ownership_options: OwnershipOptions, application_name: []
     return ChangeParams{ .group = group_id_opt, .user = user_id_opt, .absolute_mode = mode, .mode_string = null, .from_file = from_file, .original_user_must_match = null, .original_group_must_match = null };
 }
 
-pub fn changeRights(path: []const u8, change_params: ChangeParams, recursive: bool, verbosity: Verbosity, dereference_main: bool, preserve_root: bool, symlink_traversal: SymlinkTraversal, application_name: []const u8) void {
+pub fn changeRights(path: []const u8, change_params: ChangeParams, recursive: bool, verbosity: Verbosity, dereference_main: bool, preserve_root: bool, symlink_traversal: SymlinkTraversal, application_name: []const u8, io: std.Io) void {
     if (fileinfo.fsRoot(path) and preserve_root) {
         if (verbosity != Verbosity.QUIET) {
             print("{s}: Root of fs encountered. Preserving root and exiting.\n", .{application_name});
@@ -228,7 +226,7 @@ pub fn changeRights(path: []const u8, change_params: ChangeParams, recursive: bo
     const is_symlink = fileinfo.isSymlink(stat);
 
     if (is_dir) {
-        var dir = fs.cwd().openDir(path, .{}) catch |err| {
+        var dir = std.Io.Dir.cwd().openDir(io, path, .{}) catch |err| {
             if (verbosity != Verbosity.QUIET) {
                 switch (err) {
                     OpenError.AccessDenied => print("{s}: Access Denied to '{s}'\n", .{ application_name, path }),
@@ -239,13 +237,13 @@ pub fn changeRights(path: []const u8, change_params: ChangeParams, recursive: bo
         };
         if (change_params.willChange(stat)) {
             if (change_params.isChown()) {
-                if (dir.chown(change_params.user, change_params.group)) {
+                if (dir.setOwner(io, change_params.user, change_params.group)) {
                     if (verbosity == Verbosity.VERBOSE or (verbosity == Verbosity.CHANGED and ((change_params.group != null and (change_params.group.? != stat.gid)) or (change_params.user != null and (change_params.user.? != stat.uid))))) {
                         print("Changed owner/group on '{s}'\n", .{path});
                     }
                 } else |err| {
                     switch (err) {
-                        ChownError.AccessDenied => print("{s}: Access Denied to '{s}'\n", .{ application_name, path }),
+                        //ChownError.AccessDenied => print("{s}: Access Denied to '{s}'\n", .{ application_name, path }),
                         else => print("{any}\n", .{err}),
                     }
                 }
@@ -261,17 +259,17 @@ pub fn changeRights(path: []const u8, change_params: ChangeParams, recursive: bo
             }
         }
 
-        defer dir.close();
+        defer dir.close(io);
     } else if (!is_symlink or dereference_main) {
-        changePlainFile(path, stat, change_params, verbosity, application_name);
+        changePlainFile(path, stat, change_params, verbosity, application_name, io);
     }
 
     if (recursive and is_dir) {
-        traverseDir(path, change_params, verbosity, symlink_traversal, false, application_name);
+        traverseDir(path, change_params, verbosity, symlink_traversal, false, application_name, io);
     }
 }
 
-fn changeItem(path: []const u8, change_params: ChangeParams, verbosity: Verbosity, symlink_traversal: SymlinkTraversal, application_name: []const u8) void {
+fn changeItem(path: []const u8, change_params: ChangeParams, verbosity: Verbosity, symlink_traversal: SymlinkTraversal, application_name: []const u8, io: std.Io) void {
     const stat = fileinfo.getLstat(path) catch return;
 
     if (!fileinfo.fileExists(stat)) {
@@ -282,15 +280,15 @@ fn changeItem(path: []const u8, change_params: ChangeParams, verbosity: Verbosit
     }
 
     if (fileinfo.isDir(stat)) {
-        traverseDir(path, change_params, verbosity, symlink_traversal, true, application_name);
+        traverseDir(path, change_params, verbosity, symlink_traversal, true, application_name, io);
     } else {
         if (symlink_traversal == SymlinkTraversal.ALL or !fileinfo.isSymlink(stat)) {
-            changePlainFile(path, stat, change_params, verbosity, application_name);
+            changePlainFile(path, stat, change_params, verbosity, application_name, io);
         }
     }
 }
 
-fn changePlainFile(path: []const u8, kernel_stat: ?KernelStat, change_params: ChangeParams, verbosity: Verbosity, application_name: []const u8) void {
+fn changePlainFile(path: []const u8, kernel_stat: ?KernelStat, change_params: ChangeParams, verbosity: Verbosity, application_name: []const u8, io: std.Io) void {
     const stat: KernelStat = if (kernel_stat != null) kernel_stat.? else fileinfo.getLstat(path) catch return;
 
     const current_user = stat.uid;
@@ -299,7 +297,7 @@ fn changePlainFile(path: []const u8, kernel_stat: ?KernelStat, change_params: Ch
 
     if (change_params.willChange(stat)) {
         if (change_params.isChown()) {
-            const file = fs.cwd().openFile(path, .{}) catch |err| {
+            const file = std.Io.Dir.cwd().openFile(io, path, .{}) catch |err| {
                 if (verbosity != Verbosity.QUIET) {
                     switch (err) {
                         OpenFileError.AccessDenied => print("{s}: Access Denied to '{s}'\n", .{ application_name, path }),
@@ -309,16 +307,16 @@ fn changePlainFile(path: []const u8, kernel_stat: ?KernelStat, change_params: Ch
                 return;
             };
 
-            defer file.close();
+            defer file.close(io);
 
-            if (file.chown(change_params.user, change_params.group)) {
+            if (file.setOwner(io, change_params.user, change_params.group)) {
                 if (verbosity == Verbosity.VERBOSE or (verbosity == Verbosity.CHANGED and ((change_params.user != null and current_user != change_params.user.?) or (change_params.group != null and current_group != change_params.group.?)))) {
                     print("Changed owner/group on '{s}'\n", .{path});
                 }
             } else |err| {
                 if (verbosity != Verbosity.QUIET) {
                     switch (err) {
-                        ChownError.AccessDenied => print("{s}: Access Denied to '{s}'\n", .{ application_name, path }),
+                        //ChownError.AccessDenied => print("{s}: Access Denied to '{s}'\n", .{ application_name, path }),
                         else => print("{any}\n", .{err}),
                     }
                 }

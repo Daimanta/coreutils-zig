@@ -55,7 +55,7 @@ const help_message =
 
 extern fn getgrouplist(user: [*:0]const u8, group: gid, groups: [*]gid, ngroups: *c_int) callconv(.C) c_int;
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     const args: []const clap2.Argument = &[_]clap2.Argument{
         clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
         clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
@@ -78,15 +78,15 @@ pub fn main() !void {
         clap2.Argument.FlagArgument(null, &[_][]const u8{"writable"}),
     };
 
-    var parser = clap2.Parser.init(args, .{});
+    var parser = clap2.Parser.init(args, init.minimal, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {
         print(help_message, .{});
-        std.posix.exit(0);
+        exit(0);
     } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
-        std.posix.exit(0);
+        exit(0);
     }
 
     const all = parser.flag("a");
@@ -117,7 +117,7 @@ pub fn main() !void {
         
     } else {
         print("Zero, one or two arguments expected.\n", .{});
-        std.posix.exit(1);
+        exit(1);
     }
 }
 
@@ -126,7 +126,7 @@ fn checkConflicts(boot: bool, dead: bool, heading: bool, ips: bool, login: bool,
     _ = lookup;
     if (count_users and (boot or dead or heading or ips or login or stdin_users or processes or runlevel or short or time or message_status or list_users)) {
         print("{s}: \"-q\" cannot be combined with other output flags", .{application_name});
-        std.posix.exit(1);
+        exit(1);
     }
 }
 

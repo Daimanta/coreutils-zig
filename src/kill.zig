@@ -1,7 +1,6 @@
 const std = @import("std");
 const fs = std.fs;
 const os = std.os;
-const io = std.io;
 const testing = std.testing;
 
 const clap2 = @import("clap2/clap2.zig");
@@ -11,7 +10,7 @@ const Allocator = std.mem.Allocator;
 const LinkError = os.LinkError;
 
 const default_allocator = std.heap.page_allocator;
-const exit = std.posix.exit;
+const exit = std.process.exit;
 const getErrnoValue = @import("util/system.zig").getErrnoValue;
 const print = @import("util/print_tools.zig").print;
 const println = @import("util/print_tools.zig").println;
@@ -45,7 +44,7 @@ const SIGNALS = [_][]const u8{"SIGHUP", "SIGINT", "SIGQUIT", "SIGILL", "SIGTRAP"
 
 const STANDARD_SIGNAL: []const u8 = "15"; //SIGTERM
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     const args: []const clap2.Argument = &[_]clap2.Argument{
         .{.shorts = null, .longs = &[_][]const u8{"help"}, .type = .none},
         .{.shorts = null, .longs = &[_][]const u8{"version"}, .type = .none},
@@ -53,7 +52,7 @@ pub fn main() !void {
         .{.shorts = "t", .longs = &[_][]const u8{"table"}, .type = .none},
         .{.shorts = "s", .longs = &[_][]const u8{"signal"}, .type = .one, .allow_none = false},
     };
-    var parser = clap2.Parser.init(args, .{});
+    var parser = clap2.Parser.init(args, init.minimal, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {
@@ -175,7 +174,7 @@ fn send_signal(signal: []const u8, processes:[][]const u8) void {
 
     for (processes) |process| {
         if (std.fmt.parseInt(i32, process, 10)) |num| {
-            const result = std.os.linux.kill(num, signal_number.?);
+            const result = std.os.linux.kill(num, @enumFromInt(signal_number.?));
             if (result != 0) {
                 const errno = getErrnoValue(result);
                 switch (errno) {

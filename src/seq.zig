@@ -49,7 +49,7 @@ const help_message =
 \\
 ;
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     const args: []const clap2.Argument = &[_]clap2.Argument{
         clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
         clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
@@ -58,15 +58,15 @@ pub fn main() !void {
         clap2.Argument.FlagArgument("w", &[_][]const u8{"equal-width"}),
     };
 
-    var parser = clap2.Parser.init(args, .{});
+    var parser = clap2.Parser.init(args, init.minimal, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {
         print(help_message, .{});
-        std.posix.exit(0);
+        exit(0);
     } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
-        std.posix.exit(0);
+        exit(0);
     }
 
     const format = parser.option("f");
@@ -76,7 +76,7 @@ pub fn main() !void {
 
     if (equal_width and format.found) {
         print("{s}: -w and -f cannot be active at the same time. Exiting\n", .{application_name});
-        std.posix.exit(1);
+        exit(1);
     }
 
     var separator: []const u8 = "\n";
@@ -86,10 +86,10 @@ pub fn main() !void {
 
     if (arguments.len == 0) {
         print("{s}: At least one argument required. Exiting\n", .{application_name});
-        std.posix.exit(1);
+        exit(1);
     } else if (arguments.len > 3) {
         print("{s}: At most three arguments are accepted. Exiting\n", .{application_name});
-        std.posix.exit(1);
+        exit(1);
     }
     if (all_integer_arguments(arguments)) {
         process_integers(arguments, equal_width, separator, format.value);
@@ -129,34 +129,34 @@ fn process_integers(arguments: []const []const u8, equal_width: bool, separator:
     if (arguments.len == 1) {
         last = std.fmt.parseInt(i64, arguments[0], 10) catch {
             print("{s}: Argument 1 is too big or too small\n", .{application_name});
-            std.posix.exit(1);
+            exit(1);
         };
     } else if (arguments.len == 2) {
         first = std.fmt.parseInt(i64, arguments[0], 10) catch {
             print("{s}: Argument 1 is too big or too small\n", .{application_name});
-            std.posix.exit(1);
+            exit(1);
         };
         last = std.fmt.parseInt(i64, arguments[1], 10) catch {
             print("{s}: Argument 2 is too big or too small\n", .{application_name});
-            std.posix.exit(1);
+            exit(1);
         };
     } else {
         first = std.fmt.parseInt(i64, arguments[0], 10) catch {
             print("{s}: Argument 1 is too big or too small\n", .{application_name});
-            std.posix.exit(1);
+            exit(1);
         };
         increment = std.fmt.parseInt(i64, arguments[1], 10) catch {
             print("{s}: Argument 2 is too big or too small\n", .{application_name});
-            std.posix.exit(1);
+            exit(1);
         };
         last = std.fmt.parseInt(i64, arguments[2], 10) catch {
             print("{s}: Argument 3 is too big or too small\n", .{application_name});
-            std.posix.exit(1);
+            exit(1);
         };
     }
     if (increment == 0) {
         print("{s}: Increment value cannot be '0'\n", .{application_name});
-        std.posix.exit(1);
+        exit(1);
     }
 
     if ((last > first and increment < 0) or (last < first and increment > 0)) return;
@@ -169,7 +169,7 @@ fn process_integers(arguments: []const []const u8, equal_width: bool, separator:
     }
     var format_string: ?FormatString = null;
     if (format != null) {
-        format_string = FormatString.init(format.?, default_allocator) catch std.posix.exit(1);
+        format_string = FormatString.init(format.?, default_allocator) catch exit(1);
     }
     defer if (format_string != null) format_string.?.deinit();
 
@@ -191,7 +191,7 @@ fn print_integer(iterator: i64, separator: []const u8, width: ?u8, format: ?Form
         const len = zig_fixes.formatIntBuf(buffer, iterator, 10, .lower, .{.fill = '0', .width = width.?});
         print("{s}{s}", .{buffer[0..len], separator});
     } else if (format != null) {
-        format.?.printf(&.{printf.FormatArgument{.FLOAT = @floatFromInt(iterator)}}) catch std.posix.exit(1);
+        format.?.printf(&.{printf.FormatArgument{.FLOAT = @floatFromInt(iterator)}}) catch exit(1);
     } else {
         print("{d}{s}", .{iterator, separator});
     }

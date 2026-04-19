@@ -1,17 +1,18 @@
 const std = @import("std");
 const fs = std.fs;
 const os = std.os;
-const io = std.io;
 const testing = std.testing;
 
 const clap2 = @import("clap2/clap2.zig");
 const version = @import("util/version.zig");
+const custom_io = @import("util/io.zig");
 
 const Allocator = std.mem.Allocator;
 const LinkError = os.LinkError;
 
 const default_allocator = std.heap.page_allocator;
 const print = @import("util/print_tools.zig").print;
+const exit = std.process.exit;
 const application_name = "sum";
 
 const help_message =
@@ -83,7 +84,7 @@ pub const Algorithm = enum {
     SYSV
 };
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     const args: []const clap2.Argument = &[_]clap2.Argument{
         clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
         clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
@@ -91,15 +92,15 @@ pub fn main() !void {
         clap2.Argument.FlagArgument("s", &[_][]const u8{"sysv"}),
     };
 
-    var parser = clap2.Parser.init(args, .{});
+    var parser = clap2.Parser.init(args, init.minimal, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {
         print(help_message, .{});
-        std.posix.exit(0);
+        exit(0);
     } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
-        std.posix.exit(0);
+        exit(0);
     }
 
     const bsd = parser.flag("r");
@@ -107,7 +108,7 @@ pub fn main() !void {
     
     if (bsd and sysv) {
         print("-r and -s cannot be active at the same time\n", .{});
-        std.posix.exit(1);
+        exit(1);
     }
     
     const algorithm = if (sysv) Algorithm.SYSV else Algorithm.BSD;
@@ -116,26 +117,26 @@ pub fn main() !void {
     const print_name = algorithm == Algorithm.SYSV or positionals.len > 1;
     
     if (positionals.len == 0) {
-        sumStdin(algorithm);
+        sumStdin(algorithm, init.io);
     } else {
         for (positionals) |file| {
             if (std.mem.eql(u8, file, "-")) {
                 if (!handled_stdin) {
-                    sumStdin(algorithm);
+                    sumStdin(algorithm, init.io);
                 }
             } else {
-                sumFile(file, algorithm, print_name);
+                sumFile(file, algorithm, print_name, init.io);
             }
         }
     }
     
 }
 
-fn sumFile(file_path: []const u8, algorithm: Algorithm, print_name: bool) void {
+fn sumFile(file_path: []const u8, algorithm: Algorithm, print_name: bool, io: std.Io) void {
     var result: u16 = 0;
     var segments: u64 = 0;
 
-    const file = fs.cwd().openFile(file_path, .{.mode = .read_only}) catch |err| {
+    const file = std.Io.Dir.cwd().openFile(io, file_path, .{.mode = .read_only}) catch |err| {
         if (err == error.FileNotFound) {
             print("{s}: {s}: No such file or directory\n", .{application_name, file_path});
         } else {
@@ -143,7 +144,7 @@ fn sumFile(file_path: []const u8, algorithm: Algorithm, print_name: bool) void {
         }
         return;
     };
-    const file_size = file.getEndPos() catch unreachable;
+    const file_size = file.length(io) catch unreachable;
     
     if (algorithm == Algorithm.BSD) {
         const buffer_size: usize = 1024;
@@ -155,7 +156,7 @@ fn sumFile(file_path: []const u8, algorithm: Algorithm, print_name: bool) void {
         var i: usize = 0;
 
         while (i < segments): (i += 1) {
-            const segment_size = file.preadAll(buffer[0..], i * buffer_size) catch unreachable;
+            const segment_size = file.readPositionalAll(io, buffer[0..], i * buffer_size) catch unreachable;
             checksum.update(buffer[0..segment_size]);
         }
         result = checksum.final();
@@ -169,7 +170,7 @@ fn sumFile(file_path: []const u8, algorithm: Algorithm, print_name: bool) void {
         var i: usize = 0;
 
         while (i < segments): (i += 1) {
-            const segment_size = file.preadAll(buffer[0..], i * buffer_size) catch unreachable;
+            const segment_size = file.readPositionalAll(io, buffer[0..], i * buffer_size) catch unreachable;
             checksum.update(buffer[0..segment_size]);
         }
         result = checksum.final();
@@ -183,9 +184,8 @@ fn sumFile(file_path: []const u8, algorithm: Algorithm, print_name: bool) void {
     print("\n", .{});
 }
 
-fn sumStdin(algorithm: Algorithm) void {
-    const stdin = std.fs.File.stdin().deprecatedReader();
-    const bytes = stdin.readAllAlloc(default_allocator, 1 << 30) catch {
+fn sumStdin(algorithm: Algorithm, io: std.Io) void {
+    const bytes = custom_io.readStdin(io, default_allocator) catch {
         print("Reading stdin failed\n", .{});
         return;
     };

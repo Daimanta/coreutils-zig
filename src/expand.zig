@@ -1,7 +1,6 @@
 const std = @import("std");
 const fs = std.fs;
 const os = std.os;
-const io = std.io;
 const testing = std.testing;
 
 const clap2 = @import("clap2/clap2.zig");
@@ -10,7 +9,7 @@ const fileinfo = @import("util/fileinfo.zig");
 
 const Allocator = std.mem.Allocator;
 
-const exit = std.posix.exit;
+const exit = std.process.exit;
 const default_allocator = std.heap.page_allocator;
 const print = @import("util/print_tools.zig").print;
 const StringBuilder = @import("util/strings.zig").StringBuilder;
@@ -39,7 +38,7 @@ const help_message =
 
 const default_tab_size = 8;
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     const args: []const clap2.Argument = &[_]clap2.Argument{
         clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
         clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
@@ -47,7 +46,7 @@ pub fn main() !void {
         clap2.Argument.OptionArgument("t", &[_][]const u8{"tabs"}, false),
     };
 
-    var parser = clap2.Parser.init(args, .{});
+    var parser = clap2.Parser.init(args, init.minimal, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {
@@ -138,11 +137,11 @@ pub fn main() !void {
     }
 
     for (arguments) |path| {
-        expand(path, initial, tab_size, tab_list, post_tab_size, post_tab_alignment);
+        expand(path, initial, tab_size, tab_list, post_tab_size, post_tab_alignment, init.io);
     }
 }
 
-fn expand(path: []const u8, initial_only: bool, tab_size_opt: ?u32, tab_list_opt: ?[]u32, post_tab_size: ?u32, post_tab_alignment: ?u32) void {
+fn expand(path: []const u8, initial_only: bool, tab_size_opt: ?u32, tab_list_opt: ?[]u32, post_tab_size: ?u32, post_tab_alignment: ?u32, io: std.Io) void {
     const stat = fileinfo.getLstat(path) catch {
         print("{s}: Could not access file '{s}'\n", .{application_name, path});
         exit(1);
@@ -157,19 +156,20 @@ fn expand(path: []const u8, initial_only: bool, tab_size_opt: ?u32, tab_list_opt
         exit(1);
     }
 
-    const file = fs.cwd().openFile(path, .{ .mode = .read_only }) catch {
+    const file = std.Io.Dir.cwd().openFile(io, path, .{ .mode = .read_only }) catch {
         print("{s}: Could not read file '{s}'.\n", .{application_name, path});
         exit(1);
     };
-    defer file.close();
+    defer file.close(io);
+    var buffer: [4096]u8 = undefined;
+    var reader = file.reader(io, &buffer).interface;
 
     while (true) {
-        const lineOpt = file.deprecatedReader().readUntilDelimiterOrEofAlloc(default_allocator, '\n', 1 << 24) catch {
+        const lineOpt = reader.takeDelimiter('\n') catch {
             print("{s}: Error while reading file '{s}'\n", .{application_name, path});
             exit(1);
         };
         if (lineOpt == null) break;
-        defer default_allocator.free(lineOpt.?);
         const line = lineOpt.?;
 
         const number_of_tabs = std.mem.count(u8, line, "\t");

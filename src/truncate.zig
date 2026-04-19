@@ -14,10 +14,10 @@ const MakeDirError = std.posix.MakeDirError;
 const OpenError = fs.Dir.OpenError;
 
 const allocator = std.heap.page_allocator;
-const exit = std.posix.exit;
+const exit = std.process.exit;
 const print = @import("util/print_tools.zig").print;
 const pprintln = @import("util/print_tools.zig").pprintln;
-const ftruncate = std.posix.ftruncate;
+const ftruncate = std.os.linux.ftruncate;
 
 const application_name = "truncate";
 
@@ -64,7 +64,7 @@ const SizeValue = struct {
     value: u64
 };
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     const args: []const clap2.Argument = &[_]clap2.Argument{
         clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
         clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
@@ -74,15 +74,15 @@ pub fn main() !void {
         clap2.Argument.OptionArgument("s", &[_][]const u8{"size"}, false),
     };
 
-    var parser = clap2.Parser.init(args, .{.accept_numerical_arguments = false});
+    var parser = clap2.Parser.init(args, init.minimal, .{.accept_numerical_arguments = false});
     defer parser.deinit();
 
     if (parser.flag("help")) {
         print(help_message, .{});
-        std.posix.exit(0);
+        exit(0);
     } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
-        std.posix.exit(0);
+        exit(0);
     }
 
     const arguments = parser.positionals();
@@ -102,11 +102,11 @@ pub fn main() !void {
         exit(1);
     }
 
-    truncate_files(arguments, size.value, size_in_blocks, !no_create, reference_file.value);
+    truncate_files(arguments, size.value, size_in_blocks, !no_create, reference_file.value, init.io);
 
 }
 
-fn truncate_files(paths: [][]const u8, size_opt: ?[]const u8, size_in_blocks: bool, do_create: bool, reference_file: ?[]const u8) void {
+fn truncate_files(paths: [][]const u8, size_opt: ?[]const u8, size_in_blocks: bool, do_create: bool, reference_file: ?[]const u8, io: std.Io) void {
     var size: SizeValue = undefined;
     if (reference_file != null) {
         if (fileinfo.getLstat(reference_file.?)) |file_stat| {
@@ -126,10 +126,10 @@ fn truncate_files(paths: [][]const u8, size_opt: ?[]const u8, size_in_blocks: bo
     } else {
         size = parseSize(size_opt.?);
     }
-    truncate_files_exec(paths, size, size_in_blocks, do_create);
+    truncate_files_exec(paths, size, size_in_blocks, do_create, io);
 }
 
-fn truncate_files_exec(paths: [][]const u8, size: SizeValue, size_in_blocks: bool, do_create: bool) void {
+fn truncate_files_exec(paths: [][]const u8, size: SizeValue, size_in_blocks: bool, do_create: bool, io: std.Io) void {
     for (paths) |file| {
         const stat = fileinfo.getLstat(file) catch {
             print("{s}: Error accessing file '{s}'. Exiting.\n", .{application_name, file});
@@ -138,20 +138,20 @@ fn truncate_files_exec(paths: [][]const u8, size: SizeValue, size_in_blocks: boo
 
         if (!fileinfo.fileExists(stat)) {
             if (!do_create) continue;
-            const created_file = std.fs.cwd().createFile(file, .{}) catch {
+            const created_file = std.Io.Dir.cwd().createFile(io, file, .{}) catch {
                 print("{s}: Error creating file '{s}'. Exiting.\n", .{application_name, file});
                 exit(1);
             };
-            created_file.close();
-            truncate_file(file, size, size_in_blocks);
+            created_file.close(io);
+            truncate_file(file, size, size_in_blocks, io);
 
         } else {
-            truncate_file(file, size, size_in_blocks);
+            truncate_file(file, size, size_in_blocks, io);
         }
     }
 }
 
-fn truncate_file(file: []const u8, size: SizeValue, size_in_blocks: bool) void {
+fn truncate_file(file: []const u8, size: SizeValue, size_in_blocks: bool, io: std.Io) void {
     var used_size = size.value;
     const stat = fileinfo.getLstat(file) catch {
         print("{s}: Error accessing file '{s}'. Exiting.\n", .{application_name, file});
@@ -200,12 +200,13 @@ fn truncate_file(file: []const u8, size: SizeValue, size_in_blocks: bool) void {
         }
     }
     if (do_truncate) {
-        const opened_file = std.fs.cwd().openFile(file, .{.mode = .write_only}) catch unreachable;
-        ftruncate(opened_file.handle, used_size) catch {
+        const opened_file = std.Io.Dir.cwd().openFile(io, file, .{.mode = .write_only}) catch unreachable;
+        const returncode = ftruncate(opened_file.handle, @intCast(used_size));
+        if (returncode != 0) {
             print("{s}: Error truncating file '{s}'. Exiting.\n", .{application_name, file});
             exit(1);
-        };
-        opened_file.close();
+        }
+        opened_file.close(io);
     }
 }
 

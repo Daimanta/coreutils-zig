@@ -2,7 +2,6 @@ const std = @import("std");
 const fs = std.fs;
 const mem = std.mem;
 const os = std.os;
-const io = std.io;
 
 const clap2 = @import("clap2/clap2.zig");
 const version = @import("util/version.zig");
@@ -16,6 +15,7 @@ const default_allocator = std.heap.page_allocator;
 const print = @import("util/print_tools.zig").print;
 const startsWith = mem.startsWith;
 const eql = mem.eql;
+const exit = std.process.exit;
 
 const application_name = "dircolors";
 
@@ -39,7 +39,7 @@ const help_message =
 
 const env_name: []const u8 = "LS_COLORS";
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     const args: []const clap2.Argument = &[_]clap2.Argument{
         clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
         clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
@@ -50,15 +50,15 @@ pub fn main() !void {
         clap2.Argument.FlagArgument("z", &[_][]const u8{"zero"}),
     };
 
-    var parser = clap2.Parser.init(args, .{});
+    var parser = clap2.Parser.init(args, init.minimal, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {
         print(help_message, .{});
-        std.posix.exit(0);
+        exit(0);
     } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
-        std.posix.exit(0);
+        exit(0);
     }
     
     const bourne = parser.flag("b") or parser.flag("bourne-shell");
@@ -68,20 +68,20 @@ pub fn main() !void {
     const flag_count = @intFromBool(bourne) + @intFromBool(csh) + @intFromBool(print_database);
     if (flag_count > 1) {
         print("A maximum of one of -b, -c, and -p is allowed. Exiting.\n", .{});
-        std.posix.exit(1);
+        exit(1);
     }
     
     const arguments = parser.positionals();
     
     if (arguments.len > 1) {
         print("Either no argument, or one file needs to be specified. Exiting.\n", .{});
-        std.posix.exit(1);
+        exit(1);
     }
     
     if (arguments.len == 1) {
-        try parseDircolorsFile(arguments[0], csh);
+        try parseDircolorsFile(arguments[0], csh, init.io);
     } else {
-        const env = std.posix.getenv(env_name);
+        const env = init.environ_map.get(env_name);
         if (env != null) {
             if (print_database) {
                 print("{s}", .{defaults});
@@ -96,8 +96,8 @@ pub fn main() !void {
     }
 }
 
-fn parseDircolorsFile(path: []const u8, csh: bool) !void {
-    const file_contents = fs.cwd().readFileAlloc(default_allocator, path, 1 << 20) catch "";
+fn parseDircolorsFile(path: []const u8, csh: bool, io: std.Io) !void {
+    const file_contents = std.Io.Dir.cwd().readFileAlloc(io, path, default_allocator, .unlimited) catch "";
     defer default_allocator.free(file_contents);
     var lines = std.mem.tokenizeSequence(u8, file_contents, "\n"[0..]);
     var buffer: [1 << 20]u8 = undefined;

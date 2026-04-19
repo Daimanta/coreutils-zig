@@ -1,7 +1,6 @@
 const std = @import("std");
 const fs = std.fs;
 const os = std.os;
-const io = std.io;
 
 const clap2 = @import("clap2/clap2.zig");
 const version = @import("util/version.zig");
@@ -16,6 +15,7 @@ const time_t = time_info.time_t;
 
 const allocator = std.heap.page_allocator;
 const print = @import("util/print_tools.zig").print;
+const exit = std.process.exit;
 
 const application_name = "users";
 
@@ -30,21 +30,21 @@ const help_message =
 ;
 
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     const args: []const clap2.Argument = &[_]clap2.Argument{
         clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
         clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
     };
 
-    var parser = clap2.Parser.init(args, .{});
+    var parser = clap2.Parser.init(args, init.minimal, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {
         print(help_message, .{});
-        std.posix.exit(0);
+        exit(0);
     } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
-        std.posix.exit(0);
+        exit(0);
     }
 
     const positionals = parser.positionals();
@@ -53,16 +53,16 @@ pub fn main() !void {
 
     if (positionals.len > 1) {
         print("Only one file can be specified. Exiting.\n", .{});
-        std.posix.exit(1);
+        exit(1);
     } else if (positionals.len == 1) {
         current_user_file = positionals[0];
     }
-    try printUsers(allocator, current_user_file);
+    try printUsers(allocator, current_user_file, init.io);
 }
 
-fn printUsers(alloc: std.mem.Allocator, file_name: []const u8) !void {
+fn printUsers(alloc: std.mem.Allocator, file_name: []const u8, io: std.Io) !void {
     const backup: []u8 = &.{};
-    const file_contents = fs.cwd().readFileAlloc(alloc, file_name, 1 << 20) catch backup;
+    const file_contents = std.Io.Dir.cwd().readFileAlloc(io, file_name, alloc, .unlimited) catch backup;
     if (file_contents.len > 0 and file_contents.len % @sizeOf(utmp.Utmp) == 0) {
         const utmp_logs = utmp.convertBytesToUtmpRecords(file_contents);
         var count: u32 = 0;

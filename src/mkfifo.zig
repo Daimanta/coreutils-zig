@@ -1,7 +1,6 @@
 const std = @import("std");
 const fs = std.fs;
 const os = std.os;
-const io = std.io;
 
 const clap2 = @import("clap2/clap2.zig");
 const fileinfo = @import("util/fileinfo.zig");
@@ -15,6 +14,7 @@ const MakeFifoError = fileinfo.MakeFifoError;
 
 const allocator = std.heap.page_allocator;
 const print = @import("util/print_tools.zig").print;
+const exit = std.process.exit;
 
 const application_name = "mkfifo";
 
@@ -35,7 +35,7 @@ const help_message =
 
 var success = true;
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     const args: []const clap2.Argument = &[_]clap2.Argument{
         clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
         clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
@@ -44,15 +44,15 @@ pub fn main() !void {
         clap2.Argument.OptionArgument(null, &[_][]const u8{"context"}, false),
     };
 
-    var parser = clap2.Parser.init(args, .{});
+    var parser = clap2.Parser.init(args, init.minimal, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {
         print(help_message, .{});
-        std.posix.exit(0);
+        exit(0);
     } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
-        std.posix.exit(0);
+        exit(0);
     }
 
     const arguments = parser.positionals();
@@ -65,7 +65,7 @@ pub fn main() !void {
     
     if (default_selinux_context and special_selinux_context.found) {
         print("SELinux context cannot be both default and specific. Exiting.\n", .{});
-        std.posix.exit(1);
+        exit(1);
     }   
     
     if (mode_string.found) {
@@ -74,7 +74,7 @@ pub fn main() !void {
                 mode.ModeError.InvalidModeString => print("Invalid mode. Exiting.\n", .{}),
                 mode.ModeError.UnknownError => print("Unknown mode error. Exiting.\n", .{}),
             }
-            std.posix.exit(1);
+            exit(1);
         };
     }
 
@@ -97,7 +97,7 @@ pub fn main() !void {
     }
     
     if (!success) {
-        std.posix.exit(1);
+        exit(1);
     }
 }
 

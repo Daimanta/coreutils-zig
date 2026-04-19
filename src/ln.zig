@@ -3,7 +3,6 @@ const fs = std.fs;
 const mem = std.mem;
 const os = std.os;
 const posix = std.posix;
-const io = std.io;
 const testing = std.testing;
 
 const clap = @import("clap2/clap2.zig");
@@ -14,7 +13,7 @@ const Allocator = std.mem.Allocator;
 const LinkError = os.LinkError;
 
 const default_allocator = std.heap.page_allocator;
-const exit = std.posix.exit;
+const exit = std.process.exit;
 const print = @import("util/print_tools.zig").print;
 
 const application_name = "ln";
@@ -80,7 +79,7 @@ const targets_and_dir = struct {
 };
 
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     const args: []const clap.Argument = &[_]clap.Argument{
         clap.Argument.FlagArgument(null, &[_][]const u8{"help"}),
         clap.Argument.FlagArgument(null, &[_][]const u8{"version"}),
@@ -101,7 +100,7 @@ pub fn main() !void {
         clap.Argument.OptionArgument("t", &[_][]const u8{"target-directory"}, false),
     };
 
-    var parser = clap.Parser.init(args, .{});
+    var parser = clap.Parser.init(args, init.minimal, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {

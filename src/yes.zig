@@ -6,6 +6,7 @@ const strings = @import("util/strings.zig");
 const default_allocator = std.heap.page_allocator;
 
 const print = @import("util/print_tools.zig").print;
+const exit = std.process.exit;
 
 const help_message =
             \\Usage: yes [STRING]...
@@ -20,21 +21,21 @@ const help_message =
 const application_name = "yes";
 const default_output_string = "y";
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     const args: []const clap2.Argument = &[_]clap2.Argument{
         clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
         clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
     };
 
-    var parser = clap2.Parser.init(args, .{});
+    var parser = clap2.Parser.init(args, init.minimal, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {
         print(help_message, .{});
-        std.posix.exit(0);
+        exit(0);
     } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
-        std.posix.exit(0);
+        exit(0);
     }
 
     const positionals = parser.positionals();

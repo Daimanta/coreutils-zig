@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const exit = std.process.exit;
+
 pub const ValueType = enum {
     none,
     one,
@@ -59,18 +61,18 @@ pub const Parser = struct {
     parser_options: ParserOptions,
 
     const Self = @This();
-    pub fn init(arguments: []const Argument, parser_options: ParserOptions) Self{
+    pub fn init(arguments: []const Argument, args_holder: std.process.Init.Minimal, parser_options: ParserOptions) Self{
         var result = Self{.allocator = std.heap.ArenaAllocator.init(std.heap.page_allocator), .pairs = undefined, ._positionals = undefined, .parser_options = parser_options};
         result.pairs = result.allocator.allocator().alloc(ValuePair, arguments.len) catch {
             std.debug.print("Error!'\n", .{});
-            std.posix.exit(1);
+            exit(1);
         };
         for (0..arguments.len) |i| {
             result.pairs[i] = .{.argument = arguments[i], .value = .{}};
         }
-        construct_values(&result) catch {
+        construct_values(&result, args_holder) catch {
             std.debug.print("Error!'\n", .{});
-            std.posix.exit(1);
+            exit(1);
         };
         return result;
     }
@@ -80,12 +82,12 @@ pub const Parser = struct {
         if (matched != null) {
             if (matched.?.argument.type != .none) {
                 std.debug.print("{s}: 'flag' can only be called on an argument without parameters.\n", .{reference});
-                std.posix.exit(1);
+                exit(1);
             }
             return matched.?.value.matched;
         } else {
             std.debug.print("{s}: Argument not found!\n", .{reference});
-            std.posix.exit(1);
+            exit(1);
         }
         return false;
     }
@@ -100,7 +102,7 @@ pub const Parser = struct {
         if (foundArgument != null) {
             if (foundArgument.?.argument.type != .one) {
                 std.debug.print("{s}: 'option' can only be called on an argument with a single parameter.\n", .{reference});
-                std.posix.exit(1);
+                exit(1);
             }
 
             const singleValue = foundArgument.?.value.singleValue;
@@ -115,7 +117,7 @@ pub const Parser = struct {
             return result;
         } else {
             std.debug.print("{s}: Argument not found!\n", .{reference});
-            std.posix.exit(1);
+            exit(1);
         }
         return result;
     }
@@ -125,7 +127,7 @@ pub const Parser = struct {
         if (matched != null) {
             if (matched.?.argument.type != .many) {
                 std.debug.print("{s}: 'option' can only be called on an argument with multiple parameters.\n", .{reference});
-                std.posix.exit(1);
+                exit(1);
             }
             return matched.?.value.multiValue;
         }
@@ -139,7 +141,7 @@ pub const Parser = struct {
     fn match(self: *const Self, reference: []const u8) ?*ValuePair {
         if (reference.len == 0) {
             std.debug.print("Error!'\n", .{});
-            std.posix.exit(1);
+            exit(1);
         } else {
             for (self.pairs) |*pair| {
                 var matched = reference.len == 1 and pair.argument.shorts != null and std.mem.indexOfScalar(u8, pair.argument.shorts.?, reference[0]) != null;
@@ -156,7 +158,7 @@ pub const Parser = struct {
                 }
             }
             std.debug.print("{s}: Argument not found!\n", .{reference});
-            std.posix.exit(1);
+            exit(1);
         }
     }
 
@@ -164,8 +166,8 @@ pub const Parser = struct {
         self.allocator.deinit();
     }
 
-    fn construct_values(self: *Self) !void {
-        const arguments_null_term: [][:0]u8 = try std.process.argsAlloc(self.allocator.allocator());
+    fn construct_values(self: *Self, args_holder: std.process.Init.Minimal) !void {
+        const arguments_null_term: []const [:0]const u8 = try args_holder.args.toSlice(self.allocator.allocator());
         var arguments = try self.allocator.allocator().alloc([]const u8, arguments_null_term.len);
         for (arguments_null_term, 0..) |arg_prim, i| {
             arguments[i] = arg_prim;
@@ -185,12 +187,12 @@ pub const Parser = struct {
             if (std.mem.startsWith(u8, arg, "--")) {
                 if (arg.len == 2) {
                     std.debug.print("Empty argument '--' found.\n", .{});
-                    std.posix.exit(1);
+                    exit(1);
                 }
                 const matched = self.match(arg[2..]);
                 if (matched == null) {
                     std.debug.print("Unrecognized flag '{s}'\n", .{arg});
-                    std.posix.exit(1);
+                    exit(1);
                 } else {
                     try self.handleMatch(matched.?, arguments, &i, true);
                 }
@@ -202,7 +204,7 @@ pub const Parser = struct {
                         const matched = self.match(arg[j..j+1]);
                         if (matched == null) {
                             std.debug.print("Unrecognized flag '{s}'\n", .{arg[j..j+1]});
-                            std.posix.exit(1);
+                            exit(1);
                         }
                         try self.handleMatch(matched.?, arguments, &i, false);
                     }
@@ -211,7 +213,7 @@ pub const Parser = struct {
                 const matched = self.match(last_arg);
                 if (matched == null) {
                     std.debug.print("Unrecognized flag '{s}'\n", .{arg});
-                    std.posix.exit(1);
+                    exit(1);
                 } else {
                     try self.handleMatch(matched.?, arguments, &i, true);
                 }
@@ -245,14 +247,14 @@ pub const Parser = struct {
             const next = getNextAsPositional(arguments, i.*, self.parser_options.accept_numerical_arguments);
             if (!look_forward and !allowNone) {
                 std.debug.print("Expected an option for '{s}' but received none.\n", .{arg});
-                std.posix.exit(1);
+                exit(1);
             }
             if (!look_forward) {
                 return;
             }
             if (!allowNone and next == null) {
                 std.debug.print("Expected an option for '{s}' but received none.\n", .{arg});
-                std.posix.exit(1);
+                exit(1);
             } else if (next != null) {
                 matched.value.singleValue = next;
                 i.* += 1;
@@ -261,7 +263,7 @@ pub const Parser = struct {
             var next = getNextAsPositional(arguments, i.*, self.parser_options.accept_numerical_arguments);
             if (!look_forward and !allowNone) {
                 std.debug.print("Expected an option for '{s}' but received none.\n", .{arg});
-                std.posix.exit(1);
+                exit(1);
             }
             if (!look_forward) {
                 matched.value.multiValue = try self.allocator.allocator().alloc([]const u8, 0);
@@ -269,7 +271,7 @@ pub const Parser = struct {
             }
             if (!allowNone and next == null) {
                 std.debug.print("Expected an option for '{s}' but received none.\n", .{arg});
-                std.posix.exit(1);
+                exit(1);
             } else if (next != null) {
                 var multiList = std.array_list.Managed([]const u8).init(std.heap.page_allocator);
                 defer multiList.deinit();
@@ -301,4 +303,3 @@ test "a" {
     const parser = Parser.init(args);
     _ = parser;
 }
-

@@ -1,5 +1,8 @@
 const std = @import("std");
 
-pub fn main() !void {
-    std.posix.exit(1);
+const exit = std.process.exit;
+
+pub fn main(init: std.process.Init) !void {
+    _ = init;
+    exit(1);
 }

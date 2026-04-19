@@ -1,7 +1,6 @@
 const std = @import("std");
 const fs = std.fs;
 const os = std.os;
-const io = std.io;
 
 const clap2 = @import("clap2/clap2.zig");
 const version = @import("util/version.zig");
@@ -10,11 +9,11 @@ const system = @import("util/system.zig");
 const ChildProcess = std.process.Child;
 const Allocator = std.mem.Allocator;
 const PriorityType = system.PriorityType;
-const SpawnError = ChildProcess.SpawnError;
 const SetPriorityError = system.SetPriorityError;
 
 const allocator = std.heap.page_allocator;
 const print = @import("util/print_tools.zig").print;
+const exit = std.process.exit;
 
 const DEFAULT_NICENESS = 10;
 const application_name = "nice";
@@ -40,22 +39,22 @@ const help_message =
 
 extern fn getpriority(which: c_int, who: system.id_t) c_int;
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     const args: []const clap2.Argument = &[_]clap2.Argument{
         clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
         clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
         clap2.Argument.OptionArgument("n", &[_][]const u8{"adjustment"}, false),
     };
 
-    var parser = clap2.Parser.init(args, .{});
+    var parser = clap2.Parser.init(args, init.minimal, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {
         print(help_message, .{});
-        std.posix.exit(0);
+        exit(0);
     } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
-        std.posix.exit(0);
+        exit(0);
     }
 
     const arguments = parser.positionals();
@@ -63,23 +62,22 @@ pub fn main() !void {
 
     if (arguments.len == 0 and !adjustment_string.found) {
         print("{d}\n", .{getpriority(@intFromEnum(PriorityType.PRIO_PROCESS), 0)});
-        std.posix.exit(0);
+        exit(0);
     }
 
     var adjustment: i32 = 0;
     if (adjustment_string.found) {
         adjustment = std.fmt.parseInt(i32, adjustment_string.value.?, 10) catch {
             print("{s}: invalid number: '{s}'\n", .{application_name, adjustment_string.value.?});
-            std.posix.exit(1);
+            exit(1);
         };
     }
 
     const effective_niceness: i32 = std.math.clamp(adjustment, system.MAXIMAL_NICENESS, system.MINIMAL_NICENESS);
 
-    var child = ChildProcess.init(arguments[0..], allocator);
-    try child.spawn();
+    var child = try std.process.spawn(init.io, .{.argv = arguments});
 
-    system.setPriority(PriorityType.PRIO_PROCESS, @as(u32, @intCast(child.id)), @as(c_int, @intCast(effective_niceness))) catch |err| {
+    system.setPriority(PriorityType.PRIO_PROCESS, @intCast(child.id.?), @as(c_int, @intCast(effective_niceness))) catch |err| {
         if (err == SetPriorityError.NoRightsForNiceValue) {
             print("{s}: cannot set niceness: Permission denied\n", .{application_name});
         } else {
@@ -87,15 +85,11 @@ pub fn main() !void {
         }
     };
 
-    _ = child.wait() catch |err| {
-        if (err == SpawnError.FileNotFound) {
-            print("{s}: '{s}': No such file or directory\n", .{application_name, arguments[0]});
-        } else {
-            print("{s}: '{s}': Unknown error occurred: '{any}'\n", .{application_name, arguments[0], err});
-        }
-        std.posix.exit(1);
+    _ = child.wait(init.io) catch |err| {
+        print("{s}: '{s}': Unknown error occurred: '{any}'\n", .{application_name, arguments[0], err});
+        exit(1);
     };
-    _ = try child.kill();
+    child.kill(init.io);
 }
 
 

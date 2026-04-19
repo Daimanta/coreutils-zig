@@ -1,7 +1,6 @@
 const std = @import("std");
 const fs = std.fs;
 const os = std.os;
-const io = std.io;
 
 const clap2 = @import("clap2/clap2.zig");
 const fileinfo = @import("util/fileinfo.zig");
@@ -15,6 +14,7 @@ const time_t = time_info.time_t;
 
 const default_allocator = std.heap.page_allocator;
 const print = @import("util/print_tools.zig").print;
+const exit = std.process.exit;
 
 const application_name = "realpath";
 
@@ -39,7 +39,7 @@ const help_message =
 ;
 
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     const args: []const clap2.Argument = &[_]clap2.Argument{
         clap2.Argument.FlagArgument(null, &[_][]const u8{"help"}),
         clap2.Argument.FlagArgument(null, &[_][]const u8{"version"}),
@@ -54,15 +54,15 @@ pub fn main() !void {
         clap2.Argument.OptionArgument(null, &[_][]const u8{"relative-base"}, false),
     };
 
-    var parser = clap2.Parser.init(args, .{});
+    var parser = clap2.Parser.init(args, init.minimal, .{});
     defer parser.deinit();
 
     if (parser.flag("help")) {
         print(help_message, .{});
-        std.posix.exit(0);
+        exit(0);
     } else if (parser.flag("version")) {
         version.printVersionInfo(application_name);
-        std.posix.exit(0);
+        exit(0);
     }
 
     const must_exist = parser.flag("e");
@@ -78,7 +78,7 @@ pub fn main() !void {
     const separator = if (zero) "\x00" else "\n";
     
     const errors = checkInconsistencies(must_exist, may_exist, physical, strip, relative_to.value, relative_base.value);
-    if (errors) std.posix.exit(1);
+    if (errors) exit(1);
     
     const positionals = parser.positionals();
     
@@ -88,7 +88,7 @@ pub fn main() !void {
     }
     
     for (positionals, 0..) |arg, i| {
-        printRealpath(arg, must_exist, logical, !strip, quiet, relative_to.value, relative_base.value, i != positionals.len - 1, separator);
+        printRealpath(arg, must_exist, logical, !strip, quiet, relative_to.value, relative_base.value, i != positionals.len - 1, separator, init.io);
     }
     print("\n", .{});
 }
@@ -111,10 +111,10 @@ fn checkInconsistencies(must_exist: bool, may_exist: bool, physical: bool, strip
     return false;
 }
 
-fn printRealpath(path: []const u8, must_exist: bool, logical: bool, physical: bool, quiet: bool, relative_to: ?[]const u8, relative_base: ?[]const u8, add_separator: bool, separator: []const u8) void {
+fn printRealpath(path: []const u8, must_exist: bool, logical: bool, physical: bool, quiet: bool, relative_to: ?[]const u8, relative_base: ?[]const u8, add_separator: bool, separator: []const u8, io: std.Io) void {
     _ = logical; // What does this do?
     var exists = true;
-    std.fs.cwd().access(path, .{.mode = .read_only}) catch {
+    std.Io.Dir.cwd().access(io, path, .{.read = true}) catch {
         exists = false;
     };
     if (!exists and must_exist) {
@@ -131,7 +131,7 @@ fn printRealpath(path: []const u8, must_exist: bool, logical: bool, physical: bo
     if (exists and physical) {
         const lstat = fileinfo.getLstat(path) catch return;
         if (fileinfo.isSymlink(lstat)) {
-            const symlink_result: fileinfo.FollowSymlinkResult = fileinfo.followSymlink(default_allocator, path, false);
+            const symlink_result: fileinfo.FollowSymlinkResult = fileinfo.followSymlink(default_allocator, path, false, io);
             if (symlink_result.error_result != null) return;
             absolute_path = symlink_result.path;
         } else {
