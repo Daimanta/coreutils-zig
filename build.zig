@@ -103,6 +103,11 @@ pub fn build(b: *Builder) void {
 }
 
 fn addExe(b: *Builder, target: std.Build.ResolvedTarget, comptime name: []const u8, link_c: bool) *Builder.Step.Compile {
+    const clap2 = b.dependency("clap2", .{
+       .target = target,
+       .optimize = .ReleaseSafe
+    });
+
     const module = b.createModule(.{
         .root_source_file = b.path("src/" ++ name ++ ".zig"),
         .optimize = .ReleaseSafe,
@@ -112,6 +117,7 @@ fn addExe(b: *Builder, target: std.Build.ResolvedTarget, comptime name: []const 
         module.linkSystemLibrary("c", .{});
     }
     const exe = b.addExecutable(.{ .name = name, .root_module = module, .version = .{ .major = version.major, .minor = version.minor, .patch = version.patch } });
+    exe.root_module.addImport("clap2", clap2.module("clap2"));
     b.default_step.dependOn(&exe.step);
     b.installArtifact(exe);
     return exe;

@@ -70,3 +70,18 @@ pub fn link(oldpath: []const u8, newpath: []const u8) !void {
         return error.LinkError;
     }
 }
+
+pub fn symlink(oldpath: []const u8, newpath: []const u8) !void {
+    const oldpath_null = std.posix.toPosixPath(oldpath) catch {
+        return error.PathTooLong;
+    };
+
+    const newpath_null = std.posix.toPosixPath(newpath) catch {
+        return error.PathTooLong;
+    };
+
+    const returncode: isize = @bitCast(std.os.linux.symlink(&oldpath_null, &newpath_null));
+    if (returncode != 0) {
+        return error.LinkError;
+    }
+}

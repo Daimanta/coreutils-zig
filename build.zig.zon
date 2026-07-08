@@ -1,0 +1,12 @@
+.{
+    .name = .coreutils_zig,
+    .version = "0.16.0",
+    .dependencies = .{
+        .clap2 = .{
+            .url = "https://github.com/Daimanta/clap2/archive/refs/tags/0.1.2.tar.gz",
+            .hash = "clap2-0.1.2-uTZT1cAvAAAaJAX6E1VB-Te4tk393JD5GLCTfHsFsMJ_",
+        },
+    },
+    .paths = .{""},
+    .fingerprint = 0x97aeb4f240d9a1ca,
+}

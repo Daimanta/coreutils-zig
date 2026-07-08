@@ -8,3 +8,4 @@
 zig-cache
 *.bak
 /*.o
+/zig-pkg/
