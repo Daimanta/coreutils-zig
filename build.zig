@@ -5,8 +5,8 @@ const Builder = std.Build;
 
 pub fn build(b: *Builder) void {
     const current_zig_version = @import("builtin").zig_version;
-    if (current_zig_version.major != 0 or current_zig_version.minor < 16) {
-        std.debug.print("This project does not compile with a Zig version <0.16.x. Exiting.", .{});
+    if (current_zig_version.major != 0 or current_zig_version.minor < 17) {
+        std.debug.print("This project does not compile with a Zig version <0.17.x. Exiting.", .{});
         std.os.exit(1);
     }
 
@@ -118,6 +118,14 @@ fn addExe(b: *Builder, target: std.Build.ResolvedTarget, comptime name: []const 
     }
     const exe = b.addExecutable(.{ .name = name, .root_module = module, .version = .{ .major = version.major, .minor = version.minor, .patch = version.patch } });
     exe.root_module.addImport("clap2", clap2.module("clap2"));
+    if (link_c) {
+        const c_stdlib_imports = b.addTranslateC(.{
+            .root_source_file = b.path("src/util/c.h"),
+            .target = target,
+            .optimize = .ReleaseSafe,
+        });
+        exe.root_module.addImport("c_extends", c_stdlib_imports.createModule());
+    }
     b.default_step.dependOn(&exe.step);
     b.installArtifact(exe);
     return exe;

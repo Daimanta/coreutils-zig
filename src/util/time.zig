@@ -1,24 +1,22 @@
 // BSD 3-clause licensed. Copyright Léon van der Kaap 2021
 
 const std = @import("std");
-const c_time = @cImport({
-    @cInclude("time.h");
-});
-pub const time_t = c_time.time_t;
-pub const struct_tm = c_time.struct_tm;
+const c = @import("c_extends");
+pub const time_t = c.time_t;
+pub const struct_tm = c.struct_tm;
 
 const Case = std.fmt.Case;
 
 pub fn getCurrentTime(input_time: *time_t) void {
-    _ = c_time.time(input_time);
+    _ = c.time(input_time);
 }
 
 pub fn getCurrentTimeString(time: *time_t) [*:0]u8 {
-    return c_time.ctime(time);
+    return c.ctime(time);
 }
 
 pub fn getLocalTimeStruct(time: *time_t) *struct_tm {
-    return c_time.localtime(time);
+    return c.localtime(time);
 }
 
 pub fn getLocalTimeStructFromi32(time: i32) *struct_tm {

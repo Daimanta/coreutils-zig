@@ -6,12 +6,10 @@ const clap2 = @import("clap2/clap2.zig");
 const fileinfo = @import("util/fileinfo.zig");
 const version = @import("util/version.zig");
 const strings = @import("util/strings.zig");
-const time_info = @import("util/time.zig");
 const utmp = @import("util/utmp.zig");
 const custom_io = @import("util/io.zig");
 
 const Allocator = std.mem.Allocator;
-const time_t = time_info.time_t;
 const AccessError = os.AccessError;
 
 const default_allocator = std.heap.page_allocator;

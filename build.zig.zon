@@ -6,6 +6,10 @@
             .url = "https://github.com/Daimanta/clap2/archive/refs/tags/0.1.2.tar.gz",
             .hash = "clap2-0.1.2-uTZT1cAvAAAaJAX6E1VB-Te4tk393JD5GLCTfHsFsMJ_",
         },
+        .translate_c = .{
+            .url = "git+https://codeberg.org/ziglang/translate-c?ref=zig-0.17.x#cfac21f3199b2b02ce3fd7db652aa456421fe4ab",
+            .hash = "translate_c-2.0.2-Q_BUWvBNBwDnyehSiuAJmdFcMYHYGA-Jc3KiYdrV2Dqx",
+        },
     },
     .paths = .{""},
     .fingerprint = 0x97aeb4f240d9a1ca,

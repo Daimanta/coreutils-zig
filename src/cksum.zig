@@ -78,7 +78,7 @@ fn sumFile(file_path: []const u8, io: std.Io) void {
         return;
     };
     const file_size = file.length(io) catch unreachable;
-    var algorithm = std.hash.crc.Crc32Cksum.init();
+    var algorithm = std.hash.crc.@"CRC-32/ISO-HDLC".init();
     const buffer_size: usize = 1 << 20;
     var buffer: [buffer_size]u8 = undefined;
     segments = file_size / buffer_size;
